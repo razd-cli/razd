@@ -30,8 +30,8 @@ This document provides an overview of razd's CI/CD pipeline status and monitorin
 
 ### Rust Version Support
 - ✅ **Stable**: Latest stable Rust version
-- ✅ **MSRV**: 1.70.0 (defined in Cargo.toml)
-- ✅ **Nightly**: Used for minimal-versions testing
+- ✅ **MSRV**: 1.71.0 (defined in Cargo.toml)
+- ✅ **Compatibility**: Tokio and async runtime support
 
 ## Monitoring and Alerts
 

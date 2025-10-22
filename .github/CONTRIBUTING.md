@@ -6,7 +6,7 @@ Thank you for your interest in contributing to razd! This document provides guid
 
 ### Prerequisites
 
-- Rust 1.70.0 or later (check `rust-version` in `Cargo.toml`)
+- Rust 1.71.0 or later (check `rust-version` in `Cargo.toml`)
 - Git for version control
 - GitHub account for pull requests
 
@@ -90,7 +90,7 @@ Our GitHub Actions workflows automatically:
 
 #### Continuous Integration (`ci.yml`)
 - **Matrix Testing**: Tests on Windows, macOS, and Linux
-- **Rust Versions**: Tests on stable, beta, and MSRV (1.70.0)
+- **Rust Versions**: Tests on stable and MSRV (1.71.0)
 - **Quality Checks**: Runs rustfmt, clippy, and security audit
 - **Test Coverage**: Generates coverage reports via codecov
 
