@@ -25,7 +25,7 @@ The `razd.yml` configuration will provide:
 
 ## Proposed Changes
 
-### Core Configuration Format
+### Core Configuration Format (First Concept)
 
 ```yaml
 # Razdfile.yml - razd's own taskfile (executed via task --taskfile Razdfile.yml)
