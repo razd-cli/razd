@@ -13,8 +13,8 @@ razd setup
 
 # Выполнение задач из Taskfiles
 razd task <name> [args...]          # Выполнить задачу из Taskfile.yml
-razd task                            # Запустить dev-сервер
+razd task                           # Запустить dev-сервер
 
 # Утилиты
-razd init                         # Инициализация конфигураций для razd
+razd init                           # Инициализация конфигураций для razd
 ```
