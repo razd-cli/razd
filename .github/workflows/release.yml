@@ -5,6 +5,11 @@ on:
     tags:
       - 'v*.*.*'
 
+permissions:
+  contents: write
+  packages: write
+  deployments: write
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -148,27 +153,37 @@ jobs:
       with:
         path: artifacts
 
-    - name: Generate release notes
+    - name: List artifacts (for manual download)
       run: |
-        echo "## Release v${{ needs.create-release.outputs.version }}" > release-notes.md
-        echo "" >> release-notes.md
-        echo "### Downloads" >> release-notes.md
-        echo "" >> release-notes.md
-        echo "Pre-built binaries are available for:" >> release-notes.md
-        echo "- Windows (x64)" >> release-notes.md
-        echo "- macOS (Intel & Apple Silicon)" >> release-notes.md
-        echo "- Linux (x64)" >> release-notes.md
-        echo "" >> release-notes.md
-        echo "See installation instructions in README.md" >> release-notes.md
+        echo "=== Release Artifacts v${{ needs.create-release.outputs.version }} ==="
+        find artifacts -type f -name "*.tar.gz" -o -name "*.zip" | sort
+        echo ""
+        echo "=== Checksums ==="
+        find artifacts -type f -name "*.sha256" | sort
+        echo ""
+        echo "To create release manually:"
+        echo "1. Download artifacts from this workflow run"
+        echo "2. Create release at: https://github.com/${{ github.repository }}/releases/new?tag=${{ github.ref_name }}"
+        echo "3. Upload the binary files"
 
-    - name: Create Release
+    - name: Create Release (if token available)
       uses: softprops/action-gh-release@v1
+      continue-on-error: true
       with:
-        body_path: release-notes.md
+        body: |
+          ## Release v${{ needs.create-release.outputs.version }}
+          
+          ### Downloads
+          Pre-built binaries are available for:
+          - Windows (x64)
+          - macOS (Intel & Apple Silicon)  
+          - Linux (x64)
+          
+          See installation instructions in README.md
         files: artifacts/**/*
         make_latest: true
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
   smoke-test:
     name: Smoke Test
