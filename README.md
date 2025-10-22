@@ -1,6 +1,8 @@
 # razd-концепт
 
+```
 # Поднять проект (clone + setup)
+
 razd up https://github.com/hello/world.git      # Полный URL
 
 # Настройка инструментов
@@ -15,4 +17,4 @@ razd task                            # Запустить dev-сервер
 
 # Утилиты
 razd init                         # Инициализация конфигураций для razd
-
+```
