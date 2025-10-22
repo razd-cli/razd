@@ -22,6 +22,9 @@ pub enum RazdError {
 
     #[error("Configuration error: {0}")]
     Config(String),
+
+    #[error("Command error: {0}")]
+    Command(String),
 }
 
 impl RazdError {
@@ -50,6 +53,10 @@ impl RazdError {
 
     pub fn config<S: Into<String>>(msg: S) -> Self {
         Self::Config(msg.into())
+    }
+
+    pub fn command<S: Into<String>>(msg: S) -> Self {
+        Self::Command(msg.into())
     }
 }
 

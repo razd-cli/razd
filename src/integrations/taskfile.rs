@@ -77,3 +77,43 @@ pub async fn execute_task(task_name: Option<&str>, args: &[String], working_dir:
     
     Ok(())
 }
+
+/// Execute a workflow task using custom taskfile content
+pub async fn execute_workflow_task(task_name: &str, workflow_content: &str) -> Result<()> {
+    use std::fs;
+    use std::env;
+    
+    // Check if task is available
+    if !process::check_command_available("task").await {
+        return Err(RazdError::missing_tool(
+            "task",
+            "https://taskfile.dev/installation/"
+        ));
+    }
+
+    // Get current working directory
+    let working_dir = env::current_dir()
+        .map_err(|e| RazdError::task(format!("Failed to get current directory: {}", e)))?;
+    
+    // Create a temporary taskfile in the working directory (not temp)
+    let temp_taskfile = working_dir.join(format!(".razd-workflow-{}.yml", task_name));
+    
+    fs::write(&temp_taskfile, workflow_content)
+        .map_err(|e| RazdError::task(format!("Failed to create temporary taskfile: {}", e)))?;
+
+    output::step(&format!("Executing workflow: {}", task_name));
+    
+    // Execute task with custom taskfile in the working directory
+    let args = vec!["--taskfile", temp_taskfile.to_str().unwrap(), task_name];
+    
+    let result = process::execute_command("task", &args, Some(&working_dir)).await;
+    
+    // Clean up temporary file
+    let _ = fs::remove_file(&temp_taskfile);
+    
+    result.map_err(|e| RazdError::task(format!("Failed to execute workflow: {}", e)))?;
+
+    output::success(&format!("Successfully executed workflow: {}", task_name));
+    
+    Ok(())
+}

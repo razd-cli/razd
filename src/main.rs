@@ -1,5 +1,7 @@
 mod commands;
+mod config;
 mod core;
+mod defaults;
 mod integrations;
 
 use clap::{Parser, Subcommand};
@@ -31,6 +33,10 @@ enum Commands {
     Install,
     /// Install project dependencies via task setup
     Setup,
+    /// Start development workflow
+    Dev,
+    /// Build project
+    Build,
     /// Execute tasks from Taskfile.yml
     Task {
         /// Task name to execute (if empty, runs default dev task)
@@ -40,7 +46,14 @@ enum Commands {
         args: Vec<String>,
     },
     /// Initialize razd configuration for a project
-    Init,
+    Init {
+        /// Create Razdfile.yml for workflow customization
+        #[arg(long)]
+        config: bool,
+        /// Create all files (Razdfile.yml, Taskfile.yml, mise.toml)
+        #[arg(long)]
+        full: bool,
+    },
 }
 
 #[tokio::main]
@@ -64,11 +77,17 @@ async fn run(cli: Cli) -> core::Result<()> {
         Commands::Setup => {
             commands::setup::execute().await?;
         }
+        Commands::Dev => {
+            commands::dev::execute().await?;
+        }
+        Commands::Build => {
+            commands::build::execute().await?;
+        }
         Commands::Task { name, args } => {
             commands::task::execute(name.as_deref(), &args).await?;
         }
-        Commands::Init => {
-            commands::init::execute().await?;
+        Commands::Init { config, full } => {
+            commands::init::execute(config, full).await?;
         }
     }
 

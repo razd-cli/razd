@@ -28,6 +28,10 @@ thiserror = "1.0"
 # Colored output
 colored = "2.0"
 
+# Configuration parsing
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+
 # Path handling
 path-clean = "1.0"
 
