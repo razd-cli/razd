@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2025-10-23
+
+### Fixed
+- Simplified release workflow to avoid GitHub API 403 errors
+- Removed complex draft/publish flow in favor of direct release creation
+- Improved release notes generation
+
+## [0.1.1] - 2025-10-23
+
 ### Added
 - GitHub Actions CI/CD pipeline with cross-platform builds
 - Automated releases for Windows, macOS (Intel & Apple Silicon), and Linux
@@ -22,11 +31,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced installation documentation with pre-built binary options
 - Optimized release profile with LTO for smaller binaries
 - Updated README.md with CI/CD badges and status indicators
+- Updated MSRV to 1.74.0 for modern dependency compatibility
+- Simplified CI matrix to use only stable Rust versions
 
 ### Security
 - Added cargo-audit security vulnerability scanning
 - Implemented SHA256 checksums for release binaries
 - Added security policy and responsible disclosure process
+
+### Fixed
+- Resolved Cargo.lock version compatibility issues with CI
+- Fixed clippy warnings and code formatting issues
+- Updated deprecated GitHub Actions to modern versions
 
 ## [0.1.0] - TBD
 
@@ -37,5 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Integration with git, mise, and taskfile
 - Cross-platform support (Windows, macOS, Linux)
 
-[Unreleased]: https://github.com/razd-cli/razd/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/razd-cli/razd/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/razd-cli/razd/compare/v0.1.1...v0.1.2
+[0.1.1]: https://github.com/razd-cli/razd/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/razd-cli/razd/releases/tag/v0.1.0

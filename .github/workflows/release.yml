@@ -33,17 +33,10 @@ jobs:
         echo "" >> CHANGELOG.md
         echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$(git describe --tags --abbrev=0 HEAD~1)...v${{ steps.get_version.outputs.version }}" >> CHANGELOG.md || true
 
-    - name: Create Release Draft
-      id: create_release
-      uses: softprops/action-gh-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        name: Release v${{ steps.get_version.outputs.version }}
-        body_path: CHANGELOG.md
-        draft: true
-        prerelease: ${{ contains(github.ref, '-') }}
+    - name: Create Release Placeholder
+      run: |
+        echo "Release v${{ steps.get_version.outputs.version }} ready"
+        echo "Will be published after builds complete"
 
   build:
     name: Build ${{ matrix.target }}
@@ -147,19 +140,35 @@ jobs:
     needs: [create-release, build]
     runs-on: ubuntu-latest
     steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
     - name: Download all artifacts
       uses: actions/download-artifact@v4
       with:
         path: artifacts
 
-    - name: Publish Release
+    - name: Generate release notes
+      run: |
+        echo "## Release v${{ needs.create-release.outputs.version }}" > release-notes.md
+        echo "" >> release-notes.md
+        echo "### Downloads" >> release-notes.md
+        echo "" >> release-notes.md
+        echo "Pre-built binaries are available for:" >> release-notes.md
+        echo "- Windows (x64)" >> release-notes.md
+        echo "- macOS (Intel & Apple Silicon)" >> release-notes.md
+        echo "- Linux (x64)" >> release-notes.md
+        echo "" >> release-notes.md
+        echo "See installation instructions in README.md" >> release-notes.md
+
+    - name: Create Release
       uses: softprops/action-gh-release@v1
+      with:
+        body_path: release-notes.md
+        files: artifacts/**/*
+        make_latest: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        draft: false
-        files: artifacts/**/*
 
   smoke-test:
     name: Smoke Test
