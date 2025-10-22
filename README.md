@@ -2,7 +2,8 @@
 
 > Streamlined project setup with git, mise, and taskfile integration
 
-`razd` (кир. разд, from "раздуплиться" - to get things sorted) is a Rust CLI tool that dramatically simplifies project setup across popular technology stacks. It provides one-command project initialization by integrating git, mise, and taskfile.dev.
+`razd` (Russian: разд, from "раздуплиться" - to wake up and get yourself together) is a Rust CLI tool that dramatically simplifies project setup across popular technology stacks. It provides one-command project initialization by integrating git, mise, and taskfile.dev.
+
 
 ## Quick Start
 
