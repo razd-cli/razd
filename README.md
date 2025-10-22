@@ -1,5 +1,10 @@
 # razd
 
+[![CI](https://github.com/razd-cli/razd/workflows/CI/badge.svg)](https://github.com/razd-cli/razd/actions/workflows/ci.yml)
+[![Release](https://github.com/razd-cli/razd/workflows/Release/badge.svg)](https://github.com/razd-cli/razd/actions/workflows/release.yml)
+[![codecov](https://codecov.io/gh/razd-cli/razd/branch/main/graph/badge.svg)](https://codecov.io/gh/razd-cli/razd)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 > Streamlined project setup with git, mise, and taskfile integration
 
 `razd` (Russian: разд, from "раздуплиться" - to wake up and get yourself together) is a Rust CLI tool that dramatically simplifies project setup across popular technology stacks. It provides one-command project initialization by integrating git, mise, and taskfile.dev.
@@ -22,11 +27,45 @@ razd up https://github.com/hello/world.git
 
 ## Installation
 
+### Pre-built Binaries (Recommended)
+
+Download the latest release for your platform from [GitHub Releases](https://github.com/razd-cli/razd/releases):
+
+**Windows:**
+```powershell
+# Download and extract to PATH
+curl -L -o razd.zip https://github.com/razd-cli/razd/releases/latest/download/razd-v*-x86_64-pc-windows-msvc.zip
+# Extract and add to PATH
+```
+
+**macOS:**
 ```sh
-# Build from source
+# Intel Macs
+curl -L https://github.com/razd-cli/razd/releases/latest/download/razd-v*-x86_64-apple-darwin.tar.gz | tar -xz
+# Apple Silicon Macs  
+curl -L https://github.com/razd-cli/razd/releases/latest/download/razd-v*-aarch64-apple-darwin.tar.gz | tar -xz
+# Move to PATH
+sudo mv razd /usr/local/bin/
+```
+
+**Linux:**
+```sh
+curl -L https://github.com/razd-cli/razd/releases/latest/download/razd-v*-x86_64-unknown-linux-gnu.tar.gz | tar -xz
+sudo mv razd /usr/local/bin/
+```
+
+### Build from Source
+
+```sh
 git clone https://github.com/razd-cli/razd.git
 cd razd
 cargo install --path .
+```
+
+### Verify Installation
+
+```sh
+razd --version
 ```
 
 ## Commands
@@ -74,6 +113,25 @@ razd init
 - ✅ **Clear feedback**: Colored output with progress indicators
 - ✅ **Error handling**: Helpful error messages with installation guidance
 - ✅ **Non-intrusive**: Works alongside existing tools and workflows
+
+## Contributing
+
+We welcome contributions! Please see our [Contributing Guide](.github/CONTRIBUTING.md) for details on:
+
+- Development setup and workflow
+- Code quality standards and CI pipeline
+- Pull request process and testing requirements
+- Release procedures and security measures
+
+### Quick Development Setup
+```sh
+git clone https://github.com/razd-cli/razd.git
+cd razd
+cargo build
+cargo test
+```
+
+For bug reports and feature requests, please use our [issue templates](.github/ISSUE_TEMPLATE/).
 
 ## License
 

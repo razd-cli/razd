@@ -9,6 +9,8 @@ repository = "https://github.com/razd-cli/razd"
 license = "MIT"
 keywords = ["cli", "development", "project-setup", "mise", "taskfile"]
 categories = ["command-line-utilities", "development-tools"]
+readme = "README.md"
+rust-version = "1.70.0"
 
 [[bin]]
 name = "razd"

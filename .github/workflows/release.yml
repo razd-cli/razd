@@ -1,0 +1,191 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Get version from tag
+      id: get_version
+      run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+    - name: Generate changelog
+      id: changelog
+      run: |
+        # Simple changelog generation from git commits
+        echo "## Changes" > CHANGELOG.md
+        git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 HEAD~1)..HEAD >> CHANGELOG.md || echo "- Initial release" >> CHANGELOG.md
+        echo "" >> CHANGELOG.md
+        echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$(git describe --tags --abbrev=0 HEAD~1)...v${{ steps.get_version.outputs.version }}" >> CHANGELOG.md || true
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release v${{ steps.get_version.outputs.version }}
+        body_path: CHANGELOG.md
+        draft: false
+        prerelease: ${{ contains(github.ref, '-') }}
+
+  build:
+    name: Build ${{ matrix.target }}
+    needs: create-release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            exe: razd
+            archive: tar.gz
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            exe: razd.exe
+            archive: zip
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            exe: razd
+            archive: tar.gz
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            exe: razd
+            archive: tar.gz
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.target }}
+
+    - name: Cache cargo registry
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-release-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Build release binary
+      run: cargo build --release --target ${{ matrix.target }} --verbose
+
+    - name: Strip binary (Unix)
+      if: matrix.os != 'windows-latest'
+      run: strip target/${{ matrix.target }}/release/${{ matrix.exe }}
+
+    - name: Create archive directory
+      run: mkdir -p archive
+
+    - name: Copy binary to archive (Unix)
+      if: matrix.os != 'windows-latest'
+      run: cp target/${{ matrix.target }}/release/${{ matrix.exe }} archive/
+
+    - name: Copy binary to archive (Windows)
+      if: matrix.os == 'windows-latest'
+      run: copy target\${{ matrix.target }}\release\${{ matrix.exe }} archive\
+
+    - name: Copy additional files
+      run: |
+        cp README.md archive/ || true
+        cp LICENSE* archive/ || true
+        cp CHANGELOG.md archive/ || true
+
+    - name: Create tar.gz archive (Unix)
+      if: matrix.archive == 'tar.gz'
+      run: |
+        cd archive
+        tar -czf ../razd-v${{ needs.create-release.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }} *
+
+    - name: Create zip archive (Windows)
+      if: matrix.archive == 'zip'
+      run: |
+        cd archive
+        7z a ../razd-v${{ needs.create-release.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }} *
+
+    - name: Generate checksums (Unix)
+      if: matrix.os != 'windows-latest'
+      run: |
+        shasum -a 256 razd-v${{ needs.create-release.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }} > razd-v${{ needs.create-release.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }}.sha256
+
+    - name: Generate checksums (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        certUtil -hashfile razd-v${{ needs.create-release.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }} SHA256 > razd-v${{ needs.create-release.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }}.sha256
+
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./razd-v${{ needs.create-release.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }}
+        asset_name: razd-v${{ needs.create-release.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }}
+        asset_content_type: application/octet-stream
+
+    - name: Upload Checksum
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./razd-v${{ needs.create-release.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }}.sha256
+        asset_name: razd-v${{ needs.create-release.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }}.sha256
+        asset_content_type: text/plain
+
+  smoke-test:
+    name: Smoke Test
+    needs: [create-release, build]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            asset: razd-v${{ needs.create-release.outputs.version }}-x86_64-unknown-linux-gnu.tar.gz
+          - os: windows-latest
+            asset: razd-v${{ needs.create-release.outputs.version }}-x86_64-pc-windows-msvc.zip
+          - os: macos-latest
+            asset: razd-v${{ needs.create-release.outputs.version }}-x86_64-apple-darwin.tar.gz
+
+    steps:
+    - name: Download release asset
+      run: |
+        curl -L -o release-asset.archive \
+          "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ matrix.asset }}"
+
+    - name: Extract and test (Unix)
+      if: matrix.os != 'windows-latest'
+      run: |
+        tar -xzf release-asset.archive
+        ./razd --version
+        ./razd --help
+
+    - name: Extract and test (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        7z x release-asset.archive
+        .\razd.exe --version
+        .\razd.exe --help

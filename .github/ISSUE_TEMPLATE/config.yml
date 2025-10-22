@@ -1,0 +1,21 @@
+name: Issue Configuration
+description: Configure issue templates and forms
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Welcome to razd issue tracker!
+        
+        Before creating an issue, please:
+        1. Search existing issues to avoid duplicates
+        2. Use the most specific template for your issue type
+        3. Provide as much detail as possible
+        
+        **Quick Links:**
+        - 🐛 [Bug Report](bug_report.md) - Something isn't working
+        - ✨ [Feature Request](feature_request.md) - Suggest a new feature
+        - 📚 [Documentation](documentation.md) - Report documentation issues
+        
+        For questions and discussions, consider using [GitHub Discussions](../../discussions) instead of issues.
+        
+        Thank you for helping improve razd! 🦀
