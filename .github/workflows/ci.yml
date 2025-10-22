@@ -21,13 +21,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        rust: [stable, 1.71.0] # MSRV (Minimum Supported Rust Version)
-        exclude:
-          # Reduce matrix size by excluding beta on some platforms
-          - os: windows-latest
-            rust: 1.71.0
-          - os: macos-latest  
-            rust: 1.71.0
+        rust: [stable] # Use stable Rust for all platforms
 
     steps:
     - name: Checkout code

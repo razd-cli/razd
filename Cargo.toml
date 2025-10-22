@@ -10,7 +10,7 @@ license = "MIT"
 keywords = ["cli", "development", "project-setup", "mise", "taskfile"]
 categories = ["command-line-utilities", "development-tools"]
 readme = "README.md"
-rust-version = "1.71.0"
+rust-version = "1.74.0"
 
 [[bin]]
 name = "razd"
