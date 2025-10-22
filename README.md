@@ -1,6 +1,6 @@
 # razd-концепт
 
-```
+```sh
 # Поднять проект (clone + setup)
 
 razd up https://github.com/hello/world.git      # Полный URL
