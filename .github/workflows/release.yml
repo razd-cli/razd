@@ -187,35 +187,46 @@ jobs:
 
   smoke-test:
     name: Smoke Test
-    needs: [create-release, build]
+    needs: [create-release, build, publish-release]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
-            asset: razd-v${{ needs.create-release.outputs.version }}-x86_64-unknown-linux-gnu.tar.gz
+            target: x86_64-unknown-linux-gnu
+            exe: razd
           - os: windows-latest
-            asset: razd-v${{ needs.create-release.outputs.version }}-x86_64-pc-windows-msvc.zip
+            target: x86_64-pc-windows-msvc
+            exe: razd.exe
           - os: macos-latest
-            asset: razd-v${{ needs.create-release.outputs.version }}-x86_64-apple-darwin.tar.gz
+            target: x86_64-apple-darwin
+            exe: razd
 
     steps:
-    - name: Download release asset
-      run: |
-        curl -L -o release-asset.archive \
-          "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ matrix.asset }}"
+    - name: Download artifacts instead of release
+      uses: actions/download-artifact@v4
+      with:
+        name: razd-${{ matrix.target }}
+        path: .
 
     - name: Extract and test (Unix)
       if: matrix.os != 'windows-latest'
       run: |
-        tar -xzf release-asset.archive
+        # Find the tar.gz file
+        ARCHIVE=$(find . -name "*.tar.gz" | head -1)
+        echo "Found archive: $ARCHIVE"
+        tar -xzf "$ARCHIVE"
+        chmod +x ./razd
         ./razd --version
         ./razd --help
 
     - name: Extract and test (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        7z x release-asset.archive
+        # Find the zip file
+        $archive = Get-ChildItem -Name "*.zip" | Select-Object -First 1
+        Write-Output "Found archive: $archive"
+        Expand-Archive -Path $archive -DestinationPath .
         .\razd.exe --version
         .\razd.exe --help
