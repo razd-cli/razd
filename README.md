@@ -1,20 +1,20 @@
-# razd-концепт
+# razd-concept
 
 ```sh
-# Поднять проект (clone + setup)
+# Up project (clone + setup)
 
-razd up https://github.com/hello/world.git      # Полный URL
+razd up https://github.com/hello/world.git      # Full URL
 
-# Настройка инструментов
-razd install                        # Установить инструменты mise (mise install)
+# Tool setup
+razd install                        # Install mise tools (mise install)
 
-# Установка зависимостей
+# Install dependencies
 razd setup 
 
-# Выполнение задач из Taskfiles
-razd task <name> [args...]          # Выполнить задачу из Taskfile.yml
-razd task                           # Запустить dev-сервер
+# Execute tasks from Taskfiles
+razd task <name> [args...]          # Execute task from Taskfile.yml
+razd task                           # Start dev server
 
-# Утилиты
-razd init                           # Инициализация конфигураций для razd
+# Utilities
+razd init                           # Initialize configurations for razd
 ```
