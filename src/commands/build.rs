@@ -1,5 +1,5 @@
-use crate::core::Result;
 use crate::config::get_workflow_config;
+use crate::core::Result;
 use crate::integrations::taskfile;
 use colored::*;
 
@@ -13,7 +13,7 @@ pub async fn execute() -> Result<()> {
         taskfile::execute_workflow_task("build", &workflow_content).await?;
     } else {
         return Err(crate::core::RazdError::command(
-            "No build workflow found. Try running 'razd init --config' to create a Razdfile.yml"
+            "No build workflow found. Try running 'razd init --config' to create a Razdfile.yml",
         ));
     }
 

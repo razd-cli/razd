@@ -15,6 +15,7 @@ pub enum RazdError {
     Io(#[from] std::io::Error),
 
     #[error("Invalid URL: {0}")]
+    #[allow(dead_code)]
     InvalidUrl(String),
 
     #[error("Missing required tool: {tool}. Please install it first.\nInstallation guide: {help}")]
@@ -40,8 +41,9 @@ impl RazdError {
         Self::Task(msg.into())
     }
 
+    #[allow(dead_code)]
     pub fn invalid_url<S: Into<String>>(msg: S) -> Self {
-        Self::InvalidUrl(msg.into())
+        RazdError::InvalidUrl(msg.into())
     }
 
     pub fn missing_tool<S: Into<String>>(tool: S, help: S) -> Self {

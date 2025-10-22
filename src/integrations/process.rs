@@ -1,9 +1,13 @@
-use crate::core::{output, Result, RazdError};
+use crate::core::{output, RazdError, Result};
 use std::path::Path;
 use tokio::process::Command;
 
 /// Execute a command and return success/failure
-pub async fn execute_command(program: &str, args: &[&str], working_dir: Option<&Path>) -> Result<()> {
+pub async fn execute_command(
+    program: &str,
+    args: &[&str],
+    working_dir: Option<&Path>,
+) -> Result<()> {
     output::step(&format!("Running: {} {}", program, args.join(" ")));
 
     let mut cmd = Command::new(program);

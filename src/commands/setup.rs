@@ -6,8 +6,8 @@ use std::env;
 pub async fn execute() -> Result<()> {
     let current_dir = env::current_dir()?;
     output::info("Setting up project dependencies...");
-    
+
     taskfile::setup_project(&current_dir).await?;
-    
+
     Ok(())
 }

@@ -1,4 +1,4 @@
-use crate::core::{output, Result, RazdError};
+use crate::core::{output, RazdError, Result};
 use crate::integrations::process;
 use std::path::Path;
 
@@ -13,7 +13,7 @@ pub async fn install_tools(working_dir: &Path) -> Result<()> {
     if !process::check_command_available("mise").await {
         return Err(RazdError::missing_tool(
             "mise",
-            "https://mise.jdx.dev/getting-started.html"
+            "https://mise.jdx.dev/getting-started.html",
         ));
     }
 
@@ -24,11 +24,12 @@ pub async fn install_tools(working_dir: &Path) -> Result<()> {
     }
 
     output::step("Installing development tools with mise");
-    
-    process::execute_command("mise", &["install"], Some(working_dir)).await
+
+    process::execute_command("mise", &["install"], Some(working_dir))
+        .await
         .map_err(|e| RazdError::mise(format!("Failed to install tools: {}", e)))?;
 
     output::success("Successfully installed development tools");
-    
+
     Ok(())
 }

@@ -6,7 +6,7 @@ use std::process::Command;
 fn test_help_command() {
     let mut cmd = Command::cargo_bin("razd").unwrap();
     cmd.arg("--help");
-    
+
     cmd.assert()
         .success()
         .stdout(predicate::str::contains("razd"))
@@ -16,11 +16,13 @@ fn test_help_command() {
 #[test]
 fn test_up_command_help() {
     let mut cmd = Command::cargo_bin("razd").unwrap();
-    cmd.args(&["up", "--help"]);
-    
+    cmd.args(["up", "--help"]);
+
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains("Clone repository and set up project"))
+        .stdout(predicate::str::contains(
+            "Clone repository and set up project",
+        ))
         .stdout(predicate::str::contains("Git repository URL to clone"));
 }
 
@@ -28,7 +30,7 @@ fn test_up_command_help() {
 fn test_invalid_command() {
     let mut cmd = Command::cargo_bin("razd").unwrap();
     cmd.arg("invalid");
-    
+
     cmd.assert()
         .failure()
         .stderr(predicate::str::contains("error"));

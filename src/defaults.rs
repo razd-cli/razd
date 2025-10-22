@@ -1,6 +1,5 @@
-/// Built-in default workflows for razd
-/// These workflows are used when no Razdfile.yml is present
-
+//! Built-in default workflows for razd
+//! These workflows are used when no Razdfile.yml is present
 pub const DEFAULT_WORKFLOWS: &str = r#"version: '3'
 
 tasks:
@@ -31,11 +30,10 @@ tasks:
 "#;
 
 /// Get built-in workflow for a specific command
-pub fn get_default_workflow(command: &str) -> Option<&'static str> {
-    match command {
-        "up" | "install" | "dev" | "build" => Some(DEFAULT_WORKFLOWS),
-        _ => None,
-    }
+#[allow(dead_code)]
+pub fn get_default_workflow(_command: &str) -> Option<&'static str> {
+    // Return the unified default workflows YAML
+    Some(DEFAULT_WORKFLOWS)
 }
 
 /// Check if a command has a built-in workflow
@@ -61,7 +59,7 @@ mod tests {
         // Test that the default workflows string is valid YAML
         let parsed: Result<serde_yaml::Value, _> = serde_yaml::from_str(DEFAULT_WORKFLOWS);
         assert!(parsed.is_ok(), "Default workflows should be valid YAML");
-        
+
         let yaml = parsed.unwrap();
         assert_eq!(yaml["version"], "3");
         assert!(yaml["tasks"]["up"].is_mapping());

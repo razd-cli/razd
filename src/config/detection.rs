@@ -3,34 +3,35 @@ use std::path::Path;
 /// Detect project type based on files in the current directory
 pub fn detect_project_type<P: AsRef<Path>>(path: P) -> String {
     let path = path.as_ref();
-    
+
     // Check for Node.js
     if path.join("package.json").exists() {
         return "node".to_string();
     }
-    
+
     // Check for Python
-    if path.join("requirements.txt").exists() || 
-       path.join("pyproject.toml").exists() ||
-       path.join("setup.py").exists() {
+    if path.join("requirements.txt").exists()
+        || path.join("pyproject.toml").exists()
+        || path.join("setup.py").exists()
+    {
         return "python".to_string();
     }
-    
+
     // Check for Rust
     if path.join("Cargo.toml").exists() {
         return "rust".to_string();
     }
-    
+
     // Check for Go
     if path.join("go.mod").exists() {
         return "go".to_string();
     }
-    
+
     // Check for other common project files
     if path.join("Dockerfile").exists() {
         return "docker".to_string();
     }
-    
+
     "generic".to_string()
 }
 
@@ -49,11 +50,11 @@ pub fn get_recommended_tools(project_type: &str) -> Vec<&'static str> {
 /// Generate mise.toml content based on project type
 pub fn generate_mise_config(project_type: &str) -> String {
     let tools = get_recommended_tools(project_type);
-    
+
     if tools.is_empty() {
         return String::new();
     }
-    
+
     let mut config = String::new();
     for tool in tools {
         match tool {
@@ -64,7 +65,7 @@ pub fn generate_mise_config(project_type: &str) -> String {
             _ => {}
         }
     }
-    
+
     config
 }
 
@@ -93,8 +94,9 @@ tasks:
     desc: "Run tests"
     cmds:
       - npm test
-"#.to_string(),
-        
+"#
+        .to_string(),
+
         "python" => r#"version: '3'
 
 tasks:
@@ -117,8 +119,9 @@ tasks:
     desc: "Run tests"
     cmds:
       - pytest
-"#.to_string(),
-        
+"#
+        .to_string(),
+
         "rust" => r#"version: '3'
 
 tasks:
@@ -141,8 +144,9 @@ tasks:
     desc: "Run tests"
     cmds:
       - cargo test
-"#.to_string(),
-        
+"#
+        .to_string(),
+
         "go" => r#"version: '3'
 
 tasks:
@@ -165,8 +169,9 @@ tasks:
     desc: "Run tests"
     cmds:
       - go test ./...
-"#.to_string(),
-        
+"#
+        .to_string(),
+
         _ => r#"version: '3'
 
 tasks:
@@ -189,6 +194,7 @@ tasks:
     desc: "Run tests"
     cmds:
       - echo "Run your tests here"
-"#.to_string(),
+"#
+        .to_string(),
     }
 }

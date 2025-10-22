@@ -47,7 +47,8 @@ tasks:
     cmds:
       - echo "🔨 Building project..."
       - npm run build
-"#.to_string()
+"#
+    .to_string()
 }
 
 fn generate_python_razdfile() -> String {
@@ -80,7 +81,8 @@ tasks:
     cmds:
       - echo "🔨 Building project..."
       - python -m build
-"#.to_string()
+"#
+    .to_string()
 }
 
 fn generate_rust_razdfile() -> String {
@@ -112,7 +114,8 @@ tasks:
     cmds:
       - echo "🔨 Building project..."
       - cargo build --release
-"#.to_string()
+"#
+    .to_string()
 }
 
 fn generate_go_razdfile() -> String {
@@ -145,5 +148,6 @@ tasks:
     cmds:
       - echo "🔨 Building project..."
       - go build -o bin/app
-"#.to_string()
+"#
+    .to_string()
 }

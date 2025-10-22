@@ -12,8 +12,9 @@ pub fn warning(msg: &str) {
     println!("{} {}", "⚠".yellow().bold(), msg.yellow());
 }
 
+#[allow(dead_code)]
 pub fn error(msg: &str) {
-    eprintln!("{} {}", "✗".red().bold(), msg.red());
+    eprintln!("{} {}", "❌".red(), msg);
 }
 
 pub fn step(step: &str) {

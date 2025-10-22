@@ -1,5 +1,5 @@
-use crate::core::Result;
 use crate::config::get_workflow_config;
+use crate::core::Result;
 use crate::integrations::taskfile;
 use colored::*;
 
