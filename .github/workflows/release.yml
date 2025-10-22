@@ -13,7 +13,6 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
     outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
       version: ${{ steps.get_version.outputs.version }}
     steps:
     - name: Checkout code
@@ -34,16 +33,16 @@ jobs:
         echo "" >> CHANGELOG.md
         echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$(git describe --tags --abbrev=0 HEAD~1)...v${{ steps.get_version.outputs.version }}" >> CHANGELOG.md || true
 
-    - name: Create Release
+    - name: Create Release Draft
       id: create_release
-      uses: actions/create-release@v1
+      uses: softprops/action-gh-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ github.ref }}
-        release_name: Release v${{ steps.get_version.outputs.version }}
+        name: Release v${{ steps.get_version.outputs.version }}
         body_path: CHANGELOG.md
-        draft: false
+        draft: true
         prerelease: ${{ contains(github.ref, '-') }}
 
   build:
@@ -81,7 +80,7 @@ jobs:
         targets: ${{ matrix.target }}
 
     - name: Cache cargo registry
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/registry
@@ -135,25 +134,32 @@ jobs:
       run: |
         certUtil -hashfile razd-v${{ needs.create-release.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }} SHA256 > razd-v${{ needs.create-release.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }}.sha256
 
-    - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
       with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: ./razd-v${{ needs.create-release.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }}
-        asset_name: razd-v${{ needs.create-release.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }}
-        asset_content_type: application/octet-stream
+        name: razd-${{ matrix.target }}
+        path: |
+          razd-v${{ needs.create-release.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }}
+          razd-v${{ needs.create-release.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }}.sha256
 
-    - name: Upload Checksum
-      uses: actions/upload-release-asset@v1
+  publish-release:
+    name: Publish Release
+    needs: [create-release, build]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Publish Release
+      uses: softprops/action-gh-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: ./razd-v${{ needs.create-release.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }}.sha256
-        asset_name: razd-v${{ needs.create-release.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }}.sha256
-        asset_content_type: text/plain
+        tag_name: ${{ github.ref }}
+        draft: false
+        files: artifacts/**/*
 
   smoke-test:
     name: Smoke Test
