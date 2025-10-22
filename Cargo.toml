@@ -1,0 +1,42 @@
+[package]
+name = "razd"
+version = "0.1.0"
+edition = "2025"
+authors = ["razd team"]
+description = "A CLI tool for streamlined project setup with git, mise, and taskfile integration"
+homepage = "https://github.com/razd-cli/razd"
+repository = "https://github.com/razd-cli/razd"
+license = "MIT"
+keywords = ["cli", "development", "project-setup", "mise", "taskfile"]
+categories = ["command-line-utilities", "development-tools"]
+
+[[bin]]
+name = "razd"
+path = "src/main.rs"
+
+[dependencies]
+# CLI framework
+clap = { version = "4.4", features = ["derive"] }
+
+# Async runtime and process execution
+tokio = { version = "1.0", features = ["full"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Colored output
+colored = "2.0"
+
+# Path handling
+path-clean = "1.0"
+
+[dev-dependencies]
+tempfile = "3.8"
+assert_cmd = "2.0"
+predicates = "3.0"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
