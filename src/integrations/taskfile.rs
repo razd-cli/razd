@@ -1,5 +1,5 @@
 use crate::core::{output, RazdError, Result};
-use crate::integrations::process;
+use crate::integrations::{mise, process};
 use std::path::Path;
 
 /// Check if Taskfile configuration exists in the directory
@@ -9,13 +9,8 @@ pub fn has_taskfile_config(dir: &Path) -> bool {
 
 /// Run task setup to install project dependencies
 pub async fn setup_project(working_dir: &Path) -> Result<()> {
-    // Check if task is available
-    if !process::check_command_available("task").await {
-        return Err(RazdError::missing_tool(
-            "task",
-            "https://taskfile.dev/installation/",
-        ));
-    }
+    // Ensure task tool is available
+    mise::ensure_tool_available("task", "latest", working_dir).await?;
 
     // Check if Taskfile exists
     if !has_taskfile_config(working_dir) {
@@ -42,13 +37,8 @@ pub async fn execute_task(
     args: &[String],
     working_dir: &Path,
 ) -> Result<()> {
-    // Check if task is available
-    if !process::check_command_available("task").await {
-        return Err(RazdError::missing_tool(
-            "task",
-            "https://taskfile.dev/installation/",
-        ));
-    }
+    // Ensure task tool is available
+    mise::ensure_tool_available("task", "latest", working_dir).await?;
 
     // Check if Taskfile exists
     if !has_taskfile_config(working_dir) {
@@ -91,17 +81,12 @@ pub async fn execute_workflow_task(task_name: &str, workflow_content: &str) -> R
     use std::env;
     use std::fs;
 
-    // Check if task is available
-    if !process::check_command_available("task").await {
-        return Err(RazdError::missing_tool(
-            "task",
-            "https://taskfile.dev/installation/",
-        ));
-    }
-
     // Get current working directory
     let working_dir = env::current_dir()
         .map_err(|e| RazdError::task(format!("Failed to get current directory: {}", e)))?;
+
+    // Ensure task tool is available
+    mise::ensure_tool_available("task", "latest", &working_dir).await?;
 
     // Create a temporary taskfile in the working directory (not temp)
     let temp_taskfile = working_dir.join(format!(".razd-workflow-{}.yml", task_name));
@@ -124,4 +109,46 @@ pub async fn execute_workflow_task(task_name: &str, workflow_content: &str) -> R
     output::success(&format!("Successfully executed workflow: {}", task_name));
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_has_taskfile_config_with_taskfile_yml() {
+        let temp_dir = TempDir::new().unwrap();
+        std::fs::write(temp_dir.path().join("Taskfile.yml"), "").unwrap();
+
+        assert!(has_taskfile_config(temp_dir.path()));
+    }
+
+    #[test]
+    fn test_has_taskfile_config_with_taskfile_yaml() {
+        let temp_dir = TempDir::new().unwrap();
+        std::fs::write(temp_dir.path().join("Taskfile.yaml"), "").unwrap();
+
+        assert!(has_taskfile_config(temp_dir.path()));
+    }
+
+    #[test]
+    fn test_has_taskfile_config_with_neither() {
+        let temp_dir = TempDir::new().unwrap();
+
+        assert!(!has_taskfile_config(temp_dir.path()));
+    }
+
+    #[test]
+    fn test_has_taskfile_config_with_both() {
+        let temp_dir = TempDir::new().unwrap();
+        std::fs::write(temp_dir.path().join("Taskfile.yml"), "").unwrap();
+        std::fs::write(temp_dir.path().join("Taskfile.yaml"), "").unwrap();
+
+        assert!(has_taskfile_config(temp_dir.path()));
+    }
+
+    // Note: The async functions setup_project, execute_task, and execute_workflow_task
+    // require external processes and are better tested as integration tests
+    // rather than unit tests, since they depend on task being installed.
 }

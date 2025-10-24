@@ -82,3 +82,96 @@ fn test_up_command_without_url_with_taskfile() {
         "Should detect Taskfile.yml as a valid project indicator"
     );
 }
+
+#[test]
+fn test_task_auto_installation_behavior() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+
+    // Create a basic Taskfile.yml
+    std::fs::write(
+        temp_dir.path().join("Taskfile.yml"),
+        r#"version: '3'
+tasks:
+  setup:
+    desc: "Setup test project"
+    cmds:
+      - echo "Setup complete"
+"#,
+    )
+    .unwrap();
+
+    let mut cmd = Command::cargo_bin("razd").unwrap();
+    cmd.arg("up");
+    cmd.current_dir(temp_dir.path());
+
+    // This test will exercise the task auto-installation code path
+    // If task is not available, it should attempt to install it via mise
+    // If mise is not available, it should provide a helpful error message
+    let output = cmd.output().unwrap();
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // The command might succeed if task is already installed,
+    // or fail with helpful error messages if tools are missing
+    if !output.status.success() {
+        // Should provide helpful error about missing tools, not generic failures
+        assert!(
+            stderr.contains("mise")
+                || stderr.contains("task")
+                || stderr.contains("Missing required tool"),
+            "Should provide helpful error about missing tools. Stderr: {}",
+            stderr
+        );
+    } else {
+        // If successful, should show progress of task installation or execution
+        assert!(
+            stdout.contains("Installing")
+                || stdout.contains("Setting up")
+                || stdout.contains("Executing"),
+            "Should show progress of task operations. Stdout: {}",
+            stdout
+        );
+    }
+}
+
+#[test]
+fn test_task_availability_check() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+
+    // Create a basic Taskfile.yml
+    std::fs::write(
+        temp_dir.path().join("Taskfile.yml"),
+        r#"version: '3'
+tasks:
+  test:
+    desc: "Test task"
+    cmds:
+      - echo "Test executed"
+"#,
+    )
+    .unwrap();
+
+    // Test the task command specifically
+    let mut cmd = Command::cargo_bin("razd").unwrap();
+    cmd.args(["task", "test"]);
+    cmd.current_dir(temp_dir.path());
+
+    let output = cmd.output().unwrap();
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    if !output.status.success() {
+        // Should attempt to install task or provide helpful error
+        assert!(
+            stderr.contains("Installing")
+                || stderr.contains("Missing required tool")
+                || stderr.contains("mise")
+                || stderr.contains("task"),
+            "Should handle missing task tool gracefully. Stderr: {}",
+            stderr
+        );
+    }
+}
