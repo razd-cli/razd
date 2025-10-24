@@ -12,7 +12,7 @@ pub async fn execute_command(
 
     let mut cmd = Command::new(program);
     cmd.args(args);
-    
+
     // Inherit current environment to ensure tools are found
     cmd.env_clear().envs(std::env::vars());
 
@@ -54,7 +54,7 @@ pub async fn execute_command_interactive(
 
     let mut cmd = Command::new(program);
     cmd.args(args);
-    
+
     // Inherit current environment and stdio for interactive execution
     cmd.env_clear().envs(std::env::vars());
     cmd.stdin(std::process::Stdio::inherit());

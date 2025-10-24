@@ -61,9 +61,12 @@ pub async fn install_specific_tool(tool: &str, version: &str, working_dir: &Path
         })?;
 
     // Use the tool to make it available in current environment
-    output::step(&format!("Making {} available in current environment...", tool));
+    output::step(&format!(
+        "Making {} available in current environment...",
+        tool
+    ));
     let use_args = vec!["use", &tool_spec];
-    
+
     process::execute_command("mise", &use_args, Some(working_dir))
         .await
         .map_err(|e| {

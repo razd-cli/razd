@@ -8,7 +8,11 @@ async fn execute_task_command(args: &[&str], working_dir: &Path) -> Result<()> {
 }
 
 /// Execute task command with option for interactive mode
-async fn execute_task_command_with_mode(args: &[&str], working_dir: &Path, interactive: bool) -> Result<()> {
+async fn execute_task_command_with_mode(
+    args: &[&str],
+    working_dir: &Path,
+    interactive: bool,
+) -> Result<()> {
     // First try direct execution
     if process::check_command_available("task").await {
         if interactive {
@@ -26,7 +30,7 @@ async fn execute_task_command_with_mode(args: &[&str], working_dir: &Path, inter
     output::step("Executing task via mise...");
     let mut mise_args = vec!["exec", "task", "--", "task"];
     mise_args.extend(args);
-    
+
     if interactive {
         process::execute_command_interactive("mise", &mise_args, Some(working_dir))
             .await
@@ -119,12 +123,19 @@ pub async fn execute_workflow_task(task_name: &str, workflow_content: &str) -> R
 }
 
 /// Execute a workflow task with option for interactive mode
-pub async fn execute_workflow_task_interactive(task_name: &str, workflow_content: &str) -> Result<()> {
+pub async fn execute_workflow_task_interactive(
+    task_name: &str,
+    workflow_content: &str,
+) -> Result<()> {
     execute_workflow_task_with_mode(task_name, workflow_content, true).await
 }
 
 /// Execute a workflow task using custom taskfile content with interactive option
-async fn execute_workflow_task_with_mode(task_name: &str, workflow_content: &str, interactive: bool) -> Result<()> {
+async fn execute_workflow_task_with_mode(
+    task_name: &str,
+    workflow_content: &str,
+    interactive: bool,
+) -> Result<()> {
     use std::env;
     use std::fs;
 
@@ -141,7 +152,7 @@ async fn execute_workflow_task_with_mode(task_name: &str, workflow_content: &str
     if has_razdfile_config(&working_dir) {
         let razdfile_path = working_dir.join("Razdfile.yml");
         let args = vec!["--taskfile", razdfile_path.to_str().unwrap(), task_name];
-        
+
         let result = execute_task_command_with_mode(&args, &working_dir, interactive).await;
         return result;
     }
