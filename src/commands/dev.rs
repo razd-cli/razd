@@ -9,8 +9,8 @@ pub async fn execute() -> Result<()> {
 
     // Get workflow config with fallback chain
     if let Some(workflow_content) = get_workflow_config("dev")? {
-        // Execute via taskfile with the workflow content
-        taskfile::execute_workflow_task("dev", &workflow_content).await?;
+        // Execute via taskfile with the workflow content in interactive mode
+        taskfile::execute_workflow_task_interactive("dev", &workflow_content).await?;
     } else {
         return Err(crate::core::RazdError::command(
             "No development workflow found. Try running 'razd init --config' to create a Razdfile.yml"

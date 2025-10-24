@@ -4,11 +4,22 @@ use std::path::Path;
 
 /// Execute task command, trying direct execution first, then mise exec as fallback
 async fn execute_task_command(args: &[&str], working_dir: &Path) -> Result<()> {
+    execute_task_command_with_mode(args, working_dir, false).await
+}
+
+/// Execute task command with option for interactive mode
+async fn execute_task_command_with_mode(args: &[&str], working_dir: &Path, interactive: bool) -> Result<()> {
     // First try direct execution
     if process::check_command_available("task").await {
-        return process::execute_command("task", args, Some(working_dir))
-            .await
-            .map_err(|e| RazdError::task(format!("Failed to execute task: {}", e)));
+        if interactive {
+            return process::execute_command_interactive("task", args, Some(working_dir))
+                .await
+                .map_err(|e| RazdError::task(format!("Failed to execute task: {}", e)));
+        } else {
+            return process::execute_command("task", args, Some(working_dir))
+                .await
+                .map_err(|e| RazdError::task(format!("Failed to execute task: {}", e)));
+        }
     }
 
     // Fallback: try through mise exec (task should be available via mise)
@@ -16,9 +27,15 @@ async fn execute_task_command(args: &[&str], working_dir: &Path) -> Result<()> {
     let mut mise_args = vec!["exec", "task", "--", "task"];
     mise_args.extend(args);
     
-    process::execute_command("mise", &mise_args, Some(working_dir))
-        .await
-        .map_err(|e| RazdError::task(format!("Failed to execute task via mise: {}", e)))
+    if interactive {
+        process::execute_command_interactive("mise", &mise_args, Some(working_dir))
+            .await
+            .map_err(|e| RazdError::task(format!("Failed to execute task via mise: {}", e)))
+    } else {
+        process::execute_command("mise", &mise_args, Some(working_dir))
+            .await
+            .map_err(|e| RazdError::task(format!("Failed to execute task via mise: {}", e)))
+    }
 }
 
 /// Check if Taskfile configuration exists in the directory
@@ -93,6 +110,16 @@ pub async fn execute_task(
 
 /// Execute a workflow task using custom taskfile content
 pub async fn execute_workflow_task(task_name: &str, workflow_content: &str) -> Result<()> {
+    execute_workflow_task_with_mode(task_name, workflow_content, false).await
+}
+
+/// Execute a workflow task with option for interactive mode
+pub async fn execute_workflow_task_interactive(task_name: &str, workflow_content: &str) -> Result<()> {
+    execute_workflow_task_with_mode(task_name, workflow_content, true).await
+}
+
+/// Execute a workflow task using custom taskfile content with interactive option
+async fn execute_workflow_task_with_mode(task_name: &str, workflow_content: &str, interactive: bool) -> Result<()> {
     use std::env;
     use std::fs;
 
@@ -114,7 +141,7 @@ pub async fn execute_workflow_task(task_name: &str, workflow_content: &str) -> R
     // Execute task with custom taskfile in the working directory
     let args = vec!["--taskfile", temp_taskfile.to_str().unwrap(), task_name];
 
-    let result = execute_task_command(&args, &working_dir).await;
+    let result = execute_task_command_with_mode(&args, &working_dir, interactive).await;
 
     // Clean up temporary file
     let _ = fs::remove_file(&temp_taskfile);

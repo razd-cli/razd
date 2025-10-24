@@ -44,6 +44,43 @@ pub async fn execute_command(
     Ok(())
 }
 
+/// Execute a command interactively, showing real-time output
+pub async fn execute_command_interactive(
+    program: &str,
+    args: &[&str],
+    working_dir: Option<&Path>,
+) -> Result<()> {
+    output::step(&format!("Running: {} {}", program, args.join(" ")));
+
+    let mut cmd = Command::new(program);
+    cmd.args(args);
+    
+    // Inherit current environment and stdio for interactive execution
+    cmd.env_clear().envs(std::env::vars());
+    cmd.stdin(std::process::Stdio::inherit());
+    cmd.stdout(std::process::Stdio::inherit());
+    cmd.stderr(std::process::Stdio::inherit());
+
+    if let Some(dir) = working_dir {
+        cmd.current_dir(dir);
+    }
+
+    let status = cmd
+        .status()
+        .await
+        .map_err(|e| RazdError::config(format!("Failed to execute {}: {}", program, e)))?;
+
+    if !status.success() {
+        return Err(RazdError::config(format!(
+            "Command '{}' failed with exit code {:?}",
+            program,
+            status.code()
+        )));
+    }
+
+    Ok(())
+}
+
 /// Check if a command is available in PATH
 pub async fn check_command_available(program: &str) -> bool {
     // On Windows, also try the .exe extension
