@@ -25,6 +25,11 @@ Just run:
 razd up https://github.com/hello/world.git
 ```
 
+## Requirements
+
+- **[mise](https://mise.jdx.dev/getting-started.html)**: Required for razd installation and project tool management
+- **[git](https://git-scm.com/)**: Required for repository operations
+
 ## Installation
 
 ### Using mise (Recommended)
