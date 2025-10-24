@@ -11,6 +11,8 @@
 
 ## Quick Start
 
+### Setting up a new project from a repository
+
 Instead of running multiple commands:
 ```sh
 git clone https://github.com/hello/world.git
@@ -23,6 +25,16 @@ Just run:
 ```sh
 razd up https://github.com/hello/world.git
 ```
+
+### Setting up an existing local project
+
+If you already have a project cloned, simply run from within the project directory:
+```sh
+cd my-existing-project
+razd up
+```
+
+This will detect your project configuration and run the setup workflow.
 
 ## Requirements
 
@@ -72,8 +84,11 @@ razd --version
 ### Primary Command
 ```sh
 # Clone repository and set up project (git clone + mise install + task setup)
-razd up https://github.com/hello/world.git      # Full URL
+razd up https://github.com/hello/world.git      # Clone and setup from URL
 razd up https://github.com/hello/world.git -n my-project  # Custom directory name
+
+# Set up local project (mise install + task setup)
+razd up                                         # Setup current directory (no clone)
 ```
 
 ### Individual Commands

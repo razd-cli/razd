@@ -4,36 +4,36 @@
 Implement support for running `razd up` without a URL to set up already-cloned projects in the current directory.
 
 ## Prerequisites
-- [ ] Proposal approved
-- [ ] Design reviewed
-- [ ] Spec validated with `openspec validate support-local-razd-up --strict`
+- [x] Proposal approved
+- [x] Design reviewed
+- [x] Spec validated with `openspec validate support-local-razd-up --strict`
 
 ## Implementation Tasks
 
 ### Phase 1: CLI Interface Changes
-- [ ] **Task 1.1**: Update `Commands::Up` enum in `src/main.rs`
+- [x] **Task 1.1**: Update `Commands::Up` enum in `src/main.rs`
   - Change `url: String` to `url: Option<String>`
   - Update doc comment to indicate URL is optional
   - Update `run()` function to pass `url.as_deref()`
   - **Validation**: Code compiles without errors
 
-- [ ] **Task 1.2**: Update help text and command description
+- [x] **Task 1.2**: Update help text and command description
   - Change description to: "Clone repository and set up project, or set up local project"
   - Update URL argument description to indicate it's optional
   - **Validation**: `razd up --help` shows updated text
 
 ### Phase 2: Core Logic Implementation
-- [ ] **Task 2.1**: Refactor `commands::up::execute()` function signature
+- [x] **Task 2.1**: Refactor `commands::up::execute()` function signature
   - Change `url: &str` to `url: Option<&str>`
   - Add branching logic for URL vs no-URL scenarios
   - **Validation**: Code compiles, existing behavior unchanged
 
-- [ ] **Task 2.2**: Extract current logic into `execute_with_clone()` helper
+- [x] **Task 2.2**: Extract current logic into `execute_with_clone()` helper
   - Move existing clone-based logic to new private function
   - Keep exact same behavior as current implementation
   - **Validation**: Integration tests pass with URL argument
 
-- [ ] **Task 2.3**: Implement `execute_local_project()` helper
+- [x] **Task 2.3**: Implement `execute_local_project()` helper
   - Get current directory with `env::current_dir()`
   - Call `validate_project_directory()`
   - Log working directory
@@ -41,19 +41,19 @@ Implement support for running `razd up` without a URL to set up already-cloned p
   - Call `show_success_message()`
   - **Validation**: Manual test in real project directory
 
-- [ ] **Task 2.4**: Extract shared `execute_up_workflow()` helper
+- [x] **Task 2.4**: Extract shared `execute_up_workflow()` helper
   - Move workflow execution logic to separate function
   - Handle workflow config lookup and fallback
   - Reuse in both clone and local modes
   - **Validation**: Both modes execute workflows correctly
 
-- [ ] **Task 2.5**: Extract shared `show_success_message()` helper
+- [x] **Task 2.5**: Extract shared `show_success_message()` helper
   - Move success output to separate function
   - Ensure consistent messaging across modes
   - **Validation**: Messages appear correctly in both modes
 
 ### Phase 3: Project Detection Logic
-- [ ] **Task 3.1**: Implement `validate_project_directory()` function
+- [x] **Task 3.1**: Implement `validate_project_directory()` function
   - Check for `Razdfile.yml` existence
   - Check for `Taskfile.yml` existence
   - Check for `mise.toml` or `.mise.toml` existence
@@ -61,14 +61,14 @@ Implement support for running `razd up` without a URL to set up already-cloned p
   - Return error with helpful message if none exist
   - **Validation**: Unit tests cover all file combinations
 
-- [ ] **Task 3.2**: Implement error message for validation failure
+- [x] **Task 3.2**: Implement error message for validation failure
   - Include list of expected files
   - Suggest `razd up <url>` for cloning
   - Suggest `razd init` for new projects
   - **Validation**: Error message is clear and actionable
 
 ### Phase 4: Testing
-- [ ] **Task 4.1**: Add unit tests for `validate_project_directory()`
+- [x] **Task 4.1**: Add unit tests for `validate_project_directory()`
   - Test with Razdfile.yml present
   - Test with Taskfile.yml present
   - Test with mise.toml present
@@ -78,58 +78,58 @@ Implement support for running `razd up` without a URL to set up already-cloned p
   - Test with only .git directory (error case)
   - **Validation**: All tests pass, >90% coverage
 
-- [ ] **Task 4.2**: Add integration test for `razd up <url>`
+- [x] **Task 4.2**: Add integration test for `razd up <url>`
   - Verify existing clone behavior unchanged
   - Test successful clone and setup
   - Test error handling for invalid URL
   - **Validation**: Integration tests pass
 
-- [ ] **Task 4.3**: Add integration test for `razd up` in local project
+- [x] **Task 4.3**: Add integration test for `razd up` in local project
   - Create temp directory with Taskfile.yml
   - Run `razd up` without arguments
   - Verify workflow executes
   - Verify no clone attempted
   - **Validation**: Test passes
 
-- [ ] **Task 4.4**: Add integration test for `razd up` error case
+- [x] **Task 4.4**: Add integration test for `razd up` error case
   - Create empty temp directory
   - Run `razd up` without arguments
   - Verify error returned with helpful message
   - **Validation**: Test passes
 
 ### Phase 5: Documentation and Polish
-- [ ] **Task 5.1**: Update README.md usage examples
+- [x] **Task 5.1**: Update README.md usage examples
   - Add example for `razd up` without URL
   - Clarify when to use each mode
   - Update quick start guide
   - **Validation**: Documentation is clear and accurate
 
-- [ ] **Task 5.2**: Update CHANGELOG.md
+- [x] **Task 5.2**: Update CHANGELOG.md
   - Add entry under "Added" section
   - Describe new local project setup capability
   - Mention backward compatibility
   - **Validation**: Changelog entry follows project conventions
 
-- [ ] **Task 5.3**: Manual cross-platform testing
+- [x] **Task 5.3**: Manual cross-platform testing
   - Test on Windows (PowerShell)
   - Test on Linux/macOS (bash/zsh)
   - Verify file path handling
   - **Validation**: Works consistently across platforms
 
 ### Phase 6: Final Validation
-- [ ] **Task 6.1**: Run full test suite
+- [x] **Task 6.1**: Run full test suite
   - Execute `cargo test`
   - All tests pass
   - No regressions
   - **Validation**: CI/CD passes
 
-- [ ] **Task 6.2**: Test real-world scenarios
+- [x] **Task 6.2**: Test real-world scenarios
   - Clone a real project with `razd up <url>` (verify no regression)
   - Run `razd up` in existing project (verify new feature)
   - Try in non-project directory (verify error handling)
   - **Validation**: All scenarios work as expected
 
-- [ ] **Task 6.3**: Update spec validation
+- [x] **Task 6.3**: Update spec validation
   - Run `openspec validate support-local-razd-up --strict`
   - Fix any issues
   - **Validation**: Validation passes with no errors

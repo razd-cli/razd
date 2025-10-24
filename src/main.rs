@@ -21,10 +21,10 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Clone repository and set up project (git clone + mise install + task setup)
+    /// Clone repository and set up project, or set up local project
     Up {
-        /// Git repository URL to clone
-        url: String,
+        /// Git repository URL to clone (optional for local projects)
+        url: Option<String>,
         /// Directory name (defaults to repository name)
         #[arg(short, long)]
         name: Option<String>,
@@ -69,8 +69,8 @@ async fn main() {
 async fn run(cli: Cli) -> core::Result<()> {
     match cli.command {
         Commands::Up { url, name } => {
-            commands::up::execute(&url, name.as_deref()).await?;
-        }
+            commands::up::execute(url.as_deref(), name.as_deref()).await?;
+        },
         Commands::Install => {
             commands::install::execute().await?;
         }

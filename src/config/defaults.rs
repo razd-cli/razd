@@ -26,7 +26,7 @@ tasks:
     cmds:
       - echo "🚀 Setting up Node.js project..."
       - mise install
-      - npm install
+      - task install
       - task setup --taskfile Taskfile.yml
       
   install:
@@ -34,19 +34,19 @@ tasks:
     cmds:
       - echo "📦 Installing tools..."
       - mise install
-      - npm install
+      - task install
       
   dev:
     desc: "Start development server"
     cmds:
       - echo "🚀 Starting development..."
-      - npm run dev
+      - task dev
       
   build:
     desc: "Build project"
     cmds:
       - echo "🔨 Building project..."
-      - npm run build
+      - task build
 "#
     .to_string()
 }

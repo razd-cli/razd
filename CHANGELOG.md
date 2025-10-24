@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Support for running `razd up` without URL in already-cloned projects
+- Project detection validates presence of Razdfile.yml, Taskfile.yml, or mise.toml
+- Clear error messages when running `razd up` in non-project directories
+- Unit tests for project detection logic
+- Integration tests for local project setup
+
+### Changed
+- Made URL argument optional for `razd up` command
+- Updated help text to reflect both clone and local setup modes
+- Improved user experience with consistent "one command setup" workflow
+
 ## [0.1.3] - 2025-10-23
 
 ### Added
