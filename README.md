@@ -27,31 +27,24 @@ razd up https://github.com/hello/world.git
 
 ## Installation
 
-### Pre-built Binaries (Recommended)
+### Using mise (Recommended)
 
-Download the latest release for your platform from [GitHub Releases](https://github.com/razd-cli/razd/releases):
+Install the plugin:
 
-**Windows:**
-```powershell
-# Download and extract to PATH
-curl -L -o razd.zip https://github.com/razd-cli/razd/releases/latest/download/razd-v*-x86_64-pc-windows-msvc.zip
-# Extract and add to PATH
+```bash
+mise plugin install razd https://github.com/razd-cli/vfox-plugin-razd
 ```
 
-**macOS:**
-```sh
-# Intel Macs
-curl -L https://github.com/razd-cli/razd/releases/latest/download/razd-v*-x86_64-apple-darwin.tar.gz | tar -xz
-# Apple Silicon Macs  
-curl -L https://github.com/razd-cli/razd/releases/latest/download/razd-v*-aarch64-apple-darwin.tar.gz | tar -xz
-# Move to PATH
-sudo mv razd /usr/local/bin/
+Set global version:
+
+```bash
+mise use -g razd
 ```
 
-**Linux:**
-```sh
-curl -L https://github.com/razd-cli/razd/releases/latest/download/razd-v*-x86_64-unknown-linux-gnu.tar.gz | tar -xz
-sudo mv razd /usr/local/bin/
+Or install and use a specific version:
+
+```bash
+mise use -g razd@0.1.0
 ```
 
 ### Build from Source
