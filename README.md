@@ -29,6 +29,8 @@ razd up https://github.com/hello/world.git
 
 ### Using mise (Recommended)
 
+> **Note:** Requires [mise](https://mise.jdx.dev/getting-started.html) to be installed first.
+
 Install the plugin:
 
 ```bash
