@@ -1,8 +1,7 @@
 # razd
 
 [![CI](https://github.com/razd-cli/razd/workflows/CI/badge.svg)](https://github.com/razd-cli/razd/actions/workflows/ci.yml)
-[![Release](https://github.com/razd-cli/razd/workflows/Release/badge.svg)](https://github.com/razd-cli/razd/actions/workflows/release.yml)
-[![codecov](https://codecov.io/gh/razd-cli/razd/branch/main/graph/badge.svg)](https://codecov.io/gh/razd-cli/razd)
+[![Release](https://github.com/razd-cli/razd/workflows/Release/badge.svg)]
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > Streamlined project setup with git, mise, and taskfile integration
