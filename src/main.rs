@@ -70,7 +70,7 @@ async fn run(cli: Cli) -> core::Result<()> {
     match cli.command {
         Commands::Up { url, name } => {
             commands::up::execute(url.as_deref(), name.as_deref()).await?;
-        },
+        }
         Commands::Install => {
             commands::install::execute().await?;
         }

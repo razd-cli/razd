@@ -49,7 +49,9 @@ fn test_up_command_without_url_in_empty_directory() {
     cmd.assert()
         .failure()
         .stderr(predicate::str::contains("No project detected"))
-        .stderr(predicate::str::contains("Razdfile.yml, Taskfile.yml, or mise.toml"));
+        .stderr(predicate::str::contains(
+            "Razdfile.yml, Taskfile.yml, or mise.toml",
+        ));
 }
 
 #[test]
@@ -60,7 +62,11 @@ fn test_up_command_without_url_with_taskfile() {
     let temp_dir = TempDir::new().unwrap();
 
     // Create a Taskfile.yml in temp directory
-    fs::write(temp_dir.path().join("Taskfile.yml"), "version: '3'\ntasks:\n  default:\n    cmds:\n      - echo 'test'").unwrap();
+    fs::write(
+        temp_dir.path().join("Taskfile.yml"),
+        "version: '3'\ntasks:\n  default:\n    cmds:\n      - echo 'test'",
+    )
+    .unwrap();
 
     let mut cmd = Command::cargo_bin("razd").unwrap();
     cmd.arg("up");

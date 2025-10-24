@@ -47,10 +47,7 @@ async fn execute_local_project() -> Result<()> {
     let current_dir = env::current_dir()?;
     validate_project_directory(&current_dir)?;
 
-    output::info(&format!(
-        "Working in directory: {}",
-        current_dir.display()
-    ));
+    output::info(&format!("Working in directory: {}", current_dir.display()));
 
     // Step 2: Execute up workflow
     execute_up_workflow().await?;
