@@ -12,6 +12,9 @@ pub async fn execute_command(
 
     let mut cmd = Command::new(program);
     cmd.args(args);
+    
+    // Inherit current environment to ensure tools are found
+    cmd.env_clear().envs(std::env::vars());
 
     if let Some(dir) = working_dir {
         cmd.current_dir(dir);
@@ -43,10 +46,41 @@ pub async fn execute_command(
 
 /// Check if a command is available in PATH
 pub async fn check_command_available(program: &str) -> bool {
-    Command::new(program)
-        .arg("--version")
-        .output()
-        .await
-        .map(|output| output.status.success())
-        .unwrap_or(false)
+    // On Windows, also try the .exe extension
+    let exe_name = format!("{}.exe", program);
+    let programs_to_try = if cfg!(windows) {
+        vec![program, exe_name.as_str()]
+    } else {
+        vec![program]
+    };
+
+    for prog in programs_to_try {
+        // Try with --version flag first
+        if let Ok(output) = Command::new(prog)
+            .arg("--version")
+            .env_clear()
+            .envs(std::env::vars())
+            .output()
+            .await
+        {
+            if output.status.success() {
+                return true;
+            }
+        }
+
+        // Fallback: try with -v flag (some tools use this instead)
+        if let Ok(output) = Command::new(prog)
+            .arg("-v")
+            .env_clear()
+            .envs(std::env::vars())
+            .output()
+            .await
+        {
+            if output.status.success() {
+                return true;
+            }
+        }
+    }
+
+    false
 }

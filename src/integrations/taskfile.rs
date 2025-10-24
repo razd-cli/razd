@@ -2,6 +2,25 @@ use crate::core::{output, RazdError, Result};
 use crate::integrations::{mise, process};
 use std::path::Path;
 
+/// Execute task command, trying direct execution first, then mise exec as fallback
+async fn execute_task_command(args: &[&str], working_dir: &Path) -> Result<()> {
+    // First try direct execution
+    if process::check_command_available("task").await {
+        return process::execute_command("task", args, Some(working_dir))
+            .await
+            .map_err(|e| RazdError::task(format!("Failed to execute task: {}", e)));
+    }
+
+    // Fallback: try through mise exec (task should be available via mise)
+    output::step("Executing task via mise...");
+    let mut mise_args = vec!["exec", "task", "--", "task"];
+    mise_args.extend(args);
+    
+    process::execute_command("mise", &mise_args, Some(working_dir))
+        .await
+        .map_err(|e| RazdError::task(format!("Failed to execute task via mise: {}", e)))
+}
+
 /// Check if Taskfile configuration exists in the directory
 pub fn has_taskfile_config(dir: &Path) -> bool {
     dir.join("Taskfile.yml").exists() || dir.join("Taskfile.yaml").exists()
@@ -22,9 +41,7 @@ pub async fn setup_project(working_dir: &Path) -> Result<()> {
 
     output::step("Setting up project dependencies with task");
 
-    process::execute_command("task", &["setup"], Some(working_dir))
-        .await
-        .map_err(|e| RazdError::task(format!("Failed to setup project: {}", e)))?;
+    execute_task_command(&["setup"], working_dir).await?;
 
     output::success("Successfully set up project dependencies");
 
@@ -67,9 +84,7 @@ pub async fn execute_task(
     output::step(&format!("Executing {}", task_desc));
 
     let args_str: Vec<&str> = command_args.iter().map(|s| s.as_ref()).collect();
-    process::execute_command("task", &args_str, Some(working_dir))
-        .await
-        .map_err(|e| RazdError::task(format!("Failed to execute task: {}", e)))?;
+    execute_task_command(&args_str, working_dir).await?;
 
     output::success(&format!("Successfully executed {}", task_desc));
 
@@ -99,12 +114,12 @@ pub async fn execute_workflow_task(task_name: &str, workflow_content: &str) -> R
     // Execute task with custom taskfile in the working directory
     let args = vec!["--taskfile", temp_taskfile.to_str().unwrap(), task_name];
 
-    let result = process::execute_command("task", &args, Some(&working_dir)).await;
+    let result = execute_task_command(&args, &working_dir).await;
 
     // Clean up temporary file
     let _ = fs::remove_file(&temp_taskfile);
 
-    result.map_err(|e| RazdError::task(format!("Failed to execute workflow: {}", e)))?;
+    result?;
 
     output::success(&format!("Successfully executed workflow: {}", task_name));
 

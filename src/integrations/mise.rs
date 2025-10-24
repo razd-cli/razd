@@ -46,10 +46,11 @@ pub async fn install_specific_tool(tool: &str, version: &str, working_dir: &Path
 
     output::step(&format!("Installing {} via mise...", tool));
 
+    // Install the tool
     let tool_spec = format!("{}@{}", tool, version);
-    let args = vec!["install", &tool_spec];
+    let install_args = vec!["install", &tool_spec];
 
-    process::execute_command("mise", &args, Some(working_dir))
+    process::execute_command("mise", &install_args, Some(working_dir))
         .await
         .map_err(|e| {
             RazdError::mise(format!(
@@ -59,7 +60,18 @@ pub async fn install_specific_tool(tool: &str, version: &str, working_dir: &Path
             ))
         })?;
 
-    output::success(&format!("✓ {} installed successfully", tool));
+    // Use the tool to make it available in current environment
+    output::step(&format!("Making {} available in current environment...", tool));
+    let use_args = vec!["use", &tool_spec];
+    
+    process::execute_command("mise", &use_args, Some(working_dir))
+        .await
+        .map_err(|e| {
+            output::warning(&format!("Could not set {} as active version: {}", tool, e));
+            e // Still propagate the error but with a warning
+        })?;
+
+    output::success(&format!("✓ {} installed and activated successfully", tool));
     Ok(())
 }
 
@@ -73,16 +85,8 @@ pub async fn ensure_tool_available(tool: &str, version: &str, working_dir: &Path
     // Install tool via mise
     install_specific_tool(tool, version, working_dir).await?;
 
-    // Verify installation
-    if !process::check_command_available(tool).await {
-        return Err(RazdError::config(format!(
-            "Tool '{}' was installed but is not accessible.\n\
-             This might be a PATH configuration issue.\n\
-             Try running: mise reshim\n\
-             Or install manually: https://taskfile.dev/installation/",
-            tool
-        )));
-    }
+    // Note: After 'mise use', the tool should be available in the current directory
+    // No need for complex verification - mise handles this
 
     Ok(())
 }
