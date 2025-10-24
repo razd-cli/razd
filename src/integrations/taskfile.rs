@@ -43,6 +43,11 @@ pub fn has_taskfile_config(dir: &Path) -> bool {
     dir.join("Taskfile.yml").exists() || dir.join("Taskfile.yaml").exists()
 }
 
+/// Check if Razdfile configuration exists in the directory
+pub fn has_razdfile_config(dir: &Path) -> bool {
+    dir.join("Razdfile.yml").exists()
+}
+
 /// Run task setup to install project dependencies
 pub async fn setup_project(working_dir: &Path) -> Result<()> {
     // Ensure task tool is available
@@ -130,13 +135,22 @@ async fn execute_workflow_task_with_mode(task_name: &str, workflow_content: &str
     // Ensure task tool is available
     mise::ensure_tool_available("task", "latest", &working_dir).await?;
 
-    // Create a temporary taskfile in the working directory (not temp)
+    output::step(&format!("Executing workflow: {}", task_name));
+
+    // Check if Razdfile.yml exists - use it directly instead of creating temp file
+    if has_razdfile_config(&working_dir) {
+        let razdfile_path = working_dir.join("Razdfile.yml");
+        let args = vec!["--taskfile", razdfile_path.to_str().unwrap(), task_name];
+        
+        let result = execute_task_command_with_mode(&args, &working_dir, interactive).await;
+        return result;
+    }
+
+    // Fallback: Create a temporary taskfile from workflow content
     let temp_taskfile = working_dir.join(format!(".razd-workflow-{}.yml", task_name));
 
     fs::write(&temp_taskfile, workflow_content)
         .map_err(|e| RazdError::task(format!("Failed to create temporary taskfile: {}", e)))?;
-
-    output::step(&format!("Executing workflow: {}", task_name));
 
     // Execute task with custom taskfile in the working directory
     let args = vec!["--taskfile", temp_taskfile.to_str().unwrap(), task_name];
