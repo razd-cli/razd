@@ -62,7 +62,7 @@ async fn execute_local_project() -> Result<()> {
 async fn execute_up_workflow() -> Result<()> {
     if let Some(workflow_content) = get_workflow_config("up")? {
         output::step("Executing up workflow...");
-        taskfile::execute_workflow_task("up", &workflow_content).await?;
+        taskfile::execute_workflow_task_interactive("up", &workflow_content).await?;
     } else {
         // Fallback to legacy behavior if no workflow is found
         output::warning("No up workflow found, falling back to legacy setup");
