@@ -29,8 +29,6 @@
 - [x] Test error scenarios (no internet, permission issues, etc.)
 
 ### 5. Documentation and examples
-- [ ] Update README with information about automatic tool installation *(future enhancement)*
-- [ ] Add examples showing the enhanced workflow *(future enhancement)*
 - [x] Update error message documentation *(implemented in code)*
 - [x] Document troubleshooting steps for installation failures *(implemented in error messages)*
 

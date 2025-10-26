@@ -134,24 +134,6 @@ Implement support for running `razd up` without a URL to set up already-cloned p
   - Fix any issues
   - **Validation**: Validation passes with no errors
 
-## Post-Implementation
-- [ ] **Task 7.1**: Create pull request
-  - Reference change ID in PR title/description
-  - Include all implementation tasks
-  - Link to proposal and design docs
-  - **Validation**: PR created and passes CI
-
-- [ ] **Task 7.2**: Code review and iteration
-  - Address review comments
-  - Make requested changes
-  - Re-test after changes
-  - **Validation**: Approved by reviewer
-
-- [ ] **Task 7.3**: Merge and deploy
-  - Merge to main branch
-  - Monitor deployment
-  - Verify feature works in production
-  - **Validation**: Feature live and working
 
 ## Dependencies and Blockers
 - No external dependencies
