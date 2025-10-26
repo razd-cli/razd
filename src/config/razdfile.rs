@@ -6,6 +6,20 @@ use std::path::Path;
 use crate::core::RazdError;
 use crate::defaults;
 
+/// Command representation supporting both string commands and task references
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Command {
+    /// Simple string command (e.g., "echo hello")
+    String(String),
+    /// Task reference with optional parameters
+    TaskRef {
+        task: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        vars: Option<HashMap<String, String>>,
+    },
+}
+
 /// Razdfile.yml configuration structure matching Taskfile v3 format
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RazdfileConfig {
@@ -16,7 +30,7 @@ pub struct RazdfileConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaskConfig {
     pub desc: Option<String>,
-    pub cmds: Vec<String>,
+    pub cmds: Vec<Command>,
     #[serde(default)]
     pub internal: bool,
 }
@@ -131,5 +145,192 @@ tasks:
         let workflow = result.unwrap();
         assert!(workflow.contains("version: '3'"));
         assert!(workflow.contains("dev:"));
+    }
+
+    #[test]
+    fn test_command_string_parsing() {
+        let temp_dir = TempDir::new().unwrap();
+        let razdfile_path = temp_dir.path().join("Razdfile.yml");
+
+        let content = r#"
+version: '3'
+
+tasks:
+  test:
+    desc: "Test with string commands"
+    cmds:
+      - echo "Installing..."
+      - mise install
+"#;
+
+        fs::write(&razdfile_path, content).unwrap();
+
+        let result = RazdfileConfig::load_from_path(&razdfile_path).unwrap();
+        assert!(result.is_some());
+
+        let config = result.unwrap();
+        let task = config.get_task("test").unwrap();
+        assert_eq!(task.cmds.len(), 2);
+
+        // Verify commands are parsed as strings
+        match &task.cmds[0] {
+            Command::String(s) => assert_eq!(s, "echo \"Installing...\""),
+            _ => panic!("Expected Command::String"),
+        }
+    }
+
+    #[test]
+    fn test_command_task_ref_parsing() {
+        let temp_dir = TempDir::new().unwrap();
+        let razdfile_path = temp_dir.path().join("Razdfile.yml");
+
+        let content = r#"
+version: '3'
+
+tasks:
+  up:
+    desc: "Test with task references"
+    cmds:
+      - task: install
+      - task: setup
+  install:
+    cmds:
+      - mise install
+"#;
+
+        fs::write(&razdfile_path, content).unwrap();
+
+        let result = RazdfileConfig::load_from_path(&razdfile_path).unwrap();
+        assert!(result.is_some());
+
+        let config = result.unwrap();
+        let task = config.get_task("up").unwrap();
+        assert_eq!(task.cmds.len(), 2);
+
+        // Verify commands are parsed as task references
+        match &task.cmds[0] {
+            Command::TaskRef { task, vars } => {
+                assert_eq!(task, "install");
+                assert!(vars.is_none());
+            }
+            _ => panic!("Expected Command::TaskRef"),
+        }
+    }
+
+    #[test]
+    fn test_command_mixed_parsing() {
+        let temp_dir = TempDir::new().unwrap();
+        let razdfile_path = temp_dir.path().join("Razdfile.yml");
+
+        let content = r#"
+version: '3'
+
+tasks:
+  up:
+    desc: "Test with mixed commands"
+    cmds:
+      - echo "Starting..."
+      - task: install
+      - echo "Done!"
+"#;
+
+        fs::write(&razdfile_path, content).unwrap();
+
+        let result = RazdfileConfig::load_from_path(&razdfile_path).unwrap();
+        assert!(result.is_some());
+
+        let config = result.unwrap();
+        let task = config.get_task("up").unwrap();
+        assert_eq!(task.cmds.len(), 3);
+
+        // Verify first command is string
+        match &task.cmds[0] {
+            Command::String(s) => assert_eq!(s, "echo \"Starting...\""),
+            _ => panic!("Expected Command::String"),
+        }
+
+        // Verify second command is task reference
+        match &task.cmds[1] {
+            Command::TaskRef { task, vars } => {
+                assert_eq!(task, "install");
+                assert!(vars.is_none());
+            }
+            _ => panic!("Expected Command::TaskRef"),
+        }
+
+        // Verify third command is string
+        match &task.cmds[2] {
+            Command::String(s) => assert_eq!(s, "echo \"Done!\""),
+            _ => panic!("Expected Command::String"),
+        }
+    }
+
+    #[test]
+    fn test_command_task_ref_with_vars() {
+        let temp_dir = TempDir::new().unwrap();
+        let razdfile_path = temp_dir.path().join("Razdfile.yml");
+
+        let content = r#"
+version: '3'
+
+tasks:
+  deploy:
+    desc: "Test with task reference and vars"
+    cmds:
+      - task: build
+        vars:
+          ENV: production
+          VERSION: v1.0.0
+"#;
+
+        fs::write(&razdfile_path, content).unwrap();
+
+        let result = RazdfileConfig::load_from_path(&razdfile_path).unwrap();
+        assert!(result.is_some());
+
+        let config = result.unwrap();
+        let task = config.get_task("deploy").unwrap();
+        assert_eq!(task.cmds.len(), 1);
+
+        // Verify command is task reference with vars
+        match &task.cmds[0] {
+            Command::TaskRef { task, vars } => {
+                assert_eq!(task, "build");
+                assert!(vars.is_some());
+                let vars_map = vars.as_ref().unwrap();
+                assert_eq!(vars_map.get("ENV").unwrap(), "production");
+                assert_eq!(vars_map.get("VERSION").unwrap(), "v1.0.0");
+            }
+            _ => panic!("Expected Command::TaskRef with vars"),
+        }
+    }
+
+    #[test]
+    fn test_command_serialization() {
+        let temp_dir = TempDir::new().unwrap();
+        let razdfile_path = temp_dir.path().join("Razdfile.yml");
+
+        let content = r#"
+version: '3'
+
+tasks:
+  up:
+    cmds:
+      - echo "test"
+      - task: install
+"#;
+
+        fs::write(&razdfile_path, content).unwrap();
+
+        let config = RazdfileConfig::load_from_path(&razdfile_path)
+            .unwrap()
+            .unwrap();
+
+        // Serialize back to YAML
+        let yaml = serde_yaml::to_string(&config).unwrap();
+
+        // Verify it contains both command types
+        assert!(yaml.contains("echo \"test\"") || yaml.contains("echo"));
+        assert!(yaml.contains("task: install"));
     }
 }
