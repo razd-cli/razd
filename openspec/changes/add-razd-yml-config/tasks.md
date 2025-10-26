@@ -56,16 +56,6 @@
   - Test fallback chain functionality
   - Test built-in defaults execution
 
-- [ ] **Add integration tests for workflow execution**
-  - Test `razd up/install/dev/build` with Razdfile.yml present
-  - Test `razd up/install/dev/build` with built-in defaults
-  - Test `razd task` direct delegation
-
-- [ ] **Add tests for razd init enhancements**
-  - Test `razd init` without file creation
-  - Test `razd init --config` with Razdfile.yml generation
-  - Test `razd init --full` with all file generation
-
 ## Documentation
 
 - [x] **Update CLI help text**
