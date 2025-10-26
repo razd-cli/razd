@@ -24,7 +24,7 @@
 
 ### 4. Cross-platform testing
 - [x] Test tool installation on Windows (PowerShell)
-- [ ] Test tool installation on Unix systems (bash/zsh) *(tested via Rust's cross-platform process execution)*
+- [x] Test tool installation on Unix systems (bash/zsh) - tested on WSL Ubuntu
 - [x] Verify tool installation works with different mise configurations
 - [x] Test error scenarios (no internet, permission issues, etc.)
 
