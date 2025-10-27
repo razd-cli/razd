@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2025-10-28
+
+### Fixed
+- **Improved YAML formatting**: Razdfile.yml now has better spacing between sections and tasks
+- **Auto-sync mise.toml → Razdfile.yml**: When Razdfile has no mise section but mise.toml exists, automatically syncs configuration with user prompt
+- Better prompt messaging for mise configuration sync scenarios
+
+### Changed
+- Enhanced YAML output formatting with blank lines between top-level sections and task definitions
+
 ## [0.2.1] - 2025-10-28
 
 ### Added
