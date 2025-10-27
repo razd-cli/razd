@@ -64,7 +64,7 @@ async fn main() {
         println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
         return;
     }
-    
+
     let cli = Cli::parse();
 
     if let Err(e) = run(cli).await {
