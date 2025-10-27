@@ -198,6 +198,25 @@ pub fn check_file_changes(project_dir: &Path) -> Result<ChangeDetection> {
     }
 }
 
+/// Update tracking state after a sync operation
+pub fn update_tracking_state(project_dir: &Path) -> Result<()> {
+    let razdfile_path = project_dir.join("Razdfile.yml");
+    let mise_toml_path = project_dir.join("mise.toml");
+
+    let razdfile_time = get_file_modified_time(&razdfile_path)?
+        .unwrap_or_else(SystemTime::now);
+    let mise_toml_time = get_file_modified_time(&mise_toml_path)?
+        .unwrap_or_else(SystemTime::now);
+
+    let state = FileTrackingState {
+        razdfile_modified: razdfile_time,
+        mise_toml_modified: mise_toml_time,
+        last_sync_time: SystemTime::now(),
+    };
+
+    save_tracking_state(project_dir, &state)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,10 +1,21 @@
+use crate::config::RazdfileConfig;
 use crate::core::{output, RazdError, Result};
 use crate::integrations::process;
 use std::path::Path;
 
 /// Check if mise configuration exists in the directory
 pub fn has_mise_config(dir: &Path) -> bool {
-    dir.join(".mise.toml").exists() || dir.join(".tool-versions").exists()
+    // Check for Razdfile.yml with mise section first
+    if let Ok(Some(razdfile)) = RazdfileConfig::load_from_path(dir.join("Razdfile.yml")) {
+        if razdfile.mise.is_some() {
+            return true;
+        }
+    }
+    
+    // Fallback to traditional mise config files
+    dir.join("mise.toml").exists() 
+        || dir.join(".mise.toml").exists() 
+        || dir.join(".tool-versions").exists()
 }
 
 /// Install tools using mise
@@ -19,7 +30,7 @@ pub async fn install_tools(working_dir: &Path) -> Result<()> {
 
     // Check if mise configuration exists
     if !has_mise_config(working_dir) {
-        output::warning("No mise configuration found (.mise.toml or .tool-versions), skipping tool installation");
+        output::warning("No mise configuration found (Razdfile.yml, mise.toml or .tool-versions), skipping tool installation");
         return Ok(());
     }
 

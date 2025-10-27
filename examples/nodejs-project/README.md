@@ -68,4 +68,19 @@ node = "22"
 node = "https://github.com/asdf-vm/asdf-nodejs.git"
 ```
 
-This file is automatically kept in sync with your Razdfile.yml.
+### Automatic Synchronization
+
+**razd** keeps `Razdfile.yml` and `mise.toml` in sync automatically:
+
+- **Changes to Razdfile**: When you modify the `mise:` section, `mise.toml` is updated on next `razd` command
+- **Changes to mise.toml**: If you edit `mise.toml` directly, changes are synced back to `Razdfile.yml`
+- **Conflict Detection**: If both files are modified, razd shows a diff and prompts for resolution
+- **Backups**: Automatic `.backup` files are created before any sync operation
+
+**Skip Sync** if needed:
+```bash
+razd up --no-sync          # Skip synchronization for this command
+RAZD_NO_SYNC=1 razd up    # Skip via environment variable
+```
+
+This ensures your team always has consistent tool versions without manual synchronization.

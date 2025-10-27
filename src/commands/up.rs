@@ -90,6 +90,12 @@ fn has_project_configuration(dir: &Path) -> bool {
 
 /// Execute up workflow (with fallback chain)
 async fn execute_up_workflow() -> Result<()> {
+    // Check and sync mise configuration before executing workflow
+    let current_dir = env::current_dir()?;
+    if let Err(e) = crate::config::check_and_sync_mise(&current_dir) {
+        output::warning(&format!("Mise sync check failed: {}", e));
+    }
+
     if let Some(workflow_content) = get_workflow_config("default")? {
         output::step("Executing up workflow...");
         taskfile::execute_workflow_task_interactive("default", &workflow_content).await?;

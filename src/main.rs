@@ -15,6 +15,10 @@ use colored::*;
     long_about = "razd (раздуплиться - to get things sorted) simplifies project setup by combining git clone, mise install, and task setup into single commands."
 )]
 struct Cli {
+    /// Skip automatic synchronization between Razdfile.yml and mise.toml
+    #[arg(long, global = true)]
+    no_sync: bool,
+
     #[command(subcommand)]
     command: Option<Commands>,
 }
@@ -65,6 +69,9 @@ async fn main() {
 }
 
 async fn run(cli: Cli) -> core::Result<()> {
+    // Store no_sync flag for use by commands
+    std::env::set_var("RAZD_NO_SYNC", if cli.no_sync { "1" } else { "0" });
+
     match cli.command {
         Some(Commands::Up { url, name }) => {
             commands::up::execute(url.as_deref(), name.as_deref()).await?;

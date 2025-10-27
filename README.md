@@ -160,6 +160,48 @@ tasks:
       - npm run build
 ```
 
+### Mise Configuration
+
+razd supports defining `mise` tool versions and plugins directly in `Razdfile.yml`:
+
+```yaml
+version: '3'
+
+mise:
+  tools:
+    node: "22"                    # Tool version (string or number)
+    python: "3.12"
+  plugins:
+    node: "https://github.com/mise-plugins/mise-node"
+
+tasks:
+  default:
+    desc: "Set up project"
+    cmds:
+      - mise install
+      - npm install
+```
+
+**Automatic Synchronization**: razd automatically syncs between `Razdfile.yml` and `mise.toml`:
+
+- **Razdfile.yml → mise.toml**: When `mise:` section exists in Razdfile, `mise.toml` is generated/updated
+- **mise.toml → Razdfile.yml**: When only `mise.toml` exists, `mise:` section is added to Razdfile
+- **Conflict Detection**: If both files modified, shows diff and prompts for resolution
+- **Backups**: Automatic `.backup` files created before sync operations
+
+**Disable Sync**: Use `--no-sync` flag or `RAZD_NO_SYNC=1` environment variable:
+
+```sh
+razd up --no-sync                # Skip sync for this command
+RAZD_NO_SYNC=1 razd up          # Skip sync via environment variable
+```
+
+**Benefits**:
+- Single source of truth for project configuration
+- Version control mise configurations alongside tasks
+- Consistent setup across team members
+- No need to maintain separate mise.toml
+
 ### Project Type Templates
 
 When creating a new `Razdfile.yml`, razd provides templates based on detected project type:
