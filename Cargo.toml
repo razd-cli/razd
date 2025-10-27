@@ -1,6 +1,6 @@
 [package]
 name = "razd"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 authors = ["razd team"]
 description = "A CLI tool for streamlined project setup with git, mise, and taskfile integration"

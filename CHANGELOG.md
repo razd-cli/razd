@@ -7,17 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2025-10-28
+
 ### Added
-- Support for running `razd up` without URL in already-cloned projects
-- Project detection validates presence of Razdfile.yml, Taskfile.yml, or mise.toml
-- Clear error messages when running `razd up` in non-project directories
-- Unit tests for project detection logic
-- Integration tests for local project setup
+- **Mise configuration integration in Razdfile.yml**: Define mise tool versions and plugins directly in Razdfile.yml
+- **Bidirectional synchronization**: Automatic sync between Razdfile.yml and mise.toml
+- **Conflict detection**: Interactive prompts when both files are modified with diff display
+- **Automatic backups**: `.backup` files created before sync operations
+- **Global `--no-sync` flag**: Skip synchronization for any command
+- **`RAZD_NO_SYNC` environment variable**: Disable sync via environment
+- Cross-platform file tracking for modification detection (Windows/Linux/macOS)
+- Comprehensive test suite with 123 tests covering all sync scenarios
+- Documentation for mise configuration in README and examples
 
 ### Changed
-- Made URL argument optional for `razd up` command
-- Updated help text to reflect both clone and local setup modes
-- Improved user experience with consistent "one command setup" workflow
+- All commands (up, dev, build, task, install, setup) now check for mise sync automatically
+- `mise.rs` integration prioritizes Razdfile.yml over standalone mise.toml
+- Updated examples to demonstrate mise configuration in Razdfile.yml
+
+### Fixed
+- Improved error handling for mise configuration parsing
+- Better user feedback during sync operations with clear status messages
+
+## [0.1.3] - 2025-10-23
 
 ## [0.1.3] - 2025-10-23
 
