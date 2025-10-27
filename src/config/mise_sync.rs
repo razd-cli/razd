@@ -173,8 +173,11 @@ impl MiseSyncManager {
         let yaml_content = serde_yaml::to_string(&razdfile)
             .map_err(|e| RazdError::config(format!("Failed to serialize Razdfile: {}", e)))?;
         
+        // Format YAML with better spacing
+        let formatted_yaml = self.format_yaml(&yaml_content);
+        
         let mut file = fs::File::create(&razdfile_path)?;
-        file.write_all(yaml_content.as_bytes())?;
+        file.write_all(formatted_yaml.as_bytes())?;
 
         // Update tracking state
         file_tracker::update_tracking_state(&self.project_root)?;
@@ -331,6 +334,42 @@ impl MiseSyncManager {
 
         let response = input.trim().to_lowercase();
         Ok(response.is_empty() || response == "y" || response == "yes")
+    }
+
+    /// Format YAML with better spacing between sections
+    fn format_yaml(&self, yaml: &str) -> String {
+        let lines = yaml.lines().collect::<Vec<_>>();
+        let mut formatted = Vec::new();
+        
+        for (i, line) in lines.iter().enumerate() {
+            formatted.push(line.to_string());
+            
+            // Add blank line after top-level sections (version, tasks, mise)
+            if i < lines.len() - 1 {
+                let next_line = lines[i + 1];
+                
+                // Check if current line is a top-level key (no indentation, ends with :)
+                let current_is_top_level = !line.starts_with(' ') && line.ends_with(':');
+                let next_is_top_level = !next_line.starts_with(' ') && next_line.ends_with(':');
+                
+                // Add blank line between top-level sections
+                if current_is_top_level && next_is_top_level {
+                    formatted.push(String::new());
+                }
+                
+                // Add blank line between task definitions (after "internal: false/true")
+                if line.trim().starts_with("internal:") && next_line.starts_with("  ") && !next_line.trim().is_empty() {
+                    formatted.push(String::new());
+                }
+                
+                // Add blank line before "mise:" section (after last task's internal field)
+                if line.trim().starts_with("internal:") && next_is_top_level {
+                    formatted.push(String::new());
+                }
+            }
+        }
+        
+        formatted.join("\n")
     }
 }
 
