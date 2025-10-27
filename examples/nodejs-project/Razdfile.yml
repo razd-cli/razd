@@ -1,5 +1,12 @@
 version: '3'
 
+mise:
+  tools:
+    node: "22"
+
+  plugins:
+    node: "https://github.com/asdf-vm/asdf-nodejs.git"
+
 tasks:
   default:
     desc: "Set up and start Node.js project"
@@ -7,6 +14,28 @@ tasks:
       - mise install
       - npm install
       - npm run dev
+
+  install:
+    desc: "Install dependencies"
+    cmds:
+      - mise install
+      - npm install
+
+  dev:
+    desc: "Start development server"
+    cmds:
+      - npm run dev
+
+  build:
+    desc: "Build project"
+    cmds:
+      - npm run build
+
+  test:
+    desc: "Run tests"
+    cmds:
+      - npm test
+
 
   install:
     desc: "Install dependencies"
