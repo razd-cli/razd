@@ -12,17 +12,11 @@ use colored::*;
     name = "razd",
     version,
     about = "Streamlined project setup with git, mise, and taskfile integration",
-    long_about = "razd (раздуплиться - to get things sorted) simplifies project setup by combining git clone, mise install, and task setup into single commands.",
-    arg_required_else_help = true,
-    disable_version_flag = true
+    long_about = "razd (раздуплиться - to get things sorted) simplifies project setup by combining git clone, mise install, and task setup into single commands."
 )]
 struct Cli {
-    /// Show version information
-    #[arg(short = 'v', long = "version", action = clap::ArgAction::Version)]
-    version: bool,
-    
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 }
 
 #[derive(Subcommand)]
@@ -64,6 +58,13 @@ enum Commands {
 
 #[tokio::main]
 async fn main() {
+    // Handle -v flag manually before clap parsing
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() == 2 && (args[1] == "-v" || args[1] == "--version") {
+        println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+        return;
+    }
+    
     let cli = Cli::parse();
 
     if let Err(e) = run(cli).await {
@@ -74,26 +75,30 @@ async fn main() {
 
 async fn run(cli: Cli) -> core::Result<()> {
     match cli.command {
-        Commands::Up { url, name } => {
+        Some(Commands::Up { url, name }) => {
             commands::up::execute(url.as_deref(), name.as_deref()).await?;
         }
-        Commands::Install => {
+        Some(Commands::Install) => {
             commands::install::execute().await?;
         }
-        Commands::Setup => {
+        Some(Commands::Setup) => {
             commands::setup::execute().await?;
         }
-        Commands::Dev => {
+        Some(Commands::Dev) => {
             commands::dev::execute().await?;
         }
-        Commands::Build => {
+        Some(Commands::Build) => {
             commands::build::execute().await?;
         }
-        Commands::Task { name, args } => {
+        Some(Commands::Task { name, args }) => {
             commands::task::execute(name.as_deref(), &args).await?;
         }
-        Commands::Init { config, full } => {
+        Some(Commands::Init { config, full }) => {
             commands::init::execute(config, full).await?;
+        }
+        None => {
+            // If no subcommand provided, run 'razd up' (local project setup)
+            commands::up::execute(None, None).await?;
         }
     }
 
