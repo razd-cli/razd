@@ -33,6 +33,14 @@ colored = "2.0"
 # Configuration parsing
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9"
+serde_json = "1.0"
+toml_edit = "0.22"
+
+# Validation
+regex = "1.10"
+
+# Hashing
+sha2 = "0.10"
 
 # Path handling
 path-clean = "1.0"

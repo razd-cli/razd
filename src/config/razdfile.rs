@@ -25,6 +25,8 @@ pub enum Command {
 pub struct RazdfileConfig {
     pub version: String,
     pub tasks: HashMap<String, TaskConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mise: Option<MiseConfig>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,6 +35,33 @@ pub struct TaskConfig {
     pub cmds: Vec<Command>,
     #[serde(default)]
     pub internal: bool,
+}
+
+/// Mise configuration section in Razdfile.yml
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MiseConfig {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tools: Option<HashMap<String, ToolConfig>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub plugins: Option<HashMap<String, String>>,
+}
+
+/// Tool configuration supporting both simple versions and complex options
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ToolConfig {
+    /// Simple version string: "22"
+    Simple(String),
+    /// Complex configuration with options
+    Complex {
+        version: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        postinstall: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        os: Option<Vec<String>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        install_env: Option<HashMap<String, String>>,
+    },
 }
 
 impl RazdfileConfig {
@@ -55,7 +84,34 @@ impl RazdfileConfig {
         let config: RazdfileConfig = serde_yaml::from_str(&content)
             .map_err(|e| RazdError::config(format!("Failed to parse Razdfile.yml: {}", e)))?;
 
+        // Validate mise configuration if present
+        if let Some(ref mise_config) = config.mise {
+            config.validate_mise_config(mise_config)?;
+        }
+
         Ok(Some(config))
+    }
+
+    /// Validate mise configuration
+    fn validate_mise_config(&self, mise_config: &MiseConfig) -> Result<(), RazdError> {
+        use crate::config::mise_validator;
+
+        // Validate tool names
+        if let Some(ref tools) = mise_config.tools {
+            for name in tools.keys() {
+                mise_validator::validate_tool_name(name)?;
+            }
+        }
+
+        // Validate plugin names and URLs
+        if let Some(ref plugins) = mise_config.plugins {
+            for (name, url) in plugins.iter() {
+                mise_validator::validate_tool_name(name)?;
+                mise_validator::validate_plugin_url(url)?;
+            }
+        }
+
+        Ok(())
     }
 
     /// Get a task configuration by name
@@ -442,5 +498,152 @@ tasks:
         // Should contain the config with default task prioritized
         assert!(yaml_content.contains("default:"));
         assert!(yaml_content.contains("Default task"));
+    }
+
+    #[test]
+    fn test_parse_simple_mise_tools() {
+        let temp_dir = TempDir::new().unwrap();
+        let razdfile_path = temp_dir.path().join("Razdfile.yml");
+
+        let content = r#"
+version: '3'
+
+mise:
+  tools:
+    node: "22"
+    python: "3.11"
+
+tasks:
+  test:
+    desc: "Test task"
+    cmds:
+      - echo "test"
+"#;
+
+        fs::write(&razdfile_path, content).unwrap();
+        let config = RazdfileConfig::load_from_path(&razdfile_path)
+            .unwrap()
+            .unwrap();
+
+        assert!(config.mise.is_some());
+        let mise = config.mise.unwrap();
+        assert!(mise.tools.is_some());
+        
+        let tools = mise.tools.unwrap();
+        assert_eq!(tools.len(), 2);
+        
+        match tools.get("node").unwrap() {
+            ToolConfig::Simple(v) => assert_eq!(v, "22"),
+            _ => panic!("Expected simple tool config"),
+        }
+        
+        match tools.get("python").unwrap() {
+            ToolConfig::Simple(v) => assert_eq!(v, "3.11"),
+            _ => panic!("Expected simple tool config"),
+        }
+    }
+
+    #[test]
+    fn test_parse_complex_mise_tools() {
+        let temp_dir = TempDir::new().unwrap();
+        let razdfile_path = temp_dir.path().join("Razdfile.yml");
+
+        let content = r#"
+version: '3'
+
+mise:
+  tools:
+    node:
+      version: "22"
+      postinstall: "corepack enable"
+      os: ["linux", "macos"]
+    go:
+      version: "1.21"
+      install_env:
+        CGO_ENABLED: "1"
+
+tasks:
+  test:
+    desc: "Test"
+    cmds:
+      - echo "test"
+"#;
+
+        fs::write(&razdfile_path, content).unwrap();
+        let config = RazdfileConfig::load_from_path(&razdfile_path)
+            .unwrap()
+            .unwrap();
+
+        let tools = config.mise.as_ref().unwrap().tools.as_ref().unwrap();
+        
+        match tools.get("node").unwrap() {
+            ToolConfig::Complex { version, postinstall, os, .. } => {
+                assert_eq!(version, "22");
+                assert_eq!(postinstall.as_ref().unwrap(), "corepack enable");
+                assert_eq!(os.as_ref().unwrap(), &vec!["linux".to_string(), "macos".to_string()]);
+            },
+            _ => panic!("Expected complex tool config"),
+        }
+        
+        match tools.get("go").unwrap() {
+            ToolConfig::Complex { version, install_env, .. } => {
+                assert_eq!(version, "1.21");
+                assert_eq!(install_env.as_ref().unwrap().get("CGO_ENABLED").unwrap(), "1");
+            },
+            _ => panic!("Expected complex tool config"),
+        }
+    }
+
+    #[test]
+    fn test_parse_mise_plugins() {
+        let temp_dir = TempDir::new().unwrap();
+        let razdfile_path = temp_dir.path().join("Razdfile.yml");
+
+        let content = r#"
+version: '3'
+
+mise:
+  plugins:
+    elixir: "https://github.com/my-org/mise-elixir.git"
+    node: "https://github.com/my-org/mise-node.git#DEADBEEF"
+
+tasks:
+  test:
+    desc: "Test"
+    cmds:
+      - echo "test"
+"#;
+
+        fs::write(&razdfile_path, content).unwrap();
+        let config = RazdfileConfig::load_from_path(&razdfile_path)
+            .unwrap()
+            .unwrap();
+
+        let plugins = config.mise.as_ref().unwrap().plugins.as_ref().unwrap();
+        assert_eq!(plugins.len(), 2);
+        assert_eq!(plugins.get("elixir").unwrap(), "https://github.com/my-org/mise-elixir.git");
+        assert_eq!(plugins.get("node").unwrap(), "https://github.com/my-org/mise-node.git#DEADBEEF");
+    }
+
+    #[test]
+    fn test_missing_mise_section() {
+        let temp_dir = TempDir::new().unwrap();
+        let razdfile_path = temp_dir.path().join("Razdfile.yml");
+
+        let content = r#"
+version: '3'
+tasks:
+  test:
+    desc: "Test"
+    cmds:
+      - echo "test"
+"#;
+
+        fs::write(&razdfile_path, content).unwrap();
+        let config = RazdfileConfig::load_from_path(&razdfile_path)
+            .unwrap()
+            .unwrap();
+
+        assert!(config.mise.is_none());
     }
 }
