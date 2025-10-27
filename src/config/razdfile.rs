@@ -68,19 +68,44 @@ impl RazdfileConfig {
     pub fn has_task(&self, name: &str) -> bool {
         self.tasks.contains_key(name)
     }
+
+    /// Get the primary task for "up" command, now only supports "default"
+    pub fn get_primary_task(&self) -> Option<&str> {
+        if self.has_task("default") {
+            Some("default")
+        } else {
+            None
+        }
+    }
 }
 
 /// Get workflow configuration with fallback chain
 /// Priority: Razdfile.yml → built-in defaults
+/// For "default" task: uses get_primary_task which returns "default" task
 pub fn get_workflow_config(command: &str) -> Result<Option<String>, RazdError> {
     // Try to load Razdfile.yml first
     if let Some(razdfile) = RazdfileConfig::load()? {
-        if razdfile.has_task(command) {
+        let task_name = if command == "default" {
+            // For "default" command, use get_primary_task
+            razdfile.get_primary_task()
+        } else {
+            // For other commands, use exact task name
+            if razdfile.has_task(command) {
+                Some(command)
+            } else {
+                None
+            }
+        };
+
+        if let Some(_task) = task_name {
             // Convert back to YAML for taskfile execution
             let yaml_content = serde_yaml::to_string(&razdfile).map_err(|e| {
                 RazdError::config(format!("Failed to serialize Razdfile.yml: {}", e))
             })?;
             return Ok(Some(yaml_content));
+        } else if command == "default" {
+            // Special handling for "default" command when no default task found
+            return Err(RazdError::no_default_task());
         }
     }
 
@@ -332,5 +357,90 @@ tasks:
         // Verify it contains both command types
         assert!(yaml.contains("echo \"test\"") || yaml.contains("echo"));
         assert!(yaml.contains("task: install"));
+    }
+
+    #[test]
+    fn test_get_primary_task() {
+        let temp_dir = TempDir::new().unwrap();
+        let razdfile_path = temp_dir.path().join("Razdfile.yml");
+
+        // Test with default task
+        let content = r#"
+version: '3'
+tasks:
+  default:
+    desc: "Default task"
+    cmds:
+      - echo "default task"
+  build:
+    desc: "Build task"  
+    cmds:
+      - echo "build task"
+"#;
+
+        fs::write(&razdfile_path, content).unwrap();
+
+        let config = RazdfileConfig::load_from_path(&razdfile_path)
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(config.get_primary_task(), Some("default"));
+
+        // Test without default task
+        let content_no_default = r#"
+version: '3'
+tasks:
+  build:
+    desc: "Build task"
+    cmds:
+      - echo "build task"
+  test:
+    desc: "Test task"
+    cmds:
+      - echo "test task"
+"#;
+
+        fs::write(&razdfile_path, content_no_default).unwrap();
+
+        let config_no_default = RazdfileConfig::load_from_path(&razdfile_path)
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(config_no_default.get_primary_task(), None);
+    }
+
+    #[test]
+    fn test_workflow_config_default_priority() {
+        let temp_dir = TempDir::new().unwrap();
+        let razdfile_path = temp_dir.path().join("Razdfile.yml");
+
+        // Test up command with default task present
+        let content = r#"
+version: '3'
+tasks:
+  default:
+    desc: "Default task"
+    cmds:
+      - echo "default task"
+  up:
+    desc: "Up task"  
+    cmds:
+      - echo "up task"
+"#;
+
+        fs::write(&razdfile_path, content).unwrap();
+
+        // Load from specific path instead of changing current dir
+        let razdfile = RazdfileConfig::load_from_path(&razdfile_path).unwrap().unwrap();
+        
+        // Test that it has default task and prefers it
+        assert_eq!(razdfile.get_primary_task(), Some("default"));
+        
+        // Convert to YAML for workflow
+        let yaml_content = serde_yaml::to_string(&razdfile).unwrap();
+        
+        // Should contain the config with default task prioritized
+        assert!(yaml_content.contains("default:"));
+        assert!(yaml_content.contains("Default task"));
     }
 }

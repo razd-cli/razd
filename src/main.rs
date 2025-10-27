@@ -45,15 +45,6 @@ enum Commands {
         #[arg(trailing_var_arg = true)]
         args: Vec<String>,
     },
-    /// Initialize razd configuration for a project
-    Init {
-        /// Create Razdfile.yml for workflow customization
-        #[arg(long)]
-        config: bool,
-        /// Create all files (Razdfile.yml, Taskfile.yml, mise.toml)
-        #[arg(long)]
-        full: bool,
-    },
 }
 
 #[tokio::main]
@@ -92,9 +83,6 @@ async fn run(cli: Cli) -> core::Result<()> {
         }
         Some(Commands::Task { name, args }) => {
             commands::task::execute(name.as_deref(), &args).await?;
-        }
-        Some(Commands::Init { config, full }) => {
-            commands::init::execute(config, full).await?;
         }
         None => {
             // If no subcommand provided, run 'razd up' (local project setup)

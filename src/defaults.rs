@@ -3,8 +3,8 @@
 pub const DEFAULT_WORKFLOWS: &str = r#"version: '3'
 
 tasks:
-  up:
-    desc: "Clone repository and set up project"
+  default:
+    desc: "Set up project and start development"
     cmds:
       - echo "🚀 Setting up project..."
       - mise install
@@ -38,7 +38,7 @@ pub fn get_default_workflow(_command: &str) -> Option<&'static str> {
 
 /// Check if a command has a built-in workflow
 pub fn has_default_workflow(command: &str) -> bool {
-    matches!(command, "up" | "install" | "dev" | "build")
+    matches!(command, "up" | "default" | "install" | "dev" | "build")
 }
 
 #[cfg(test)]
@@ -62,7 +62,7 @@ mod tests {
 
         let yaml = parsed.unwrap();
         assert_eq!(yaml["version"], "3");
-        assert!(yaml["tasks"]["up"].is_mapping());
+        assert!(yaml["tasks"]["default"].is_mapping());
         assert!(yaml["tasks"]["install"].is_mapping());
         assert!(yaml["tasks"]["dev"].is_mapping());
         assert!(yaml["tasks"]["build"].is_mapping());

@@ -1,1 +1,18 @@
-{}
+{
+  "name": "nodejs-project-example",
+  "version": "1.0.0",
+  "description": "Example Node.js project for razd",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node index.js",
+    "build": "echo 'Building project...'",
+    "test": "echo 'Running tests...'"
+  },
+  "keywords": [
+    "razd",
+    "example",
+    "nodejs"
+  ],
+  "author": "",
+  "license": "MIT"
+}

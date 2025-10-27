@@ -26,6 +26,18 @@ pub enum RazdError {
 
     #[error("Command error: {0}")]
     Command(String),
+
+    #[error("No project configuration found in current directory.\n{suggestion}")]
+    NoProjectConfig { suggestion: String },
+
+    #[error("No default task found in Razdfile.yml.\nPlease add a 'default' task or specify a task name: razd task <name>")]
+    NoDefaultTask,
+
+    #[error("Interactive setup cancelled by user")]
+    SetupCancelled,
+
+    #[error("Project type '{project_type}' not recognized. Using generic template.")]
+    UnknownProjectType { project_type: String },
 }
 
 impl RazdError {
@@ -59,6 +71,26 @@ impl RazdError {
 
     pub fn command<S: Into<String>>(msg: S) -> Self {
         Self::Command(msg.into())
+    }
+
+    pub fn no_project_config<S: Into<String>>(suggestion: S) -> Self {
+        Self::NoProjectConfig {
+            suggestion: suggestion.into(),
+        }
+    }
+
+    pub fn no_default_task() -> Self {
+        Self::NoDefaultTask
+    }
+
+    pub fn setup_cancelled() -> Self {
+        Self::SetupCancelled
+    }
+
+    pub fn unknown_project_type<S: Into<String>>(project_type: S) -> Self {
+        Self::UnknownProjectType {
+            project_type: project_type.into(),
+        }
     }
 }
 

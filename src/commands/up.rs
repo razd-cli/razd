@@ -3,6 +3,8 @@ use crate::core::{output, RazdError, Result};
 use crate::integrations::{git, mise, taskfile};
 use std::env;
 use std::path::Path;
+use std::io::{self, Write};
+use std::fs;
 
 /// Execute the `razd up` command: clone repository + run up workflow, or set up local project
 pub async fn execute(url: Option<&str>, name: Option<&str>) -> Result<()> {
@@ -43,50 +45,61 @@ async fn execute_with_clone(url: &str, name: Option<&str>) -> Result<()> {
 async fn execute_local_project() -> Result<()> {
     output::info("Setting up local project...");
 
-    // Step 1: Validate we're in a project directory
     let current_dir = env::current_dir()?;
-    validate_project_directory(&current_dir)?;
-
     output::info(&format!("Working in directory: {}", current_dir.display()));
 
-    // Step 2: Execute up workflow
-    execute_up_workflow().await?;
-
-    // Step 3: Show success message
-    show_success_message()?;
+    // Check if project has configuration
+    if has_project_configuration(&current_dir) {
+        // Step 1: Execute up workflow
+        execute_up_workflow().await?;
+        
+        // Step 2: Show success message
+        show_success_message()?;
+    } else {
+        // Step 1: Offer to create configuration interactively
+        output::info("No project configuration found.");
+        
+        if prompt_yes_no("Would you like to create a Razdfile.yml?", false)? {
+            create_interactive_razdfile(&current_dir).await?;
+            output::info("Razdfile.yml created successfully!");
+            
+            // Run the workflow we just created
+            execute_up_workflow().await?;
+            show_success_message()?;
+        } else {
+            output::info("Hint: Run 'razd up <url>' to clone a repository, or manually create a Razdfile.yml");
+            show_razdfile_example();
+            
+            return Err(RazdError::no_project_config(
+                "Create a Razdfile.yml manually or run 'razd up <url>' to clone a repository with configuration."
+            ));
+        }
+    }
 
     Ok(())
+}
+
+/// Check if directory has project configuration
+fn has_project_configuration(dir: &Path) -> bool {
+    let has_razdfile = dir.join("Razdfile.yml").exists();
+    let has_taskfile = dir.join("Taskfile.yml").exists();
+    let has_mise = dir.join("mise.toml").exists() || dir.join(".mise.toml").exists();
+    
+    has_razdfile || has_taskfile || has_mise
 }
 
 /// Execute up workflow (with fallback chain)
 async fn execute_up_workflow() -> Result<()> {
-    if let Some(workflow_content) = get_workflow_config("up")? {
+    if let Some(workflow_content) = get_workflow_config("default")? {
         output::step("Executing up workflow...");
-        taskfile::execute_workflow_task_interactive("up", &workflow_content).await?;
+        taskfile::execute_workflow_task_interactive("default", &workflow_content).await?;
     } else {
         // Fallback to legacy behavior if no workflow is found
-        output::warning("No up workflow found, falling back to legacy setup");
+        output::warning("No default task found, falling back to legacy setup");
         let current_dir = env::current_dir()?;
         mise::install_tools(&current_dir).await?;
         taskfile::setup_project(&current_dir).await?;
     }
-    Ok(())
-}
-
-/// Validate that the current directory contains a project
-fn validate_project_directory(dir: &Path) -> Result<()> {
-    // Check for at least one project indicator file
-    let has_razdfile = dir.join("Razdfile.yml").exists();
-    let has_taskfile = dir.join("Taskfile.yml").exists();
-    let has_mise = dir.join("mise.toml").exists() || dir.join(".mise.toml").exists();
-
-    if !has_razdfile && !has_taskfile && !has_mise {
-        return Err(RazdError::command(
-            "No project detected in current directory. Expected one of: Razdfile.yml, Taskfile.yml, or mise.toml\n\
-             Hint: Run 'razd up <url>' to clone a repository, or 'razd init' to initialize a new project."
-        ));
-    }
-
     Ok(())
 }
 
@@ -100,6 +113,240 @@ fn show_success_message() -> Result<()> {
     Ok(())
 }
 
+/// Prompt user for yes/no answer
+fn prompt_yes_no(message: &str, default: bool) -> Result<bool> {
+    let default_str = if default { "Y/n" } else { "y/N" };
+    output::info(&format!("{} [{}] ", message, default_str));
+    
+    io::stdout().flush().map_err(|e| RazdError::command(&format!("Failed to flush stdout: {}", e)))?;
+    
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)
+        .map_err(|e| RazdError::command(&format!("Failed to read input: {}", e)))?;
+    
+    let input = input.trim().to_lowercase();
+    
+    match input.as_str() {
+        "y" | "yes" => Ok(true),
+        "n" | "no" => Ok(false),
+        "" => Ok(default),
+        _ => {
+            output::info("Please answer 'y' or 'n'");
+            prompt_yes_no(message, default)
+        }
+    }
+}
+
+/// Create interactive Razdfile.yml
+async fn create_interactive_razdfile(dir: &Path) -> Result<()> {
+    output::info("Creating Razdfile.yml...");
+    
+    // Detect project type
+    let project_type = detect_project_type(dir);
+    output::info(&format!("Detected project type: {}", project_type));
+    
+    // Get template based on project type
+    let template = get_razdfile_template(&project_type);
+    
+    // Write file
+    let razdfile_path = dir.join("Razdfile.yml");
+    fs::write(&razdfile_path, template)
+        .map_err(|e| RazdError::command(&format!("Failed to write Razdfile.yml: {}", e)))?;
+    
+    output::info(&format!("Created: {}", razdfile_path.display()));
+    
+    Ok(())
+}
+
+/// Detect project type based on files in directory
+fn detect_project_type(dir: &Path) -> String {
+    if dir.join("package.json").exists() {
+        "Node.js".to_string()
+    } else if dir.join("Cargo.toml").exists() {
+        "Rust".to_string()
+    } else if dir.join("requirements.txt").exists() || dir.join("pyproject.toml").exists() {
+        "Python".to_string()
+    } else if dir.join("go.mod").exists() {
+        "Go".to_string()
+    } else {
+        "Generic".to_string()
+    }
+}
+
+/// Get Razdfile.yml template for project type
+fn get_razdfile_template(project_type: &str) -> String {
+    match project_type {
+        "Node.js" => {
+            r#"version: '3'
+
+tasks:
+  default:
+    desc: "Set up and start Node.js project"
+    cmds:
+      - mise install
+      - npm install
+      - npm run dev
+
+  install:
+    desc: "Install dependencies"
+    cmds:
+      - mise install
+      - npm install
+
+  dev:
+    desc: "Start development server"
+    cmds:
+      - npm run dev
+
+  build:
+    desc: "Build project"
+    cmds:
+      - npm run build
+
+  test:
+    desc: "Run tests"
+    cmds:
+      - npm test
+"#.to_string()
+        }
+        "Rust" => {
+            r#"version: '3'
+
+tasks:
+  default:
+    desc: "Set up and build Rust project"
+    cmds:
+      - mise install
+      - cargo build
+
+  install:
+    desc: "Install tools"
+    cmds:
+      - mise install
+
+  dev:
+    desc: "Run in development mode"
+    cmds:
+      - cargo run
+
+  build:
+    desc: "Build project"
+    cmds:
+      - cargo build --release
+
+  test:
+    desc: "Run tests"
+    cmds:
+      - cargo test
+"#.to_string()
+        }
+        "Python" => {
+            r#"version: '3'
+
+tasks:
+  default:
+    desc: "Set up and start Python project"
+    cmds:
+      - mise install
+      - pip install -r requirements.txt
+      - python main.py
+
+  install:
+    desc: "Install dependencies"
+    cmds:
+      - mise install
+      - pip install -r requirements.txt
+
+  dev:
+    desc: "Start development server"
+    cmds:
+      - python main.py
+
+  test:
+    desc: "Run tests"
+    cmds:
+      - python -m pytest
+"#.to_string()
+        }
+        "Go" => {
+            r#"version: '3'
+
+tasks:
+  default:
+    desc: "Set up and run Go project"
+    cmds:
+      - mise install
+      - go mod download
+      - go run .
+
+  install:
+    desc: "Install dependencies"
+    cmds:
+      - mise install
+      - go mod download
+
+  dev:
+    desc: "Run in development mode"
+    cmds:
+      - go run .
+
+  build:
+    desc: "Build project"
+    cmds:
+      - go build
+
+  test:
+    desc: "Run tests"
+    cmds:
+      - go test ./...
+"#.to_string()
+        }
+        _ => {
+            r#"version: '3'
+
+tasks:
+  default:
+    desc: "Set up project"
+    cmds:
+      - mise install
+      - echo "Project setup completed!"
+
+  install:
+    desc: "Install tools and dependencies"
+    cmds:
+      - mise install
+
+  dev:
+    desc: "Start development"
+    cmds:
+      - echo "Starting development..."
+
+  build:
+    desc: "Build project"
+    cmds:
+      - echo "Building project..."
+
+  test:
+    desc: "Run tests"
+    cmds:
+      - echo "Running tests..."
+"#.to_string()
+        }
+    }
+}
+
+/// Show example Razdfile.yml
+fn show_razdfile_example() {
+    output::info("Example Razdfile.yml:");
+    output::info("  version: '3'");
+    output::info("  tasks:");
+    output::info("    default:");
+    output::info("      desc: \"Set up and start project\"");
+    output::info("      cmds:");
+    output::info("        - mise install");
+    output::info("        - echo \"Project ready!\"");
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -107,73 +354,58 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
-    fn test_validate_project_directory_with_razdfile() {
+    fn test_has_project_configuration_with_razdfile() {
         let temp_dir = TempDir::new().unwrap();
         fs::write(temp_dir.path().join("Razdfile.yml"), "").unwrap();
 
-        let result = validate_project_directory(temp_dir.path());
-        assert!(result.is_ok());
+        assert!(has_project_configuration(temp_dir.path()));
     }
 
     #[test]
-    fn test_validate_project_directory_with_taskfile() {
+    fn test_has_project_configuration_with_taskfile() {
         let temp_dir = TempDir::new().unwrap();
         fs::write(temp_dir.path().join("Taskfile.yml"), "").unwrap();
 
-        let result = validate_project_directory(temp_dir.path());
-        assert!(result.is_ok());
+        assert!(has_project_configuration(temp_dir.path()));
     }
 
     #[test]
-    fn test_validate_project_directory_with_mise_toml() {
+    fn test_has_project_configuration_with_mise_toml() {
         let temp_dir = TempDir::new().unwrap();
         fs::write(temp_dir.path().join("mise.toml"), "").unwrap();
 
-        let result = validate_project_directory(temp_dir.path());
-        assert!(result.is_ok());
+        assert!(has_project_configuration(temp_dir.path()));
     }
 
     #[test]
-    fn test_validate_project_directory_with_dot_mise_toml() {
+    fn test_has_project_configuration_with_dot_mise_toml() {
         let temp_dir = TempDir::new().unwrap();
         fs::write(temp_dir.path().join(".mise.toml"), "").unwrap();
 
-        let result = validate_project_directory(temp_dir.path());
-        assert!(result.is_ok());
+        assert!(has_project_configuration(temp_dir.path()));
     }
 
     #[test]
-    fn test_validate_project_directory_with_multiple_files() {
+    fn test_has_project_configuration_with_multiple_files() {
         let temp_dir = TempDir::new().unwrap();
+        fs::write(temp_dir.path().join("Razdfile.yml"), "").unwrap();
         fs::write(temp_dir.path().join("Taskfile.yml"), "").unwrap();
-        fs::write(temp_dir.path().join("mise.toml"), "").unwrap();
 
-        let result = validate_project_directory(temp_dir.path());
-        assert!(result.is_ok());
+        assert!(has_project_configuration(temp_dir.path()));
     }
 
     #[test]
-    fn test_validate_project_directory_empty() {
+    fn test_has_project_configuration_empty() {
         let temp_dir = TempDir::new().unwrap();
 
-        let result = validate_project_directory(temp_dir.path());
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("No project detected"));
+        assert!(!has_project_configuration(temp_dir.path()));
     }
 
     #[test]
-    fn test_validate_project_directory_only_git() {
+    fn test_has_project_configuration_only_git() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir(temp_dir.path().join(".git")).unwrap();
 
-        let result = validate_project_directory(temp_dir.path());
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("No project detected"));
+        assert!(!has_project_configuration(temp_dir.path()));
     }
 }

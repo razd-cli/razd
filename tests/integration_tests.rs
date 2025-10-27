@@ -48,9 +48,9 @@ fn test_up_command_without_url_in_empty_directory() {
 
     cmd.assert()
         .failure()
-        .stderr(predicate::str::contains("No project detected"))
+        .stderr(predicate::str::contains("No project configuration found"))
         .stderr(predicate::str::contains(
-            "Razdfile.yml, Taskfile.yml, or mise.toml",
+            "Create a Razdfile.yml manually or run 'razd up <url>'",
         ));
 }
 
