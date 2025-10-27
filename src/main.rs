@@ -12,9 +12,15 @@ use colored::*;
     name = "razd",
     version,
     about = "Streamlined project setup with git, mise, and taskfile integration",
-    long_about = "razd (раздуплиться - to get things sorted) simplifies project setup by combining git clone, mise install, and task setup into single commands."
+    long_about = "razd (раздуплиться - to get things sorted) simplifies project setup by combining git clone, mise install, and task setup into single commands.",
+    arg_required_else_help = true,
+    disable_version_flag = true
 )]
 struct Cli {
+    /// Show version information
+    #[arg(short = 'v', long = "version", action = clap::ArgAction::Version)]
+    version: bool,
+    
     #[command(subcommand)]
     command: Commands,
 }
