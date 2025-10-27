@@ -94,11 +94,8 @@ razd up                                         # Setup current directory (no cl
 ### Individual Commands
 ```sh
 # Install development tools via mise
-razd install                        
-
-# Install project dependencies via task setup
-razd setup 
-
+razd install       
+                 
 # Execute tasks from Taskfile.yml
 razd task <name> [args...]          # Execute specific task
 razd task                           # Start development server (default task)
