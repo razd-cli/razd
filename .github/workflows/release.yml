@@ -133,7 +133,7 @@ jobs:
         certUtil -hashfile razd-v${{ needs.create-release.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }} SHA256 > razd-v${{ needs.create-release.outputs.version }}-${{ matrix.target }}.${{ matrix.archive }}.sha256
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: razd-${{ matrix.target }}
         path: |
