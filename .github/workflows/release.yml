@@ -167,7 +167,7 @@ jobs:
         echo "3. Upload the binary files"
 
     - name: Create Release (if token available)
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       continue-on-error: true
       with:
         body: |
