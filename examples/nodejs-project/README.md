@@ -11,13 +11,11 @@ The `Razdfile.yml` includes mise configuration for managing development tools:
 ```yaml
 mise:
   tools:
-    node:
-      version: "22"
-      postinstall: "corepack enable"  # Enables corepack after Node.js installation
-    python: "3.11"
-    rust: "latest"
+    node: "22"
+
   plugins:
     node: "https://github.com/asdf-vm/asdf-nodejs.git"
+
 ```
 
 **Benefits:**
@@ -64,9 +62,7 @@ When razd processes this Razdfile, it generates:
 
 ```toml
 [tools]
-python = "3.11"
-node = { version = "22", postinstall = "corepack enable" }
-rust = "latest"
+node = "22"
 
 [plugins]
 node = "https://github.com/asdf-vm/asdf-nodejs.git"
