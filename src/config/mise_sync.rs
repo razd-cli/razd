@@ -93,20 +93,21 @@ impl MiseSyncManager {
         let mise_config = match &razdfile.mise {
             Some(config) => config,
             None => {
-                // No mise config in Razdfile, should we remove mise.toml?
-                if mise_toml_path.exists() && !self.config.auto_approve {
-                    println!("⚠️  Razdfile.yml has no mise config, but mise.toml exists.");
-                    println!("   Keep existing mise.toml? [Y/n]");
-                    
-                    if !self.prompt_user_approval()? {
-                        if self.config.create_backups {
-                            self.create_backup(&mise_toml_path)?;
+                // No mise config in Razdfile, but mise.toml exists
+                if mise_toml_path.exists() {
+                    if !self.config.auto_approve {
+                        println!("⚠️  Razdfile.yml has no mise config, but mise.toml exists.");
+                        println!("   Sync mise.toml → Razdfile.yml? [Y/n]");
+                        
+                        if !self.prompt_user_approval()? {
+                            return Ok(SyncResult::Skipped);
                         }
-                        fs::remove_file(&mise_toml_path)?;
-                        println!("✓ Removed mise.toml");
                     }
+                    // Sync mise.toml to Razdfile instead
+                    return self.sync_mise_to_razdfile();
                 }
-                return Ok(SyncResult::RazdfileToMise);
+                // No mise config anywhere, nothing to sync
+                return Ok(SyncResult::NoChangesNeeded);
             }
         };
 

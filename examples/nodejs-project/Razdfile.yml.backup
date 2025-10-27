@@ -1,26 +1,6 @@
 version: '3'
 tasks:
-  build:
-    desc: Build project
-    cmds:
-    - npm run build
-    internal: false
-  install:
-    desc: Install dependencies
-    cmds:
-    - mise install
-    - npm install
-    internal: false
-  test:
-    desc: Run tests
-    cmds:
-    - npm test
-    internal: false
-  dev:
-    desc: Start development server
-    cmds:
-    - npm run dev
-    internal: false
+
   default:
     desc: Set up and start Node.js project
     cmds:
@@ -28,9 +8,30 @@ tasks:
     - npm install
     - npm run dev
     internal: false
-mise:
-  tools:
-    node: '22'
-    task: latest
-  plugins:
-    node: https://github.com/asdf-vm/asdf-nodejs.git
+
+  install:
+    desc: Install dependencies
+    cmds:
+    - mise install
+    - npm install
+    internal: false
+
+  build:
+    desc: Build project
+    cmds:
+    - npm run build
+    internal: false
+
+  
+
+  test:
+    desc: Run tests
+    cmds:
+    - npm test
+    internal: false
+
+  dev:
+    desc: Start development server
+    cmds:
+    - npm run dev
+    internal: false
