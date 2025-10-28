@@ -32,7 +32,7 @@ anyhow = "1.0"
 thiserror = "1.0"
 
 # Colored output
-colored = "2.0"
+colored = "3.0"
 
 # Configuration parsing
 serde = { version = "1.0", features = ["derive"] }
