@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4] - 2025-10-28
+
+### Added
+- **Interactive backup prompts**: Ask user before creating backups during mise sync operations
+- User confirmation for backup when modifying Razdfile.yml or mise.toml
+- Better user control over backup file creation
+
+### Changed
+- Backup creation now requires user confirmation in interactive mode (Y/n)
+- Auto-approve mode still creates backups automatically without prompts
+
 ## [0.2.3] - 2025-10-28
 
 ### Added
