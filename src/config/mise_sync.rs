@@ -114,9 +114,19 @@ impl MiseSyncManager {
         // Generate mise.toml content
         let toml_content = generate_mise_toml(mise_config)?;
 
-        // Create backup if enabled
-        if self.config.create_backups && mise_toml_path.exists() {
-            self.create_backup(&mise_toml_path)?;
+        // Ask user about backup if file exists
+        if mise_toml_path.exists() {
+            if self.config.create_backups {
+                if !self.config.auto_approve {
+                    println!("⚠️  mise.toml will be overwritten. Create backup? [Y/n]");
+                    if self.prompt_user_approval()? {
+                        self.create_backup(&mise_toml_path)?;
+                    }
+                } else {
+                    // Auto-approve: create backup without prompt
+                    self.create_backup(&mise_toml_path)?;
+                }
+            }
         }
 
         // Write mise.toml
@@ -164,9 +174,19 @@ impl MiseSyncManager {
         // Update mise config
         razdfile.mise = Some(mise_config);
 
-        // Create backup if enabled
-        if self.config.create_backups && razdfile_path.exists() {
-            self.create_backup(&razdfile_path)?;
+        // Ask user about backup if file exists
+        if razdfile_path.exists() {
+            if self.config.create_backups {
+                if !self.config.auto_approve {
+                    println!("⚠️  Razdfile.yml will be modified. Create backup? [Y/n]");
+                    if self.prompt_user_approval()? {
+                        self.create_backup(&razdfile_path)?;
+                    }
+                } else {
+                    // Auto-approve: create backup without prompt
+                    self.create_backup(&razdfile_path)?;
+                }
+            }
         }
 
         // Write Razdfile

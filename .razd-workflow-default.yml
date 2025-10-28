@@ -1,0 +1,27 @@
+version: '3'
+
+tasks:
+  default:
+    desc: "Set up project and start development"
+    cmds:
+      - echo "🚀 Setting up project..."
+      - mise install
+      - task setup --taskfile Taskfile.yml
+      
+  install:
+    desc: "Install development tools via mise"
+    cmds:
+      - echo "📦 Installing tools..."
+      - mise install
+      
+  dev:
+    desc: "Start development workflow"
+    cmds:
+      - echo "🚀 Starting development..."
+      - task default --taskfile Taskfile.yml
+      
+  build:
+    desc: "Build project"
+    cmds:
+      - echo "🔨 Building project..."
+      - task build --taskfile Taskfile.yml
