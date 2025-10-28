@@ -380,15 +380,15 @@ impl MiseSyncManager {
                     formatted.push(String::new());
                 }
                 
-                // Add blank line between task definitions (after "internal: false/true")
-                if line.trim().starts_with("internal:") && next_line.starts_with("  ") && !next_line.trim().is_empty() {
-                    formatted.push(String::new());
-                }
+                // // Add blank line between task definitions (after "internal: false/true")
+                // if line.trim().starts_with("internal:") && next_line.starts_with("  ") && !next_line.trim().is_empty() {
+                //     formatted.push(String::new());
+                // }
                 
-                // Add blank line before "mise:" section (after last task's internal field)
-                if line.trim().starts_with("internal:") && next_is_top_level {
-                    formatted.push(String::new());
-                }
+                // // Add blank line before "mise:" section (after last task's internal field)
+                // if line.trim().starts_with("internal:") && next_is_top_level {
+                //     formatted.push(String::new());
+                // }
             }
         }
         
