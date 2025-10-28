@@ -7,14 +7,52 @@ use std::io::{self, Write};
 use std::fs;
 
 /// Execute the `razd up` command: clone repository + run up workflow, or set up local project
-pub async fn execute(url: Option<&str>, name: Option<&str>) -> Result<()> {
-    if let Some(url_str) = url {
+pub async fn execute(url: Option<&str>, name: Option<&str>, init: bool) -> Result<()> {
+    if init {
+        // Init mode: create new Razdfile.yml
+        execute_init().await
+    } else if let Some(url_str) = url {
         // Clone mode: existing behavior
         execute_with_clone(url_str, name).await
     } else {
         // Local mode: new behavior
         execute_local_project().await
     }
+}
+
+/// Initialize new Razdfile.yml with project template
+async fn execute_init() -> Result<()> {
+    let current_dir = env::current_dir()?;
+    let razdfile_path = current_dir.join("Razdfile.yml");
+
+    // Check if Razdfile already exists
+    if razdfile_path.exists() {
+        return Err(RazdError::config(
+            "Razdfile.yml already exists. Remove it first if you want to reinitialize."
+        ));
+    }
+
+    output::info("Initializing new Razdfile.yml...");
+    output::info(&format!("Working in directory: {}", current_dir.display()));
+
+    // Detect project type
+    let project_type = detect_project_type(&current_dir);
+    output::info(&format!("Detected project type: {}", project_type));
+
+    // Generate Razdfile content
+    let razdfile_content = get_razdfile_template(&project_type);
+
+    // Write Razdfile.yml
+    fs::write(&razdfile_path, razdfile_content)
+        .map_err(|e| RazdError::config(format!("Failed to create Razdfile.yml: {}", e)))?;
+
+    output::success("✓ Razdfile.yml created successfully!");
+    output::info("\nNext steps:");
+    output::info("  1. Review and customize Razdfile.yml");
+    output::info("  2. Run 'razd up' or 'razd' to execute the setup");
+    output::info("  3. Use 'razd dev', 'razd build', etc. for other tasks");
+
+    Ok(())
 }
 
 /// Clone repository and set up project

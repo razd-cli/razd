@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2025-10-28
+
+### Added
+- **`razd up --init` command**: Initialize new Razdfile.yml with project-specific template
+- Automatic project type detection (Node.js, Rust, Python, Go, Generic)
+- Template generation based on detected project type with appropriate tasks and commands
+
+### Changed
+- Improved user experience for project initialization
+- Added helpful next steps after Razdfile.yml creation
+
 ## [0.2.2] - 2025-10-28
 
 ### Fixed

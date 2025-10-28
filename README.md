@@ -90,6 +90,7 @@ razd --version
 # Smart project setup - automatically detects context
 razd                                            # Default to 'razd up' behavior
 razd up                                         # Setup current directory (local mode)
+razd up --init                                  # Initialize new Razdfile.yml with project template
 razd up https://github.com/hello/world.git      # Clone and setup from URL
 razd up https://github.com/hello/world.git -n my-project  # Custom directory name
 ```

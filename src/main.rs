@@ -32,6 +32,9 @@ enum Commands {
         /// Directory name (defaults to repository name)
         #[arg(short, long)]
         name: Option<String>,
+        /// Initialize new Razdfile.yml with project template
+        #[arg(long)]
+        init: bool,
     },
     /// Install development tools via mise
     Install,
@@ -73,8 +76,8 @@ async fn run(cli: Cli) -> core::Result<()> {
     std::env::set_var("RAZD_NO_SYNC", if cli.no_sync { "1" } else { "0" });
 
     match cli.command {
-        Some(Commands::Up { url, name }) => {
-            commands::up::execute(url.as_deref(), name.as_deref()).await?;
+        Some(Commands::Up { url, name, init }) => {
+            commands::up::execute(url.as_deref(), name.as_deref(), init).await?;
         }
         Some(Commands::Install) => {
             commands::install::execute().await?;
@@ -93,7 +96,7 @@ async fn run(cli: Cli) -> core::Result<()> {
         }
         None => {
             // If no subcommand provided, run 'razd up' (local project setup)
-            commands::up::execute(None, None).await?;
+            commands::up::execute(None, None, false).await?;
         }
     }
 
