@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.5] - 2025-10-29
+
+### Changed
+- **Improved Razdfile.yml structure**: `mise:` section now always appears before `tasks:` section
+- **Task ordering**: Tasks are now sorted in a logical order: `default`, `install`, `dev`, `build`, then alphabetically
+- Better consistency in YAML serialization using IndexMap for ordered fields
+- Enhanced synchronization to preserve preferred task order
+
+### Added
+- `indexmap` dependency with serde support for ordered configuration maps
+
 ## [0.2.4] - 2025-10-28
 
 ### Added

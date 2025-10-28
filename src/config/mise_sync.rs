@@ -2,6 +2,7 @@ use crate::config::file_tracker::{self, ChangeDetection};
 use crate::config::mise_generator::generate_mise_toml;
 use crate::config::razdfile::RazdfileConfig;
 use crate::core::{RazdError, Result};
+use indexmap::IndexMap;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -166,13 +167,16 @@ impl MiseSyncManager {
             // Create minimal Razdfile
             RazdfileConfig {
                 version: "3".to_string(),
-                tasks: std::collections::HashMap::new(),
                 mise: None,
+                tasks: IndexMap::new(),
             }
         };
 
         // Update mise config
         razdfile.mise = Some(mise_config);
+
+        // Sort tasks in preferred order
+        razdfile.tasks = Self::sort_tasks(razdfile.tasks);
 
         // Ask user about backup if file exists
         if razdfile_path.exists() {
@@ -257,13 +261,12 @@ impl MiseSyncManager {
     /// Parse mise.toml into MiseConfig structure
     fn parse_mise_toml(&self, toml_content: &str) -> Result<crate::config::razdfile::MiseConfig> {
         use crate::config::razdfile::{MiseConfig, ToolConfig};
-        use std::collections::HashMap;
 
         let doc: toml::Value = toml::from_str(toml_content)
             .map_err(|e| RazdError::config(format!("Invalid mise.toml: {}", e)))?;
 
-        let mut tools = HashMap::new();
-        let mut plugins = HashMap::new();
+        let mut tools = IndexMap::new();
+        let mut plugins = IndexMap::new();
 
         // Parse [tools] section
         if let Some(tools_table) = doc.get("tools").and_then(|v| v.as_table()) {
@@ -391,20 +394,44 @@ impl MiseSyncManager {
         
         formatted.join("\n")
     }
+
+    /// Sort tasks in preferred order: default, install, dev, build, then rest alphabetically
+    fn sort_tasks(tasks: IndexMap<String, crate::config::razdfile::TaskConfig>) -> IndexMap<String, crate::config::razdfile::TaskConfig> {
+        let preferred_order = vec!["default", "install", "dev", "build"];
+        let mut sorted = IndexMap::new();
+        
+        // First, add tasks in preferred order
+        for task_name in &preferred_order {
+            if let Some(task_config) = tasks.get(*task_name) {
+                sorted.insert(task_name.to_string(), task_config.clone());
+            }
+        }
+        
+        // Then add remaining tasks alphabetically
+        let mut remaining: Vec<_> = tasks.iter()
+            .filter(|(name, _)| !preferred_order.contains(&name.as_str()))
+            .collect();
+        remaining.sort_by(|(a, _), (b, _)| a.cmp(b));
+        
+        for (name, config) in remaining {
+            sorted.insert(name.clone(), config.clone());
+        }
+        
+        sorted
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
     use tempfile::TempDir;
 
     fn create_test_razdfile(dir: &Path) -> Result<()> {
-        let mut tools = HashMap::new();
+        let mut tools = IndexMap::new();
         tools.insert("node".to_string(), crate::config::razdfile::ToolConfig::Simple("22".to_string()));
         tools.insert("python".to_string(), crate::config::razdfile::ToolConfig::Simple("3.11".to_string()));
 
-        let mut plugins = HashMap::new();
+        let mut plugins = IndexMap::new();
         plugins.insert("node".to_string(), "https://github.com/asdf-vm/asdf-nodejs.git".to_string());
 
         let mise_config = crate::config::razdfile::MiseConfig {
@@ -414,8 +441,8 @@ mod tests {
         
         let razdfile = crate::config::razdfile::RazdfileConfig {
             version: "3".to_string(),
-            tasks: HashMap::new(),
             mise: Some(mise_config),
+            tasks: IndexMap::new(),
         };
 
         let yaml = serde_yaml::to_string(&razdfile).unwrap();

@@ -2,6 +2,11 @@ use crate::config::razdfile::{MiseConfig, ToolConfig};
 use crate::core::Result;
 use toml_edit::{value, Array, DocumentMut, InlineTable, Item, Table, Value};
 
+#[cfg(test)]
+use indexmap::IndexMap;
+#[cfg(test)]
+use std::collections::HashMap;
+
 /// Generate mise.toml content from MiseConfig
 pub fn generate_mise_toml(mise_config: &MiseConfig) -> Result<String> {
     let mut toml_doc = DocumentMut::new();
@@ -73,11 +78,10 @@ pub fn generate_mise_toml(mise_config: &MiseConfig) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
 
     #[test]
     fn test_generate_simple_tools() {
-        let mut tools = HashMap::new();
+        let mut tools = IndexMap::new();
         tools.insert("node".to_string(), ToolConfig::Simple("22".to_string()));
         tools.insert("python".to_string(), ToolConfig::Simple("3.11".to_string()));
 
@@ -95,7 +99,7 @@ mod tests {
 
     #[test]
     fn test_generate_complex_tools() {
-        let mut tools = HashMap::new();
+        let mut tools = IndexMap::new();
         tools.insert(
             "node".to_string(),
             ToolConfig::Complex {
@@ -126,7 +130,7 @@ mod tests {
         install_env.insert("CGO_ENABLED".to_string(), "1".to_string());
         install_env.insert("GOARCH".to_string(), "amd64".to_string());
 
-        let mut tools = HashMap::new();
+        let mut tools = IndexMap::new();
         tools.insert(
             "go".to_string(),
             ToolConfig::Complex {
@@ -154,7 +158,7 @@ mod tests {
 
     #[test]
     fn test_generate_plugins() {
-        let mut plugins = HashMap::new();
+        let mut plugins = IndexMap::new();
         plugins.insert(
             "elixir".to_string(),
             "https://github.com/my-org/mise-elixir.git".to_string(),
@@ -178,10 +182,10 @@ mod tests {
 
     #[test]
     fn test_generate_both_tools_and_plugins() {
-        let mut tools = HashMap::new();
+        let mut tools = IndexMap::new();
         tools.insert("node".to_string(), ToolConfig::Simple("22".to_string()));
 
-        let mut plugins = HashMap::new();
+        let mut plugins = IndexMap::new();
         plugins.insert(
             "elixir".to_string(),
             "https://github.com/my-org/mise-elixir.git".to_string(),
@@ -216,8 +220,8 @@ mod tests {
     #[test]
     fn test_generate_empty_maps() {
         let mise_config = MiseConfig {
-            tools: Some(HashMap::new()),
-            plugins: Some(HashMap::new()),
+            tools: Some(IndexMap::new()),
+            plugins: Some(IndexMap::new()),
         };
 
         let toml = generate_mise_toml(&mise_config).unwrap();

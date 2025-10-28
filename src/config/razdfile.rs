@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use indexmap::IndexMap;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -24,9 +25,10 @@ pub enum Command {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RazdfileConfig {
     pub version: String,
-    pub tasks: HashMap<String, TaskConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mise: Option<MiseConfig>,
+    #[serde(default)]
+    pub tasks: IndexMap<String, TaskConfig>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,9 +43,9 @@ pub struct TaskConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MiseConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tools: Option<HashMap<String, ToolConfig>>,
+    pub tools: Option<IndexMap<String, ToolConfig>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub plugins: Option<HashMap<String, String>>,
+    pub plugins: Option<IndexMap<String, String>>,
 }
 
 /// Tool configuration supporting both simple versions and complex options

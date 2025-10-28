@@ -20,8 +20,9 @@ fn test_parse_nodejs_example_with_mise() {
     assert!(mise.tools.is_some(), "Tools should be present");
     let tools = mise.tools.unwrap();
     
-    assert_eq!(tools.len(), 1, "Should have 1 tool (node only)");
+    assert_eq!(tools.len(), 2, "Should have 2 tools (node and task)");
     assert!(tools.contains_key("node"), "Should have node tool");
+    assert!(tools.contains_key("task"), "Should have task tool");
 
     // Verify plugins
     assert!(mise.plugins.is_some(), "Plugins should be present");
