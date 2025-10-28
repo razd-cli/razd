@@ -8,8 +8,10 @@ use std::time::SystemTime;
 /// File tracking state for mise configuration sync
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileTrackingState {
-    pub razdfile_modified: SystemTime,
-    pub mise_toml_modified: SystemTime,
+    /// Hash of the mise section content from Razdfile.yml
+    pub razdfile_mise_hash: String,
+    /// Hash of the mise.toml content
+    pub mise_toml_hash: String,
     pub last_sync_time: SystemTime,
 }
 
