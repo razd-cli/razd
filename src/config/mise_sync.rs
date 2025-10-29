@@ -119,8 +119,8 @@ impl MiseSyncManager {
         if mise_toml_path.exists() {
             if self.config.create_backups {
                 if !self.config.auto_approve {
-                    println!("⚠️  mise.toml will be overwritten. Create backup? [Y/n]");
-                    if self.prompt_user_approval()? {
+                    println!("⚠️  mise.toml will be overwritten. Overwrite WITHOUT backup? [Y/n]");
+                    if !self.prompt_user_approval()? {
                         self.create_backup(&mise_toml_path)?;
                     }
                 } else {
@@ -182,8 +182,8 @@ impl MiseSyncManager {
         if razdfile_path.exists() {
             if self.config.create_backups {
                 if !self.config.auto_approve {
-                    println!("⚠️  Razdfile.yml will be modified. Create backup? [Y/n]");
-                    if self.prompt_user_approval()? {
+                    println!("⚠️  Razdfile.yml will be modified. Modify WITHOUT backup? [Y/n]");
+                    if !self.prompt_user_approval()? {
                         self.create_backup(&razdfile_path)?;
                     }
                 } else {

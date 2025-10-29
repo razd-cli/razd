@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-10-29
+
+### Changed
+- **BREAKING**: Backup prompts now ask to opt-out instead of opt-in for safer defaults
+  - Old prompt: "Create backup? [Y/n]" (Y creates backup, n/Enter skips)
+  - New prompt: "Modify WITHOUT backup? [Y/n]" (Y skips backup, n/Enter creates backup)
+  - Pressing Enter or 'n' now creates a backup (safe default)
+  - Typing 'Y' explicitly opts out of backup creation
+  - Rationale: Makes backup creation the path of least resistance, improving data safety
+
+### Migration Notes
+- Users familiar with the old prompts should note the inverted behavior
+- The new prompt wording clearly states what 'Y' does ("WITHOUT backup")
+- Auto-approve mode continues to create backups by default
+
 ## [0.2.7] - 2025-10-29
 
 ### Changed
