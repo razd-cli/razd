@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.6] - 2025-10-29
+
+### Added
+- **Semantic change detection**: Mise sync now ignores formatting-only changes (whitespace, blank lines, comments, key order)
+- Only semantic content changes (tool versions, task definitions, plugin URLs) trigger synchronization
+- Canonical form serialization for both Razdfile.yml and mise.toml before comparison
+- `format_version` field in tracking state for future migration support
+
+### Changed
+- File tracking system now uses semantic hashes instead of modification timestamps
+- Formatting changes in YAML/TOML files no longer prompt for unnecessary syncs
+- More intelligent change detection reduces false positives
+
+### Fixed
+- Formatting tools (Prettier, YAML formatters) no longer disrupt mise sync workflow
+- Manual whitespace adjustments don't trigger sync prompts
+
 ## [0.2.5] - 2025-10-29
 
 ### Changed

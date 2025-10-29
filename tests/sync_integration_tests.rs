@@ -1,7 +1,6 @@
 use razd::config::{RazdfileConfig, check_and_sync_mise};
 use razd::config::mise_sync::{MiseSyncManager, SyncConfig, SyncResult};
 use std::fs;
-use std::path::Path;
 use tempfile::TempDir;
 
 /// Test full workflow: create Razdfile with mise config, generate mise.toml

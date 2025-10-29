@@ -1,3 +1,4 @@
+use crate::config::canonical::{compute_razdfile_semantic_hash, compute_mise_toml_semantic_hash};
 use crate::core::{RazdError, Result};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -8,10 +9,18 @@ use std::time::SystemTime;
 /// File tracking state for mise configuration sync
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileTrackingState {
-    /// Hash of the mise section content from Razdfile.yml
-    pub razdfile_mise_hash: String,
-    /// Hash of the mise.toml content
-    pub mise_toml_hash: String,
+    /// Semantic hash of Razdfile.yml content
+    pub razdfile_hash: Option<String>,
+    /// Semantic hash of mise.toml content
+    pub mise_toml_hash: Option<String>,
+    /// Format version for tracking state (for future migrations)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub format_version: Option<String>,
+    /// Legacy fields for backwards compatibility
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub razdfile_modified: Option<SystemTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mise_toml_modified: Option<SystemTime>,
     pub last_sync_time: SystemTime,
 }
 
@@ -138,54 +147,59 @@ pub fn atomic_write_file(path: &Path, content: &str) -> Result<()> {
     Ok(())
 }
 
-/// Get file modification time
-fn get_file_modified_time(path: &Path) -> Result<Option<SystemTime>> {
-    if !path.exists() {
-        return Ok(None);
+/// Atomically write file content
+pub fn compute_semantic_hash(path: &Path) -> Result<String> {
+    let file_name = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or_else(|| RazdError::config("Invalid file path"))?;
+
+    match file_name {
+        "Razdfile.yml" => compute_razdfile_semantic_hash(path),
+        "mise.toml" => compute_mise_toml_semantic_hash(path),
+        _ => {
+            // Fallback to content hash for unknown files
+            let content = fs::read_to_string(path)?;
+            let mut hasher = Sha256::new();
+            hasher.update(content.as_bytes());
+            Ok(format!("{:x}", hasher.finalize()))
+        }
     }
-
-    let metadata = fs::metadata(path)
-        .map_err(|e| RazdError::config(format!("Failed to read file metadata: {}", e)))?;
-
-    let modified = metadata.modified().map_err(|e| {
-        RazdError::config(format!("Failed to get file modification time: {}", e))
-    })?;
-
-    Ok(Some(modified))
 }
 
-/// Check for file changes
+/// Check for file changes using semantic hashing
 pub fn check_file_changes(project_dir: &Path) -> Result<ChangeDetection> {
     let razdfile_path = project_dir.join("Razdfile.yml");
     let mise_toml_path = project_dir.join("mise.toml");
 
-    // Get current modification times
-    let razdfile_time = get_file_modified_time(&razdfile_path)?;
-    let mise_toml_time = get_file_modified_time(&mise_toml_path)?;
-
-    // Load tracking state
+    // Load tracking state (migrate if needed)
     let tracking_state = load_tracking_state(project_dir)?;
+
+    // Compute current hashes
+    let current_razdfile_hash = if razdfile_path.exists() {
+        Some(compute_semantic_hash(&razdfile_path)?)
+    } else {
+        None
+    };
+
+    let current_mise_hash = if mise_toml_path.exists() {
+        Some(compute_semantic_hash(&mise_toml_path)?)
+    } else {
+        None
+    };
 
     match tracking_state {
         None => {
             // First run - no tracking state exists
-            // If either file exists, we need to establish initial state
-            if razdfile_time.is_some() || mise_toml_time.is_some() {
+            if current_razdfile_hash.is_some() || current_mise_hash.is_some() {
                 Ok(ChangeDetection::RazdfileChanged) // Treat as Razdfile change to generate mise.toml
             } else {
                 Ok(ChangeDetection::NoChanges)
             }
         }
         Some(state) => {
-            let razdfile_changed = match razdfile_time {
-                Some(time) => time > state.razdfile_modified,
-                None => false,
-            };
-
-            let mise_toml_changed = match mise_toml_time {
-                Some(time) => time > state.mise_toml_modified,
-                None => false,
-            };
+            let razdfile_changed = current_razdfile_hash != state.razdfile_hash;
+            let mise_toml_changed = current_mise_hash != state.mise_toml_hash;
 
             if razdfile_changed && mise_toml_changed {
                 Ok(ChangeDetection::BothChanged)
@@ -205,14 +219,24 @@ pub fn update_tracking_state(project_dir: &Path) -> Result<()> {
     let razdfile_path = project_dir.join("Razdfile.yml");
     let mise_toml_path = project_dir.join("mise.toml");
 
-    let razdfile_time = get_file_modified_time(&razdfile_path)?
-        .unwrap_or_else(SystemTime::now);
-    let mise_toml_time = get_file_modified_time(&mise_toml_path)?
-        .unwrap_or_else(SystemTime::now);
+    let razdfile_hash = if razdfile_path.exists() {
+        Some(compute_semantic_hash(&razdfile_path)?)
+    } else {
+        None
+    };
+
+    let mise_toml_hash = if mise_toml_path.exists() {
+        Some(compute_semantic_hash(&mise_toml_path)?)
+    } else {
+        None
+    };
 
     let state = FileTrackingState {
-        razdfile_modified: razdfile_time,
-        mise_toml_modified: mise_toml_time,
+        razdfile_hash,
+        mise_toml_hash,
+        format_version: Some("semantic-v1".to_string()),
+        razdfile_modified: None,
+        mise_toml_modified: None,
         last_sync_time: SystemTime::now(),
     };
 
@@ -223,8 +247,6 @@ pub fn update_tracking_state(project_dir: &Path) -> Result<()> {
 mod tests {
     use super::*;
     use std::fs;
-    use std::thread::sleep;
-    use std::time::Duration;
     use tempfile::TempDir;
 
     #[test]
@@ -250,19 +272,20 @@ mod tests {
         let now = SystemTime::now();
 
         let state = FileTrackingState {
-            razdfile_modified: now,
-            mise_toml_modified: now,
+            razdfile_hash: Some("abc123".to_string()),
+            mise_toml_hash: Some("def456".to_string()),
+            format_version: Some("semantic-v1".to_string()),
+            razdfile_modified: None,
+            mise_toml_modified: None,
             last_sync_time: now,
         };
 
         save_tracking_state(temp_dir.path(), &state).unwrap();
         let loaded = load_tracking_state(temp_dir.path()).unwrap().unwrap();
 
-        // Compare times (allowing for small serialization differences)
-        assert_eq!(
-            loaded.razdfile_modified.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs(),
-            state.razdfile_modified.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs()
-        );
+        assert_eq!(loaded.razdfile_hash, Some("abc123".to_string()));
+        assert_eq!(loaded.mise_toml_hash, Some("def456".to_string()));
+        assert_eq!(loaded.format_version, Some("semantic-v1".to_string()));
     }
 
     #[test]
@@ -290,19 +313,10 @@ mod tests {
         fs::write(&razdfile_path, "version: '3'\ntasks: {}").unwrap();
         fs::write(&mise_path, "[tools]\nnode = \"22\"").unwrap();
 
-        // Establish initial state
-        let now = SystemTime::now();
-        let state = FileTrackingState {
-            razdfile_modified: now,
-            mise_toml_modified: now,
-            last_sync_time: now,
-        };
-        save_tracking_state(temp_dir.path(), &state).unwrap();
+        // Establish initial state with semantic hashes
+        update_tracking_state(temp_dir.path()).unwrap();
 
-        // Wait a bit to ensure time difference
-        sleep(Duration::from_millis(100));
-
-        // Check - should be no changes
+        // Check - should be no changes (same semantic content)
         let detection = check_file_changes(temp_dir.path()).unwrap();
         assert_eq!(detection, ChangeDetection::NoChanges);
     }
@@ -317,21 +331,31 @@ mod tests {
         fs::write(&mise_path, "[tools]\nnode = \"22\"").unwrap();
 
         // Establish initial state
-        let now = SystemTime::now();
-        let state = FileTrackingState {
-            razdfile_modified: now,
-            mise_toml_modified: now,
-            last_sync_time: now,
-        };
-        save_tracking_state(temp_dir.path(), &state).unwrap();
+        update_tracking_state(temp_dir.path()).unwrap();
 
-        // Wait and modify Razdfile
-        sleep(Duration::from_millis(100));
-        fs::write(&razdfile_path, "version: '3'\ntasks:\n  test:\n    cmds: [\"echo test\"]").unwrap();
+        // Modify Razdfile semantically (not just formatting)
+        fs::write(&razdfile_path, "version: '3'\ntasks:\n  test:\n    desc: New task\n    cmds: [\"echo test\"]").unwrap();
 
         // Check - should detect Razdfile change
         let detection = check_file_changes(temp_dir.path()).unwrap();
         assert_eq!(detection, ChangeDetection::RazdfileChanged);
+    }
+
+    #[test]
+    fn test_semantic_change_detection_formatting_only() {
+        let temp_dir = TempDir::new().unwrap();
+        let razdfile_path = temp_dir.path().join("Razdfile.yml");
+
+        // Write initial version
+        fs::write(&razdfile_path, "version: '3'\ntasks: {}").unwrap();
+        update_tracking_state(temp_dir.path()).unwrap();
+
+        // Modify only formatting (add blank lines, change spacing)
+        fs::write(&razdfile_path, "version: '3'\n\n\ntasks: {}").unwrap();
+
+        // Should NOT detect change (semantic content unchanged)
+        let detection = check_file_changes(temp_dir.path()).unwrap();
+        assert_eq!(detection, ChangeDetection::NoChanges);
     }
 
     #[test]

@@ -1,5 +1,5 @@
 use razd::config::mise_sync::{MiseSyncManager, SyncConfig};
-use razd::config::razdfile::{RazdfileConfig, TaskConfig, Command, MiseConfig, ToolConfig};
+use razd::config::razdfile::{RazdfileConfig, TaskConfig, Command};
 use indexmap::IndexMap;
 use std::fs;
 use tempfile::TempDir;
@@ -24,19 +24,22 @@ node = "https://github.com/asdf-vm/asdf-nodejs.git"
     tasks.insert("build".to_string(), TaskConfig {
         desc: Some("Build".to_string()),
         cmds: vec![Command::String("echo build".to_string())],
-
+        internal: false,
     });
     tasks.insert("custom".to_string(), TaskConfig {
         desc: Some("Custom".to_string()),
         cmds: vec![Command::String("echo custom".to_string())],
+        internal: false,
     });
     tasks.insert("install".to_string(), TaskConfig {
         desc: Some("Install".to_string()),
         cmds: vec![Command::String("echo install".to_string())],
+        internal: false,
     });
     tasks.insert("default".to_string(), TaskConfig {
         desc: Some("Default".to_string()),
         cmds: vec![Command::String("echo default".to_string())],
+        internal: false,
     });
 
     let razdfile = RazdfileConfig {
