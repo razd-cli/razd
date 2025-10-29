@@ -94,3 +94,64 @@ The system MUST detect and validate required tools before execution.
 - Display warnings for potentially incompatible versions
 - Continue execution unless critical incompatibility is detected
 
+### Requirement: File backup prompts during sync operations
+The system SHALL prompt users to explicitly opt-out of backup creation, making backup the safe default behavior.
+
+#### Scenario: User declines to skip backup (creates backup)
+**Given** Razdfile.yml exists and needs modification  
+**And** user has not set auto-approve mode  
+**When** the sync operation prompts "⚠️  Razdfile.yml will be modified. Modify WITHOUT backup? [Y/n]"  
+**And** user types 'n', 'N', or presses Enter  
+**Then** the system should:
+- Create a backup file (Razdfile.yml.backup)
+- Proceed with the modification
+- Display confirmation "✓ Synced mise.toml → Razdfile.yml"
+
+#### Scenario: User explicitly opts out of backup
+**Given** Razdfile.yml exists and needs modification  
+**And** user has not set auto-approve mode  
+**When** the sync operation prompts "⚠️  Razdfile.yml will be modified. Modify WITHOUT backup? [Y/n]"  
+**And** user types 'Y' or 'y'  
+**Then** the system should:
+- Skip creating a backup file
+- Proceed with the modification
+- Display confirmation "✓ Synced mise.toml → Razdfile.yml"
+
+#### Scenario: mise.toml overwrite prompt uses inverted logic
+**Given** mise.toml exists and will be overwritten  
+**And** user has not set auto-approve mode  
+**When** the sync operation prompts "⚠️  mise.toml will be overwritten. Overwrite WITHOUT backup? [Y/n]"  
+**And** user types 'n', 'N', or presses Enter  
+**Then** the system should:
+- Create a backup file (mise.toml.backup)
+- Overwrite mise.toml with new content
+- Update tracking metadata
+- Display confirmation "✓ Synced Razdfile.yml → mise.toml"
+
+#### Scenario: Auto-approve mode still creates backups
+**Given** user has enabled auto-approve mode  
+**And** create_backups config is true  
+**When** a file needs modification  
+**Then** the system should:
+- Skip the interactive prompt
+- Create backup automatically
+- Proceed with modification
+- Not require user interaction
+
+#### Scenario: create_backups config disabled
+**Given** user has set create_backups config to false  
+**When** a file needs modification  
+**Then** the system should:
+- Not prompt about backups
+- Not create backup files
+- Proceed directly with modification
+
+#### Scenario: Default behavior is safe (backup creation)
+**Given** a user is unfamiliar with the prompt  
+**And** Razdfile.yml needs modification  
+**When** the user presses Enter without typing anything  
+**Then** the system should:
+- Interpret empty input as 'n' (decline to skip backup)
+- Create a backup file
+- Proceed safely with modification
+
