@@ -24,22 +24,22 @@ node = "https://github.com/asdf-vm/asdf-nodejs.git"
     tasks.insert("build".to_string(), TaskConfig {
         desc: Some("Build".to_string()),
         cmds: vec![Command::String("echo build".to_string())],
-        internal: false,
+        internal: false, // Keep explicit false for testing
     });
     tasks.insert("custom".to_string(), TaskConfig {
         desc: Some("Custom".to_string()),
         cmds: vec![Command::String("echo custom".to_string())],
-        internal: false,
+        internal: false, // Keep explicit false for testing
     });
     tasks.insert("install".to_string(), TaskConfig {
         desc: Some("Install".to_string()),
         cmds: vec![Command::String("echo install".to_string())],
-        internal: false,
+        internal: false, // Keep explicit false for testing
     });
     tasks.insert("default".to_string(), TaskConfig {
         desc: Some("Default".to_string()),
         cmds: vec![Command::String("echo default".to_string())],
-        internal: false,
+        internal: false, // Keep explicit false for testing
     });
 
     let razdfile = RazdfileConfig {

@@ -31,11 +31,16 @@ pub struct RazdfileConfig {
     pub tasks: IndexMap<String, TaskConfig>,
 }
 
+/// Returns true if the boolean value is false (used for skip_serializing_if)
+fn is_false(value: &bool) -> bool {
+    !*value
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaskConfig {
     pub desc: Option<String>,
     pub cmds: Vec<Command>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_false")]
     pub internal: bool,
 }
 
@@ -647,5 +652,52 @@ tasks:
             .unwrap();
 
         assert!(config.mise.is_none());
+    }
+
+    #[test]
+    fn test_task_config_omits_default_internal() {
+        let task = TaskConfig {
+            desc: Some("Test task".to_string()),
+            cmds: vec![Command::String("echo test".to_string())],
+            internal: false,
+        };
+        let yaml = serde_yaml::to_string(&task).unwrap();
+        assert!(!yaml.contains("internal"), "YAML should not contain 'internal' field when false: {}", yaml);
+    }
+
+    #[test]
+    fn test_task_config_includes_internal_true() {
+        let task = TaskConfig {
+            desc: Some("Internal task".to_string()),
+            cmds: vec![Command::String("echo internal".to_string())],
+            internal: true,
+        };
+        let yaml = serde_yaml::to_string(&task).unwrap();
+        assert!(yaml.contains("internal: true"), "YAML should contain 'internal: true': {}", yaml);
+    }
+
+    #[test]
+    fn test_task_config_parses_explicit_false() {
+        let yaml = r#"
+desc: Test task
+cmds:
+  - echo test
+internal: false
+"#;
+        let task: TaskConfig = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(task.internal, false);
+        assert_eq!(task.desc, Some("Test task".to_string()));
+    }
+
+    #[test]
+    fn test_task_config_defaults_internal() {
+        let yaml = r#"
+desc: Test task
+cmds:
+  - echo test
+"#;
+        let task: TaskConfig = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(task.internal, false, "internal should default to false when not specified");
+        assert_eq!(task.desc, Some("Test task".to_string()));
     }
 }

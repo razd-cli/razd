@@ -1,4 +1,4 @@
-use crate::config::razdfile::{Command, MiseConfig, RazdfileConfig, ToolConfig};
+use crate::config::razdfile::{Command, MiseConfig, RazdfileConfig, TaskConfig, ToolConfig};
 use crate::core::RazdError;
 use indexmap::IndexMap;
 use sha2::{Digest, Sha256};
@@ -228,7 +228,7 @@ mod tests {
                     TaskConfig {
                         desc: Some("Test task".to_string()),
                         cmds: vec![Command::String("echo test".to_string())],
-                        internal: false,
+                        internal: false, // Keep explicit false for testing
                     },
                 );
                 map
