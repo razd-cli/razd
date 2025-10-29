@@ -7,6 +7,11 @@ use std::path::Path;
 use crate::core::RazdError;
 use crate::defaults;
 
+/// Default version for Razdfile.yml (Taskfile v3 format)
+fn default_version() -> String {
+    "3".to_string()
+}
+
 /// Command representation supporting both string commands and task references
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -24,6 +29,7 @@ pub enum Command {
 /// Razdfile.yml configuration structure matching Taskfile v3 format
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RazdfileConfig {
+    #[serde(default = "default_version")]
     pub version: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mise: Option<MiseConfig>,
@@ -699,5 +705,83 @@ cmds:
         let task: TaskConfig = serde_yaml::from_str(yaml).unwrap();
         assert_eq!(task.internal, false, "internal should default to false when not specified");
         assert_eq!(task.desc, Some("Test task".to_string()));
+    }
+
+    #[test]
+    fn test_razdfile_version_field_optional() {
+        let temp_dir = TempDir::new().unwrap();
+        let razdfile_path = temp_dir.path().join("Razdfile.yml");
+
+        // Test Razdfile without version field
+        let content = r#"
+tasks:
+  test:
+    desc: "Test task"
+    cmds:
+      - echo "test"
+"#;
+
+        fs::write(&razdfile_path, content).unwrap();
+
+        let result = RazdfileConfig::load_from_path(&razdfile_path).unwrap();
+        assert!(result.is_some());
+
+        let config = result.unwrap();
+        // Version should default to "3"
+        assert_eq!(config.version, "3");
+        assert!(config.has_task("test"));
+    }
+
+    #[test]
+    fn test_razdfile_version_field_explicit() {
+        let temp_dir = TempDir::new().unwrap();
+        let razdfile_path = temp_dir.path().join("Razdfile.yml");
+
+        // Test Razdfile with explicit version field (backward compat)
+        let content = r#"
+version: '3'
+
+tasks:
+  test:
+    desc: "Test task"
+    cmds:
+      - echo "test"
+"#;
+
+        fs::write(&razdfile_path, content).unwrap();
+
+        let result = RazdfileConfig::load_from_path(&razdfile_path).unwrap();
+        assert!(result.is_some());
+
+        let config = result.unwrap();
+        assert_eq!(config.version, "3");
+        assert!(config.has_task("test"));
+    }
+
+    #[test]
+    fn test_razdfile_version_serialization() {
+        let temp_dir = TempDir::new().unwrap();
+        let razdfile_path = temp_dir.path().join("Razdfile.yml");
+
+        // Test that version is included when serializing
+        let content = r#"
+tasks:
+  build:
+    cmds:
+      - cargo build
+"#;
+
+        fs::write(&razdfile_path, content).unwrap();
+
+        let config = RazdfileConfig::load_from_path(&razdfile_path)
+            .unwrap()
+            .unwrap();
+
+        // Serialize back to YAML
+        let yaml = serde_yaml::to_string(&config).unwrap();
+
+        // Version should be included in serialized output
+        assert!(yaml.contains("version:"));
+        assert!(yaml.contains("'3'") || yaml.contains("\"3\"") || yaml.contains("version: 3"));
     }
 }

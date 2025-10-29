@@ -221,9 +221,7 @@ fn detect_project_type(dir: &Path) -> String {
 fn get_razdfile_template(project_type: &str) -> String {
     match project_type {
         "Node.js" => {
-            r#"version: '3'
-
-tasks:
+            r#"tasks:
   default:
     desc: "Set up and start Node.js project"
     cmds:
@@ -254,9 +252,7 @@ tasks:
 "#.to_string()
         }
         "Rust" => {
-            r#"version: '3'
-
-tasks:
+            r#"tasks:
   default:
     desc: "Set up and build Rust project"
     cmds:
@@ -285,9 +281,7 @@ tasks:
 "#.to_string()
         }
         "Python" => {
-            r#"version: '3'
-
-tasks:
+            r#"tasks:
   default:
     desc: "Set up and start Python project"
     cmds:
@@ -313,9 +307,7 @@ tasks:
 "#.to_string()
         }
         "Go" => {
-            r#"version: '3'
-
-tasks:
+            r#"tasks:
   default:
     desc: "Set up and run Go project"
     cmds:
@@ -346,9 +338,7 @@ tasks:
 "#.to_string()
         }
         _ => {
-            r#"version: '3'
-
-tasks:
+            r#"tasks:
   default:
     desc: "Set up project"
     cmds:
@@ -382,7 +372,6 @@ tasks:
 /// Show example Razdfile.yml
 fn show_razdfile_example() {
     output::info("Example Razdfile.yml:");
-    output::info("  version: '3'");
     output::info("  tasks:");
     output::info("    default:");
     output::info("      desc: \"Set up and start project\"");

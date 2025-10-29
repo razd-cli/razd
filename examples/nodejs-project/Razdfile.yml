@@ -1,4 +1,5 @@
-version: '3'
+# Razdfile.yml - Configuration for razd CLI tool
+# The 'version' field is optional - razd automatically uses Taskfile v3 format
 
 mise:
   tools:

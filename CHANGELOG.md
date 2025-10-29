@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2025-10-30
+
+### Changed
+- **Razdfile.yml format simplification**: The `version: '3'` field is now optional
+  - Users can omit the version field for cleaner configuration files
+  - razd automatically injects `version: '3'` when executing taskfile commands
+  - Full backward compatibility: existing Razdfile.yml with explicit version continue to work
+  - All templates and examples updated to omit the version field
+
+### Improved
+- Cleaner configuration files with less boilerplate
+- Better user experience for new projects (via `razd up --init`)
+- Maintained compatibility with Taskfile v3 format under the hood
+
 ## [0.3.0] - 2025-10-29
 
 ### Changed
