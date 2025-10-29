@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.7] - 2025-10-29
+
 ### Changed
 - Task configurations no longer serialize `internal: false` (default value) to YAML
 - Cleaner Razdfile.yml output with only non-default values shown
