@@ -1,6 +1,8 @@
 # Razdfile.yml - Configuration for razd CLI tool
 # The 'version' field is optional - razd automatically uses Taskfile v3 format
 
+version: "3"
+
 mise:
   tools:
     node: "22"
@@ -36,3 +38,10 @@ tasks:
     desc: Run tests
     cmds:
     - npm test
+
+  deploy:
+    desc: Deploy to production
+    cmds:
+    - echo "Deploying to production..."
+    - npm run build
+    - echo "Deployment complete!"

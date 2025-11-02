@@ -52,6 +52,14 @@ enum Commands {
         #[arg(trailing_var_arg = true)]
         args: Vec<String>,
     },
+    /// Execute any custom task defined in Razdfile.yml
+    Run {
+        /// Task name to execute
+        task_name: String,
+        /// Arguments to pass to the task
+        #[arg(trailing_var_arg = true)]
+        args: Vec<String>,
+    },
 }
 
 #[tokio::main]
@@ -93,6 +101,9 @@ async fn run(cli: Cli) -> core::Result<()> {
         }
         Some(Commands::Task { name, args }) => {
             commands::task::execute(name.as_deref(), &args).await?;
+        }
+        Some(Commands::Run { task_name, args }) => {
+            commands::run::execute(&task_name, &args).await?;
         }
         None => {
             // If no subcommand provided, run 'razd up' (local project setup)

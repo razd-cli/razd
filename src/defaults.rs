@@ -1,14 +1,15 @@
 //! Built-in default workflows for razd
 //! These workflows are used when no Razdfile.yml is present
 pub const DEFAULT_WORKFLOWS: &str = r#"version: '3'
-
+mise:
+  tools:
+    task: latest
 tasks:
   default:
     desc: "Set up project and start development"
     cmds:
       - echo "🚀 Setting up project..."
-      - mise install
-      - task setup --taskfile Taskfile.yml
+      - task: install
       
   install:
     desc: "Install development tools via mise"
@@ -20,13 +21,12 @@ tasks:
     desc: "Start development workflow"
     cmds:
       - echo "🚀 Starting development..."
-      - task default --taskfile Taskfile.yml
+
       
   build:
     desc: "Build project"
     cmds:
       - echo "🔨 Building project..."
-      - task build --taskfile Taskfile.yml
 "#;
 
 /// Get built-in workflow for a specific command
