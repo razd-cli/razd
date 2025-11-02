@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2025-11-03
+
+### Changed
+- Simplified template generation to use a single universal template for all project types
+- Removed technology-specific templates (Node.js, Python, Rust, Go)
+- All projects now use the same minimal, flexible Razdfile.yml template
+
+### Improved
+- Consistent experience across all project types
+- Easier maintenance with single template approach
+- Users can customize the generated template for their specific needs
+
 ## [0.3.1] - 2025-10-30
 
 ### Changed
