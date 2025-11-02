@@ -1,3 +1,3 @@
 # Security Policy
 
-Report security vulnerabilities to t.me/dealenxdev
+Report security vulnerabilities to https://t.me/dealenxdev
