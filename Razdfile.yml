@@ -1,0 +1,31 @@
+version: '3'
+mise:
+  tools:
+    rust: 1.82.0
+    task: latest
+tasks:
+  default:
+    desc: Build and test the project
+    cmds:
+    - task: install
+    - task: build
+  install:
+    desc: Install project dependencies
+    cmds:
+    - mise install
+    - echo "Installing Rust dependencies..."
+    - cargo fetch
+    - rustup component add rustfmt clippy
+    - echo "✓ Dependencies installed"
+  build:
+    desc: Build the project
+    cmds:
+    - echo "Building razd..."
+    - cargo build
+    - echo "✓ Build completed"
+  test:
+    desc: Run all tests
+    cmds:
+    - echo "Running tests..."
+    - cargo test
+    - echo "✓ All tests passed"

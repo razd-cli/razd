@@ -6,9 +6,10 @@ Thank you for your interest in contributing to razd! This document provides guid
 
 ### Prerequisites
 
-- Rust 1.74.0 or later (check `rust-version` in `Cargo.toml`)
-- Git for version control
-- GitHub account for pull requests
+- **Rust** 1.74.0 or later (check `rust-version` in `Cargo.toml`)
+- **Git** for version control
+- **GitHub account** for pull requests
+- **razd** CLI tool (or use cargo directly)
 
 ### Setting Up Development Environment
 
@@ -18,43 +19,87 @@ Thank you for your interest in contributing to razd! This document provides guid
    cd razd
    ```
 
-2. **Install Rust toolchain:**
+2. **Option A: Using razd (dogfooding approach - recommended):**
    ```sh
-   rustup update
-   rustup component add rustfmt clippy
+   # If razd is not installed, install it first
+   cargo install --path .
+   
+   # Setup project (installs Rust toolchain via mise, fetches dependencies)
+   razd setup
+   
+   # Or run default workflow (build + test)
+   razd
    ```
 
-3. **Build and test:**
+3. **Option B: Using cargo directly:**
    ```sh
+   # Install Rust toolchain
+   rustup update
+   rustup component add rustfmt clippy
+   
+   # Build and test
    cargo build
    cargo test
    ```
 
+### Available Commands
+
+razd provides several useful commands for development (defined in `Razdfile.yml`):
+
+```sh
+razd                    # Default: build + test
+razd run setup          # Setup dependencies
+razd run build          # Build debug version
+razd run build-release  # Build release version
+razd run test           # Run all tests
+razd run test-integration # Run integration tests only
+razd run fmt            # Format code
+razd run fmt-check      # Check formatting
+razd run lint           # Run clippy
+razd run audit          # Security audit
+razd run ci             # Run all CI checks locally
+razd run clean          # Clean build artifacts
+razd run dev -- <args>  # Run razd in dev mode
+razd run coverage       # Generate coverage report
+razd run doc            # Generate and open docs
+razd run version        # Show current version
+razd run release-check  # Pre-release checks
+```
+
 ### Code Quality Standards
 
-Our CI pipeline enforces the following quality standards:
+Our CI pipeline enforces the following quality standards. You can run these checks locally using razd:
 
-#### Formatting
+#### Quick CI Check
 ```sh
-cargo fmt --check
+razd run ci  # Runs all checks: format, lint, test, and audit
+```
+
+#### Individual Checks
+
+**Formatting:**
+```sh
+razd run fmt-check  # Check formatting
+razd run fmt        # Auto-format code
 ```
 All code must be formatted with `rustfmt` using default settings.
 
-#### Linting
+**Linting:**
 ```sh
-cargo clippy -- -D warnings
+razd run lint  # Run clippy
 ```
 All clippy warnings must be resolved before merging.
 
-#### Testing
+**Testing:**
 ```sh
-cargo test
+razd run test              # All tests
+razd run test-integration  # Integration tests only
 ```
 All tests must pass on all supported platforms (Windows, macOS, Linux).
 
-#### Security Audit
+**Security Audit:**
 ```sh
-cargo audit
+razd run audit  # Check dependencies
 ```
 Dependencies must be free of known security vulnerabilities.
 
@@ -72,10 +117,15 @@ Dependencies must be free of known security vulnerabilities.
 
 3. **Test locally:**
    ```sh
-   cargo test
-   cargo fmt --check
-   cargo clippy -- -D warnings
-   cargo audit
+   razd run ci  # Run all checks
+   ```
+   
+   Or manually:
+   ```sh
+   razd run test
+   razd run fmt-check
+   razd run lint
+   razd run audit
    ```
 
 4. **Push and create PR:**
@@ -131,10 +181,51 @@ The `main` branch is protected with the following requirements:
 
 1. **Version Bump**: Update version in `Cargo.toml`
 2. **Changelog**: Update `CHANGELOG.md` with release notes
-3. **Commit**: Commit version changes
-4. **Tag**: Create annotated git tag: `git tag -a v1.0.0 -m "Release v1.0.0"`
-5. **Push**: Push tag to trigger release: `git push origin v1.0.0`
-6. **Monitor**: Watch GitHub Actions for successful build and release
+3. **Pre-release checks**:
+   ```sh
+   razd run release-check  # Runs CI + release build
+   ```
+4. **Commit**: Commit version changes
+5. **Tag**: Create annotated git tag: 
+   ```sh
+   git tag -a v1.0.0 -m "Release v1.0.0"
+   ```
+6. **Push**: Push tag to trigger release: 
+   ```sh
+   git push origin v1.0.0
+   ```
+7. **Monitor**: Watch GitHub Actions for successful build and release
+
+### Local Development Tips
+
+**Building and Testing:**
+```sh
+razd run build          # Quick debug build
+razd run build-release  # Optimized build
+razd run test           # Run all tests
+```
+
+**Running razd in Development:**
+```sh
+razd run dev -- up https://github.com/user/repo  # Test 'razd up' command
+razd run dev -- --help                            # Test help output
+razd run dev -- run build                         # Test 'razd run' command
+```
+
+**Installing Locally:**
+```sh
+razd run install-local  # Install to ~/.cargo/bin/
+```
+
+**Generating Documentation:**
+```sh
+razd run doc  # Opens docs in browser
+```
+
+**Coverage Reports:**
+```sh
+razd run coverage  # Requires cargo-tarpaulin
+```
 
 ### Issue and PR Templates
 
