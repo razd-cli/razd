@@ -1,11 +1,11 @@
 pub mod canonical;
 pub mod defaults;
 pub mod detection;
-pub mod razdfile;
-pub mod mise_validator;
-pub mod mise_generator;
 pub mod file_tracker;
+pub mod mise_generator;
 pub mod mise_sync;
+pub mod mise_validator;
+pub mod razdfile;
 
 pub use razdfile::*;
 
@@ -19,7 +19,7 @@ use std::path::Path;
 pub fn check_and_sync_mise(project_dir: &Path) -> Result<()> {
     // Check if sync is disabled
     let no_sync = env::var("RAZD_NO_SYNC").unwrap_or_default() == "1";
-    
+
     let config = SyncConfig {
         no_sync,
         auto_approve: false, // Always prompt user for manual operations

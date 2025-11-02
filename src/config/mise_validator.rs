@@ -14,7 +14,7 @@ pub fn validate_tool_name(name: &str) -> Result<(), RazdError> {
 
     // Check for valid characters: alphanumeric, hyphens, underscores
     let valid_pattern = Regex::new(r"^[a-zA-Z0-9_-]+$").unwrap();
-    
+
     if !valid_pattern.is_match(name_without_prefix) {
         return Err(RazdError::config(format!(
             "Invalid tool name '{}'. Tool names must contain only alphanumeric characters, hyphens, and underscores. Examples: 'node', 'python-3', 'my_tool'",
@@ -31,16 +31,13 @@ pub fn validate_plugin_url(url: &str) -> Result<(), RazdError> {
     // Check for basic URL patterns (http://, https://, git://)
     // or GitHub shorthand (github.com/...)
     if url.is_empty() {
-        return Err(RazdError::config(
-            "Plugin URL cannot be empty".to_string()
-        ));
+        return Err(RazdError::config("Plugin URL cannot be empty".to_string()));
     }
 
     // Allow URLs with protocols or git@ format
-    let valid_url_pattern = Regex::new(
-        r"^(https?://|git://|git@)[\w\-\.]+[:/][\w\-\./#]+$"
-    ).unwrap();
-    
+    let valid_url_pattern =
+        Regex::new(r"^(https?://|git://|git@)[\w\-\.]+[:/][\w\-\./#]+$").unwrap();
+
     if !valid_url_pattern.is_match(url) {
         return Err(RazdError::config(format!(
             "Invalid plugin URL '{}'. Plugin URLs must be valid git repository URLs. Examples: 'https://github.com/org/repo.git', 'https://github.com/org/repo.git#ref'",

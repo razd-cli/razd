@@ -1,4 +1,4 @@
-use crate::config::canonical::{compute_razdfile_semantic_hash, compute_mise_toml_semantic_hash};
+use crate::config::canonical::{compute_mise_toml_semantic_hash, compute_razdfile_semantic_hash};
 use crate::core::{RazdError, Result};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -72,7 +72,9 @@ fn get_data_dir() -> Result<PathBuf> {
         if let Ok(home) = std::env::var("HOME") {
             Ok(PathBuf::from(home).join(".local/share/razd"))
         } else {
-            Err(RazdError::config("HOME environment variable not set".to_string()))
+            Err(RazdError::config(
+                "HOME environment variable not set".to_string(),
+            ))
         }
     }
 }
@@ -94,13 +96,11 @@ pub fn load_tracking_state(project_dir: &Path) -> Result<Option<FileTrackingStat
         return Ok(None);
     }
 
-    let content = fs::read_to_string(&tracking_path).map_err(|e| {
-        RazdError::config(format!("Failed to read tracking state: {}", e))
-    })?;
+    let content = fs::read_to_string(&tracking_path)
+        .map_err(|e| RazdError::config(format!("Failed to read tracking state: {}", e)))?;
 
-    let state: FileTrackingState = serde_json::from_str(&content).map_err(|e| {
-        RazdError::config(format!("Failed to parse tracking state: {}", e))
-    })?;
+    let state: FileTrackingState = serde_json::from_str(&content)
+        .map_err(|e| RazdError::config(format!("Failed to parse tracking state: {}", e)))?;
 
     Ok(Some(state))
 }
@@ -117,9 +117,8 @@ pub fn save_tracking_state(project_dir: &Path, state: &FileTrackingState) -> Res
     }
 
     // Serialize state to JSON
-    let content = serde_json::to_string_pretty(&state).map_err(|e| {
-        RazdError::config(format!("Failed to serialize tracking state: {}", e))
-    })?;
+    let content = serde_json::to_string_pretty(&state)
+        .map_err(|e| RazdError::config(format!("Failed to serialize tracking state: {}", e)))?;
 
     // Write atomically using temp file + rename
     atomic_write_file(&tracking_path, &content)?;
@@ -133,9 +132,8 @@ pub fn atomic_write_file(path: &Path, content: &str) -> Result<()> {
     let temp_path = path.with_extension("tmp");
 
     // Write to temp file
-    fs::write(&temp_path, content).map_err(|e| {
-        RazdError::config(format!("Failed to write temporary file: {}", e))
-    })?;
+    fs::write(&temp_path, content)
+        .map_err(|e| RazdError::config(format!("Failed to write temporary file: {}", e)))?;
 
     // Rename temp file to target (atomic on most filesystems)
     fs::rename(&temp_path, path).map_err(|e| {
@@ -298,7 +296,11 @@ mod tests {
     #[test]
     fn test_check_file_changes_first_run() {
         let temp_dir = TempDir::new().unwrap();
-        fs::write(temp_dir.path().join("Razdfile.yml"), "version: '3'\ntasks: {}").unwrap();
+        fs::write(
+            temp_dir.path().join("Razdfile.yml"),
+            "version: '3'\ntasks: {}",
+        )
+        .unwrap();
 
         let detection = check_file_changes(temp_dir.path()).unwrap();
         assert_eq!(detection, ChangeDetection::RazdfileChanged);
@@ -334,7 +336,11 @@ mod tests {
         update_tracking_state(temp_dir.path()).unwrap();
 
         // Modify Razdfile semantically (not just formatting)
-        fs::write(&razdfile_path, "version: '3'\ntasks:\n  test:\n    desc: New task\n    cmds: [\"echo test\"]").unwrap();
+        fs::write(
+            &razdfile_path,
+            "version: '3'\ntasks:\n  test:\n    desc: New task\n    cmds: [\"echo test\"]",
+        )
+        .unwrap();
 
         // Check - should detect Razdfile change
         let detection = check_file_changes(temp_dir.path()).unwrap();

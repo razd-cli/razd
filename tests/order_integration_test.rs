@@ -1,6 +1,6 @@
-use razd::config::mise_sync::{MiseSyncManager, SyncConfig};
-use razd::config::razdfile::{RazdfileConfig, TaskConfig, Command};
 use indexmap::IndexMap;
+use razd::config::mise_sync::{MiseSyncManager, SyncConfig};
+use razd::config::razdfile::{Command, RazdfileConfig, TaskConfig};
 use std::fs;
 use tempfile::TempDir;
 
@@ -21,26 +21,38 @@ node = "https://github.com/asdf-vm/asdf-nodejs.git"
 
     // Создаём Razdfile с tasks в неправильном порядке
     let mut tasks = IndexMap::new();
-    tasks.insert("build".to_string(), TaskConfig {
-        desc: Some("Build".to_string()),
-        cmds: vec![Command::String("echo build".to_string())],
-        internal: false, // Keep explicit false for testing
-    });
-    tasks.insert("custom".to_string(), TaskConfig {
-        desc: Some("Custom".to_string()),
-        cmds: vec![Command::String("echo custom".to_string())],
-        internal: false, // Keep explicit false for testing
-    });
-    tasks.insert("install".to_string(), TaskConfig {
-        desc: Some("Install".to_string()),
-        cmds: vec![Command::String("echo install".to_string())],
-        internal: false, // Keep explicit false for testing
-    });
-    tasks.insert("default".to_string(), TaskConfig {
-        desc: Some("Default".to_string()),
-        cmds: vec![Command::String("echo default".to_string())],
-        internal: false, // Keep explicit false for testing
-    });
+    tasks.insert(
+        "build".to_string(),
+        TaskConfig {
+            desc: Some("Build".to_string()),
+            cmds: vec![Command::String("echo build".to_string())],
+            internal: false, // Keep explicit false for testing
+        },
+    );
+    tasks.insert(
+        "custom".to_string(),
+        TaskConfig {
+            desc: Some("Custom".to_string()),
+            cmds: vec![Command::String("echo custom".to_string())],
+            internal: false, // Keep explicit false for testing
+        },
+    );
+    tasks.insert(
+        "install".to_string(),
+        TaskConfig {
+            desc: Some("Install".to_string()),
+            cmds: vec![Command::String("echo install".to_string())],
+            internal: false, // Keep explicit false for testing
+        },
+    );
+    tasks.insert(
+        "default".to_string(),
+        TaskConfig {
+            desc: Some("Default".to_string()),
+            cmds: vec![Command::String("echo default".to_string())],
+            internal: false, // Keep explicit false for testing
+        },
+    );
 
     let razdfile = RazdfileConfig {
         version: "3".to_string(),
@@ -83,8 +95,13 @@ node = "https://github.com/asdf-vm/asdf-nodejs.git"
 
     // Проверяем, что mise идёт перед tasks
     let mise_pos = updated_yaml.find("mise:").expect("mise section not found");
-    let tasks_pos = updated_yaml.find("tasks:").expect("tasks section not found");
-    assert!(mise_pos < tasks_pos, "mise section should come before tasks section");
+    let tasks_pos = updated_yaml
+        .find("tasks:")
+        .expect("tasks section not found");
+    assert!(
+        mise_pos < tasks_pos,
+        "mise section should come before tasks section"
+    );
 
     // Проверяем порядок tasks
     let config = RazdfileConfig::load_from_path(project_root.join("Razdfile.yml"))

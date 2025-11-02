@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use indexmap::IndexMap;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -500,14 +500,16 @@ tasks:
         fs::write(&razdfile_path, content).unwrap();
 
         // Load from specific path instead of changing current dir
-        let razdfile = RazdfileConfig::load_from_path(&razdfile_path).unwrap().unwrap();
-        
+        let razdfile = RazdfileConfig::load_from_path(&razdfile_path)
+            .unwrap()
+            .unwrap();
+
         // Test that it has default task and prefers it
         assert_eq!(razdfile.get_primary_task(), Some("default"));
-        
+
         // Convert to YAML for workflow
         let yaml_content = serde_yaml::to_string(&razdfile).unwrap();
-        
+
         // Should contain the config with default task prioritized
         assert!(yaml_content.contains("default:"));
         assert!(yaml_content.contains("Default task"));
@@ -541,15 +543,15 @@ tasks:
         assert!(config.mise.is_some());
         let mise = config.mise.unwrap();
         assert!(mise.tools.is_some());
-        
+
         let tools = mise.tools.unwrap();
         assert_eq!(tools.len(), 2);
-        
+
         match tools.get("node").unwrap() {
             ToolConfig::Simple(v) => assert_eq!(v, "22"),
             _ => panic!("Expected simple tool config"),
         }
-        
+
         match tools.get("python").unwrap() {
             ToolConfig::Simple(v) => assert_eq!(v, "3.11"),
             _ => panic!("Expected simple tool config"),
@@ -588,21 +590,36 @@ tasks:
             .unwrap();
 
         let tools = config.mise.as_ref().unwrap().tools.as_ref().unwrap();
-        
+
         match tools.get("node").unwrap() {
-            ToolConfig::Complex { version, postinstall, os, .. } => {
+            ToolConfig::Complex {
+                version,
+                postinstall,
+                os,
+                ..
+            } => {
                 assert_eq!(version, "22");
                 assert_eq!(postinstall.as_ref().unwrap(), "corepack enable");
-                assert_eq!(os.as_ref().unwrap(), &vec!["linux".to_string(), "macos".to_string()]);
-            },
+                assert_eq!(
+                    os.as_ref().unwrap(),
+                    &vec!["linux".to_string(), "macos".to_string()]
+                );
+            }
             _ => panic!("Expected complex tool config"),
         }
-        
+
         match tools.get("go").unwrap() {
-            ToolConfig::Complex { version, install_env, .. } => {
+            ToolConfig::Complex {
+                version,
+                install_env,
+                ..
+            } => {
                 assert_eq!(version, "1.21");
-                assert_eq!(install_env.as_ref().unwrap().get("CGO_ENABLED").unwrap(), "1");
-            },
+                assert_eq!(
+                    install_env.as_ref().unwrap().get("CGO_ENABLED").unwrap(),
+                    "1"
+                );
+            }
             _ => panic!("Expected complex tool config"),
         }
     }
@@ -634,8 +651,14 @@ tasks:
 
         let plugins = config.mise.as_ref().unwrap().plugins.as_ref().unwrap();
         assert_eq!(plugins.len(), 2);
-        assert_eq!(plugins.get("elixir").unwrap(), "https://github.com/my-org/mise-elixir.git");
-        assert_eq!(plugins.get("node").unwrap(), "https://github.com/my-org/mise-node.git#DEADBEEF");
+        assert_eq!(
+            plugins.get("elixir").unwrap(),
+            "https://github.com/my-org/mise-elixir.git"
+        );
+        assert_eq!(
+            plugins.get("node").unwrap(),
+            "https://github.com/my-org/mise-node.git#DEADBEEF"
+        );
     }
 
     #[test]
@@ -668,7 +691,11 @@ tasks:
             internal: false,
         };
         let yaml = serde_yaml::to_string(&task).unwrap();
-        assert!(!yaml.contains("internal"), "YAML should not contain 'internal' field when false: {}", yaml);
+        assert!(
+            !yaml.contains("internal"),
+            "YAML should not contain 'internal' field when false: {}",
+            yaml
+        );
     }
 
     #[test]
@@ -679,7 +706,11 @@ tasks:
             internal: true,
         };
         let yaml = serde_yaml::to_string(&task).unwrap();
-        assert!(yaml.contains("internal: true"), "YAML should contain 'internal: true': {}", yaml);
+        assert!(
+            yaml.contains("internal: true"),
+            "YAML should contain 'internal: true': {}",
+            yaml
+        );
     }
 
     #[test]
@@ -703,7 +734,10 @@ cmds:
   - echo test
 "#;
         let task: TaskConfig = serde_yaml::from_str(yaml).unwrap();
-        assert_eq!(task.internal, false, "internal should default to false when not specified");
+        assert_eq!(
+            task.internal, false,
+            "internal should default to false when not specified"
+        );
         assert_eq!(task.desc, Some("Test task".to_string()));
     }
 

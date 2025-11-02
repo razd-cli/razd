@@ -99,7 +99,7 @@ impl MiseSyncManager {
                     if !self.config.auto_approve {
                         println!("⚠️  Razdfile.yml has no mise config, but mise.toml exists.");
                         println!("   Sync mise.toml → Razdfile.yml? [Y/n]");
-                        
+
                         if !self.prompt_user_approval()? {
                             return Ok(SyncResult::Skipped);
                         }
@@ -149,7 +149,7 @@ impl MiseSyncManager {
         // Parse mise.toml
         let toml_content = fs::read_to_string(&mise_toml_path)
             .map_err(|e| RazdError::config(format!("Failed to read mise.toml: {}", e)))?;
-        
+
         let mise_config = self.parse_mise_toml(&toml_content)?;
 
         // Load or create Razdfile
@@ -196,10 +196,10 @@ impl MiseSyncManager {
         // Write Razdfile
         let yaml_content = serde_yaml::to_string(&razdfile)
             .map_err(|e| RazdError::config(format!("Failed to serialize Razdfile: {}", e)))?;
-        
+
         // Format YAML with better spacing
         let formatted_yaml = self.format_yaml(&yaml_content);
-        
+
         let mut file = fs::File::create(&razdfile_path)?;
         file.write_all(formatted_yaml.as_bytes())?;
 
@@ -213,7 +213,7 @@ impl MiseSyncManager {
     /// Handle conflict when both files changed
     fn handle_conflict(&self) -> Result<SyncResult> {
         println!("⚠️  Conflict detected: Both Razdfile.yml and mise.toml have been modified.");
-        
+
         if self.config.auto_approve {
             println!("   Auto-approve enabled: preferring Razdfile.yml as source of truth.");
             return self.sync_razdfile_to_mise();
@@ -247,9 +247,10 @@ impl MiseSyncManager {
             return Ok(());
         }
 
-        let backup_path = file_path.with_extension(
-            format!("{}.backup", file_path.extension().and_then(|s| s.to_str()).unwrap_or(""))
-        );
+        let backup_path = file_path.with_extension(format!(
+            "{}.backup",
+            file_path.extension().and_then(|s| s.to_str()).unwrap_or("")
+        ));
 
         fs::copy(file_path, &backup_path)
             .map_err(|e| RazdError::config(format!("Failed to create backup: {}", e)))?;
@@ -285,35 +286,39 @@ impl MiseSyncManager {
                             })?
                             .to_string();
 
-                        let postinstall = table.get("postinstall").and_then(|v| v.as_str()).map(String::from);
-                        
-                        let os = table
-                            .get("os")
-                            .and_then(|v| match v {
-                                toml::Value::String(s) => Some(vec![s.clone()]),
-                                toml::Value::Array(arr) => {
-                                    let os_list: Vec<String> = arr
-                                        .iter()
-                                        .filter_map(|item| item.as_str().map(String::from))
-                                        .collect();
-                                    if os_list.is_empty() {
-                                        None
-                                    } else {
-                                        Some(os_list)
-                                    }
-                                }
-                                _ => None,
-                            });
-                        
-                        let install_env = table
-                            .get("install_env")
-                            .and_then(|v| v.as_table())
-                            .map(|env_table| {
-                                env_table
+                        let postinstall = table
+                            .get("postinstall")
+                            .and_then(|v| v.as_str())
+                            .map(String::from);
+
+                        let os = table.get("os").and_then(|v| match v {
+                            toml::Value::String(s) => Some(vec![s.clone()]),
+                            toml::Value::Array(arr) => {
+                                let os_list: Vec<String> = arr
                                     .iter()
-                                    .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string()))
-                                    .collect()
-                            });
+                                    .filter_map(|item| item.as_str().map(String::from))
+                                    .collect();
+                                if os_list.is_empty() {
+                                    None
+                                } else {
+                                    Some(os_list)
+                                }
+                            }
+                            _ => None,
+                        });
+
+                        let install_env =
+                            table
+                                .get("install_env")
+                                .and_then(|v| v.as_table())
+                                .map(|env_table| {
+                                    env_table
+                                        .iter()
+                                        .map(|(k, v)| {
+                                            (k.clone(), v.as_str().unwrap_or("").to_string())
+                                        })
+                                        .collect()
+                                });
 
                         ToolConfig::Complex {
                             version,
@@ -344,7 +349,11 @@ impl MiseSyncManager {
 
         Ok(MiseConfig {
             tools: if tools.is_empty() { None } else { Some(tools) },
-            plugins: if plugins.is_empty() { None } else { Some(plugins) },
+            plugins: if plugins.is_empty() {
+                None
+            } else {
+                Some(plugins)
+            },
         })
     }
 
@@ -363,60 +372,63 @@ impl MiseSyncManager {
     fn format_yaml(&self, yaml: &str) -> String {
         let lines = yaml.lines().collect::<Vec<_>>();
         let mut formatted = Vec::new();
-        
+
         for (i, line) in lines.iter().enumerate() {
             formatted.push(line.to_string());
-            
+
             // Add blank line after top-level sections (version, tasks, mise)
             if i < lines.len() - 1 {
                 let next_line = lines[i + 1];
-                
+
                 // Check if current line is a top-level key (no indentation, ends with :)
                 let current_is_top_level = !line.starts_with(' ') && line.ends_with(':');
                 let next_is_top_level = !next_line.starts_with(' ') && next_line.ends_with(':');
-                
+
                 // Add blank line between top-level sections
                 if current_is_top_level && next_is_top_level {
                     formatted.push(String::new());
                 }
-                
+
                 // // Add blank line between task definitions (after "internal: false/true")
                 // if line.trim().starts_with("internal:") && next_line.starts_with("  ") && !next_line.trim().is_empty() {
                 //     formatted.push(String::new());
                 // }
-                
+
                 // // Add blank line before "mise:" section (after last task's internal field)
                 // if line.trim().starts_with("internal:") && next_is_top_level {
                 //     formatted.push(String::new());
                 // }
             }
         }
-        
+
         formatted.join("\n")
     }
 
     /// Sort tasks in preferred order: default, install, dev, build, then rest alphabetically
-    fn sort_tasks(tasks: IndexMap<String, crate::config::razdfile::TaskConfig>) -> IndexMap<String, crate::config::razdfile::TaskConfig> {
+    fn sort_tasks(
+        tasks: IndexMap<String, crate::config::razdfile::TaskConfig>,
+    ) -> IndexMap<String, crate::config::razdfile::TaskConfig> {
         let preferred_order = vec!["default", "install", "dev", "build"];
         let mut sorted = IndexMap::new();
-        
+
         // First, add tasks in preferred order
         for task_name in &preferred_order {
             if let Some(task_config) = tasks.get(*task_name) {
                 sorted.insert(task_name.to_string(), task_config.clone());
             }
         }
-        
+
         // Then add remaining tasks alphabetically
-        let mut remaining: Vec<_> = tasks.iter()
+        let mut remaining: Vec<_> = tasks
+            .iter()
             .filter(|(name, _)| !preferred_order.contains(&name.as_str()))
             .collect();
         remaining.sort_by(|(a, _), (b, _)| a.cmp(b));
-        
+
         for (name, config) in remaining {
             sorted.insert(name.clone(), config.clone());
         }
-        
+
         sorted
     }
 }
@@ -428,17 +440,26 @@ mod tests {
 
     fn create_test_razdfile(dir: &Path) -> Result<()> {
         let mut tools = IndexMap::new();
-        tools.insert("node".to_string(), crate::config::razdfile::ToolConfig::Simple("22".to_string()));
-        tools.insert("python".to_string(), crate::config::razdfile::ToolConfig::Simple("3.11".to_string()));
+        tools.insert(
+            "node".to_string(),
+            crate::config::razdfile::ToolConfig::Simple("22".to_string()),
+        );
+        tools.insert(
+            "python".to_string(),
+            crate::config::razdfile::ToolConfig::Simple("3.11".to_string()),
+        );
 
         let mut plugins = IndexMap::new();
-        plugins.insert("node".to_string(), "https://github.com/asdf-vm/asdf-nodejs.git".to_string());
+        plugins.insert(
+            "node".to_string(),
+            "https://github.com/asdf-vm/asdf-nodejs.git".to_string(),
+        );
 
         let mise_config = crate::config::razdfile::MiseConfig {
             tools: Some(tools),
             plugins: Some(plugins),
         };
-        
+
         let razdfile = crate::config::razdfile::RazdfileConfig {
             version: "3".to_string(),
             mise: Some(mise_config),

@@ -2,9 +2,9 @@ use crate::config::get_workflow_config;
 use crate::core::{output, RazdError, Result};
 use crate::integrations::{git, mise, taskfile};
 use std::env;
-use std::path::Path;
-use std::io::{self, Write};
 use std::fs;
+use std::io::{self, Write};
+use std::path::Path;
 
 /// Execute the `razd up` command: clone repository + run up workflow, or set up local project
 pub async fn execute(url: Option<&str>, name: Option<&str>, init: bool) -> Result<()> {
@@ -28,7 +28,7 @@ async fn execute_init() -> Result<()> {
     // Check if Razdfile already exists
     if razdfile_path.exists() {
         return Err(RazdError::config(
-            "Razdfile.yml already exists. Remove it first if you want to reinitialize."
+            "Razdfile.yml already exists. Remove it first if you want to reinitialize.",
         ));
     }
 
@@ -90,24 +90,24 @@ async fn execute_local_project() -> Result<()> {
     if has_project_configuration(&current_dir) {
         // Step 1: Execute up workflow
         execute_up_workflow().await?;
-        
+
         // Step 2: Show success message
         show_success_message()?;
     } else {
         // Step 1: Offer to create configuration interactively
         output::info("No project configuration found.");
-        
+
         if prompt_yes_no("Would you like to create a Razdfile.yml?", false)? {
             create_interactive_razdfile(&current_dir).await?;
             output::info("Razdfile.yml created successfully!");
-            
+
             // Run the workflow we just created
             execute_up_workflow().await?;
             show_success_message()?;
         } else {
             output::info("Hint: Run 'razd up <url>' to clone a repository, or manually create a Razdfile.yml");
             show_razdfile_example();
-            
+
             return Err(RazdError::no_project_config(
                 "Create a Razdfile.yml manually or run 'razd up <url>' to clone a repository with configuration."
             ));
@@ -122,7 +122,7 @@ fn has_project_configuration(dir: &Path) -> bool {
     let has_razdfile = dir.join("Razdfile.yml").exists();
     let has_taskfile = dir.join("Taskfile.yml").exists();
     let has_mise = dir.join("mise.toml").exists() || dir.join(".mise.toml").exists();
-    
+
     has_razdfile || has_taskfile || has_mise
 }
 
@@ -161,15 +161,18 @@ fn show_success_message() -> Result<()> {
 fn prompt_yes_no(message: &str, default: bool) -> Result<bool> {
     let default_str = if default { "Y/n" } else { "y/N" };
     output::info(&format!("{} [{}] ", message, default_str));
-    
-    io::stdout().flush().map_err(|e| RazdError::command(&format!("Failed to flush stdout: {}", e)))?;
-    
+
+    io::stdout()
+        .flush()
+        .map_err(|e| RazdError::command(&format!("Failed to flush stdout: {}", e)))?;
+
     let mut input = String::new();
-    io::stdin().read_line(&mut input)
+    io::stdin()
+        .read_line(&mut input)
         .map_err(|e| RazdError::command(&format!("Failed to read input: {}", e)))?;
-    
+
     let input = input.trim().to_lowercase();
-    
+
     match input.as_str() {
         "y" | "yes" => Ok(true),
         "n" | "no" => Ok(false),
@@ -184,21 +187,21 @@ fn prompt_yes_no(message: &str, default: bool) -> Result<bool> {
 /// Create interactive Razdfile.yml
 async fn create_interactive_razdfile(dir: &Path) -> Result<()> {
     output::info("Creating Razdfile.yml...");
-    
+
     // Detect project type
     let project_type = detect_project_type(dir);
     output::info(&format!("Detected project type: {}", project_type));
-    
+
     // Get template based on project type
     let template = get_razdfile_template(&project_type);
-    
+
     // Write file
     let razdfile_path = dir.join("Razdfile.yml");
     fs::write(&razdfile_path, template)
         .map_err(|e| RazdError::command(&format!("Failed to write Razdfile.yml: {}", e)))?;
-    
+
     output::info(&format!("Created: {}", razdfile_path.display()));
-    
+
     Ok(())
 }
 
@@ -220,8 +223,7 @@ fn detect_project_type(dir: &Path) -> String {
 /// Get Razdfile.yml template for project type
 fn get_razdfile_template(project_type: &str) -> String {
     match project_type {
-        "Node.js" => {
-            r#"tasks:
+        "Node.js" => r#"tasks:
   default:
     desc: "Set up and start Node.js project"
     cmds:
@@ -249,10 +251,9 @@ fn get_razdfile_template(project_type: &str) -> String {
     desc: "Run tests"
     cmds:
       - npm test
-"#.to_string()
-        }
-        "Rust" => {
-            r#"tasks:
+"#
+        .to_string(),
+        "Rust" => r#"tasks:
   default:
     desc: "Set up and build Rust project"
     cmds:
@@ -278,10 +279,9 @@ fn get_razdfile_template(project_type: &str) -> String {
     desc: "Run tests"
     cmds:
       - cargo test
-"#.to_string()
-        }
-        "Python" => {
-            r#"tasks:
+"#
+        .to_string(),
+        "Python" => r#"tasks:
   default:
     desc: "Set up and start Python project"
     cmds:
@@ -304,10 +304,9 @@ fn get_razdfile_template(project_type: &str) -> String {
     desc: "Run tests"
     cmds:
       - python -m pytest
-"#.to_string()
-        }
-        "Go" => {
-            r#"tasks:
+"#
+        .to_string(),
+        "Go" => r#"tasks:
   default:
     desc: "Set up and run Go project"
     cmds:
@@ -335,10 +334,9 @@ fn get_razdfile_template(project_type: &str) -> String {
     desc: "Run tests"
     cmds:
       - go test ./...
-"#.to_string()
-        }
-        _ => {
-            r#"tasks:
+"#
+        .to_string(),
+        _ => r#"tasks:
   default:
     desc: "Set up project"
     cmds:
@@ -364,8 +362,8 @@ fn get_razdfile_template(project_type: &str) -> String {
     desc: "Run tests"
     cmds:
       - echo "Running tests..."
-"#.to_string()
-        }
+"#
+        .to_string(),
     }
 }
 

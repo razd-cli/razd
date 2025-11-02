@@ -3,9 +3,9 @@
 
 pub mod config;
 pub mod core;
-pub mod integrations;
 pub mod defaults;
+pub mod integrations;
 
 // Re-export commonly used types
-pub use config::{RazdfileConfig, MiseConfig, ToolConfig};
+pub use config::{MiseConfig, RazdfileConfig, ToolConfig};
 pub use core::{RazdError, Result};

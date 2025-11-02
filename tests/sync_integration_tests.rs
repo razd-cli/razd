@@ -1,5 +1,5 @@
-use razd::config::{RazdfileConfig, check_and_sync_mise};
 use razd::config::mise_sync::{MiseSyncManager, SyncConfig, SyncResult};
+use razd::config::{check_and_sync_mise, RazdfileConfig};
 use std::fs;
 use tempfile::TempDir;
 
@@ -80,14 +80,18 @@ python = "https://github.com/asdf-community/asdf-python.git"
     };
     let manager = MiseSyncManager::new(project_root.to_path_buf(), config);
     let result = manager.check_and_sync_if_needed();
-    
+
     // Check if sync was attempted
     match result {
         Ok(sync_result) => {
             // Should be either RazdfileChanged (first run) or MiseToRazdfile
             assert!(
-                matches!(sync_result, SyncResult::RazdfileToMise | SyncResult::MiseToRazdfile),
-                "Expected sync to happen, got: {:?}", sync_result
+                matches!(
+                    sync_result,
+                    SyncResult::RazdfileToMise | SyncResult::MiseToRazdfile
+                ),
+                "Expected sync to happen, got: {:?}",
+                sync_result
             );
         }
         Err(e) => {
@@ -104,7 +108,7 @@ python = "https://github.com/asdf-community/asdf-python.git"
             .unwrap()
             .unwrap();
         assert!(razdfile.mise.is_some());
-        
+
         let mise = razdfile.mise.unwrap();
         assert!(mise.tools.is_some());
         let tools = mise.tools.unwrap();
@@ -145,7 +149,7 @@ mise:
     // Second sync should report no changes
     let manager2 = MiseSyncManager::new(project_root.to_path_buf(), config);
     let result = manager2.check_and_sync_if_needed().unwrap();
-    
+
     assert_eq!(result, SyncResult::NoChangesNeeded);
 }
 
@@ -190,7 +194,7 @@ node = "18"
     let razdfile = RazdfileConfig::load_from_path(&razdfile_path)
         .unwrap()
         .unwrap();
-    
+
     // Verify we have mise config
     assert!(razdfile.mise.is_some());
 

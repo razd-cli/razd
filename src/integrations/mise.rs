@@ -11,10 +11,10 @@ pub fn has_mise_config(dir: &Path) -> bool {
             return true;
         }
     }
-    
+
     // Fallback to traditional mise config files
-    dir.join("mise.toml").exists() 
-        || dir.join(".mise.toml").exists() 
+    dir.join("mise.toml").exists()
+        || dir.join(".mise.toml").exists()
         || dir.join(".tool-versions").exists()
 }
 
