@@ -22,7 +22,7 @@ pub async fn execute(task_name: &str, _args: &[String]) -> Result<()> {
         // Execute via taskfile with the workflow content in interactive mode
         taskfile::execute_workflow_task_interactive(task_name, &workflow_content).await?;
     } else {
-        return Err(crate::core::RazdError::command(&format!(
+        return Err(crate::core::RazdError::command(format!(
             "Task '{}' not found in Razdfile.yml. Try running 'task --list' to see available tasks",
             task_name
         )));

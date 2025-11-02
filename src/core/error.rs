@@ -34,9 +34,11 @@ pub enum RazdError {
     NoDefaultTask,
 
     #[error("Interactive setup cancelled by user")]
+    #[allow(dead_code)]
     SetupCancelled,
 
     #[error("Project type '{project_type}' not recognized. Using generic template.")]
+    #[allow(dead_code)]
     UnknownProjectType { project_type: String },
 }
 
@@ -83,10 +85,12 @@ impl RazdError {
         Self::NoDefaultTask
     }
 
+    #[allow(dead_code)]
     pub fn setup_cancelled() -> Self {
         Self::SetupCancelled
     }
 
+    #[allow(dead_code)]
     pub fn unknown_project_type<S: Into<String>>(project_type: S) -> Self {
         Self::UnknownProjectType {
             project_type: project_type.into(),

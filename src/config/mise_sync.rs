@@ -116,17 +116,15 @@ impl MiseSyncManager {
         let toml_content = generate_mise_toml(mise_config)?;
 
         // Ask user about backup if file exists
-        if mise_toml_path.exists() {
-            if self.config.create_backups {
-                if !self.config.auto_approve {
-                    println!("⚠️  mise.toml will be overwritten. Overwrite WITHOUT backup? [Y/n]");
-                    if !self.prompt_user_approval()? {
-                        self.create_backup(&mise_toml_path)?;
-                    }
-                } else {
-                    // Auto-approve: create backup without prompt
+        if mise_toml_path.exists() && self.config.create_backups {
+            if !self.config.auto_approve {
+                println!("⚠️  mise.toml will be overwritten. Overwrite WITHOUT backup? [Y/n]");
+                if !self.prompt_user_approval()? {
                     self.create_backup(&mise_toml_path)?;
                 }
+            } else {
+                // Auto-approve: create backup without prompt
+                self.create_backup(&mise_toml_path)?;
             }
         }
 
@@ -179,17 +177,15 @@ impl MiseSyncManager {
         razdfile.tasks = Self::sort_tasks(razdfile.tasks);
 
         // Ask user about backup if file exists
-        if razdfile_path.exists() {
-            if self.config.create_backups {
-                if !self.config.auto_approve {
-                    println!("⚠️  Razdfile.yml will be modified. Modify WITHOUT backup? [Y/n]");
-                    if !self.prompt_user_approval()? {
-                        self.create_backup(&razdfile_path)?;
-                    }
-                } else {
-                    // Auto-approve: create backup without prompt
+        if razdfile_path.exists() && self.config.create_backups {
+            if !self.config.auto_approve {
+                println!("⚠️  Razdfile.yml will be modified. Modify WITHOUT backup? [Y/n]");
+                if !self.prompt_user_approval()? {
                     self.create_backup(&razdfile_path)?;
                 }
+            } else {
+                // Auto-approve: create backup without prompt
+                self.create_backup(&razdfile_path)?;
             }
         }
 
@@ -524,7 +520,7 @@ node = "https://github.com/asdf-vm/asdf-nodejs.git"
         assert_eq!(result, SyncResult::MiseToRazdfile);
         assert!(project_root.join("Razdfile.yml").exists());
 
-        let razdfile = RazdfileConfig::load_from_path(&project_root.join("Razdfile.yml"))
+        let razdfile = RazdfileConfig::load_from_path(project_root.join("Razdfile.yml"))
             .unwrap()
             .unwrap();
         assert!(razdfile.mise.is_some());

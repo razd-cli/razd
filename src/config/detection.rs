@@ -1,6 +1,7 @@
 use std::path::Path;
 
 /// Detect project type based on files in the current directory
+#[allow(dead_code)]
 pub fn detect_project_type<P: AsRef<Path>>(path: P) -> String {
     let path = path.as_ref();
 
@@ -36,6 +37,7 @@ pub fn detect_project_type<P: AsRef<Path>>(path: P) -> String {
 }
 
 /// Get recommended tools for a project type
+#[allow(dead_code)]
 pub fn get_recommended_tools(project_type: &str) -> Vec<&'static str> {
     match project_type {
         "node" => vec!["node", "npm", "yarn"],
@@ -48,6 +50,7 @@ pub fn get_recommended_tools(project_type: &str) -> Vec<&'static str> {
 }
 
 /// Generate mise.toml content based on project type
+#[allow(dead_code)]
 pub fn generate_mise_config(project_type: &str) -> String {
     let tools = get_recommended_tools(project_type);
 
@@ -70,6 +73,7 @@ pub fn generate_mise_config(project_type: &str) -> String {
 }
 
 /// Generate basic Taskfile.yml content based on project type
+#[allow(dead_code)]
 pub fn generate_taskfile_config(project_type: &str) -> String {
     match project_type {
         "node" => r#"version: '3'

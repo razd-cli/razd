@@ -1,8 +1,11 @@
-use crate::config::razdfile::{Command, MiseConfig, RazdfileConfig, TaskConfig, ToolConfig};
+use crate::config::razdfile::{Command, MiseConfig, RazdfileConfig, ToolConfig};
 use crate::core::RazdError;
 use indexmap::IndexMap;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
+
+#[cfg(test)]
+use crate::config::razdfile::TaskConfig;
 use std::fmt::Write;
 use std::fs;
 use std::path::Path;
@@ -171,7 +174,7 @@ pub fn compute_mise_toml_semantic_hash(path: &Path) -> crate::core::Result<Strin
 fn parse_mise_toml(content: &str) -> crate::core::Result<MiseConfig> {
     let doc: toml_edit::DocumentMut = content
         .parse()
-        .map_err(|e| RazdError::config(&format!("Failed to parse mise.toml: {}", e)))?;
+        .map_err(|e| RazdError::config(format!("Failed to parse mise.toml: {}", e)))?;
 
     let mut tools = None;
     let mut plugins = None;

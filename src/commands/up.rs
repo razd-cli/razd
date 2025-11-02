@@ -164,12 +164,12 @@ fn prompt_yes_no(message: &str, default: bool) -> Result<bool> {
 
     io::stdout()
         .flush()
-        .map_err(|e| RazdError::command(&format!("Failed to flush stdout: {}", e)))?;
+        .map_err(|e| RazdError::command(format!("Failed to flush stdout: {}", e)))?;
 
     let mut input = String::new();
     io::stdin()
         .read_line(&mut input)
-        .map_err(|e| RazdError::command(&format!("Failed to read input: {}", e)))?;
+        .map_err(|e| RazdError::command(format!("Failed to read input: {}", e)))?;
 
     let input = input.trim().to_lowercase();
 
@@ -198,7 +198,7 @@ async fn create_interactive_razdfile(dir: &Path) -> Result<()> {
     // Write file
     let razdfile_path = dir.join("Razdfile.yml");
     fs::write(&razdfile_path, template)
-        .map_err(|e| RazdError::command(&format!("Failed to write Razdfile.yml: {}", e)))?;
+        .map_err(|e| RazdError::command(format!("Failed to write Razdfile.yml: {}", e)))?;
 
     output::info(&format!("Created: {}", razdfile_path.display()));
 

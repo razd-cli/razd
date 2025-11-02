@@ -722,7 +722,7 @@ cmds:
 internal: false
 "#;
         let task: TaskConfig = serde_yaml::from_str(yaml).unwrap();
-        assert_eq!(task.internal, false);
+        assert!(!task.internal);
         assert_eq!(task.desc, Some("Test task".to_string()));
     }
 
@@ -734,8 +734,8 @@ cmds:
   - echo test
 "#;
         let task: TaskConfig = serde_yaml::from_str(yaml).unwrap();
-        assert_eq!(
-            task.internal, false,
+        assert!(
+            !task.internal,
             "internal should default to false when not specified"
         );
         assert_eq!(task.desc, Some("Test task".to_string()));
