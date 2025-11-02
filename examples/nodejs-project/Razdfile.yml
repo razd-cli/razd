@@ -33,10 +33,3 @@ tasks:
     desc: Run tests
     cmds:
     - npm test
-
-  deploy:
-    desc: Deploy to production
-    cmds:
-    - echo "Deploying to production..."
-    - npm run build
-    - echo "Deployment complete!"
