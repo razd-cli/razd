@@ -42,10 +42,10 @@ From this directory:
 razd up
 
 # Or run specific tasks
-razd task install
-razd task dev
-razd task build
-razd task test
+razd run install
+razd run dev
+razd run build
+razd run test
 ```
 
 ## How It Works

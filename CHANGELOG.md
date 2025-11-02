@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2025-11-03
+
+### Removed
+- **Breaking Change**: Removed `razd task` command in favor of `razd run`
+  - The `razd task` command has been removed to simplify the CLI interface
+  - Users should now use `razd run <name>` to execute tasks defined in Razdfile.yml
+  - This change eliminates confusion between two similar commands and provides a clearer mental model
+
+### Migration Guide
+Replace all instances of `razd task` with `razd run`:
+
+**Before (0.4.0)**:
+```bash
+razd task build
+razd task test
+razd task dev
+```
+
+**After (0.4.1)**:
+```bash
+razd run build
+razd run test
+razd run dev
+```
+
+### Changed
+- Updated error messages and help text to reference `razd run` instead of `razd task`
+- Updated all documentation and examples to use the new command
+
 ## [0.4.0] - 2025-11-03
 
 ### Fixed

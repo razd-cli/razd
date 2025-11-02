@@ -153,7 +153,7 @@ fn show_success_message() -> Result<()> {
     output::info("Next steps:");
     output::info("  razd dev            # Start development workflow");
     output::info("  razd build          # Build project");
-    output::info("  razd task <name>    # Run specific task");
+    output::info("  razd run <name>     # Run specific task");
     Ok(())
 }
 

@@ -30,7 +30,7 @@ pub enum RazdError {
     #[error("No project configuration found in current directory.\n{suggestion}")]
     NoProjectConfig { suggestion: String },
 
-    #[error("No default task found in Razdfile.yml.\nPlease add a 'default' task or specify a task name: razd task <name>")]
+    #[error("No default task found in Razdfile.yml.\nPlease add a 'default' task or specify a task name: razd run <name>")]
     NoDefaultTask,
 
     #[error("Interactive setup cancelled by user")]

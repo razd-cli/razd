@@ -69,49 +69,6 @@ pub async fn setup_project(working_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Execute a specific task
-pub async fn execute_task(
-    task_name: Option<&str>,
-    args: &[String],
-    working_dir: &Path,
-) -> Result<()> {
-    // Ensure task tool is available
-    mise::ensure_tool_available("task", "latest", working_dir).await?;
-
-    // Check if Taskfile exists
-    if !has_taskfile_config(working_dir) {
-        return Err(RazdError::task(
-            "No Taskfile found (Taskfile.yml or Taskfile.yaml). Please create one first.",
-        ));
-    }
-
-    let mut command_args = Vec::new();
-
-    if let Some(name) = task_name {
-        command_args.push(name);
-    }
-
-    // Add additional arguments
-    for arg in args {
-        command_args.push(arg);
-    }
-
-    let task_desc = if let Some(name) = task_name {
-        format!("task {}", name)
-    } else {
-        "default task".to_string()
-    };
-
-    output::step(&format!("Executing {}", task_desc));
-
-    let args_str: Vec<&str> = command_args.iter().map(|s| s.as_ref()).collect();
-    execute_task_command(&args_str, working_dir).await?;
-
-    output::success(&format!("Successfully executed {}", task_desc));
-
-    Ok(())
-}
-
 /// Execute a workflow task using custom taskfile content
 pub async fn execute_workflow_task(task_name: &str, workflow_content: &str) -> Result<()> {
     execute_workflow_task_with_mode(task_name, workflow_content, false).await
