@@ -47,11 +47,6 @@ pub fn has_taskfile_config(dir: &Path) -> bool {
     dir.join("Taskfile.yml").exists() || dir.join("Taskfile.yaml").exists()
 }
 
-/// Check if Razdfile configuration exists in the directory
-pub fn has_razdfile_config(dir: &Path) -> bool {
-    dir.join("Razdfile.yml").exists()
-}
-
 /// Run task setup to install project dependencies
 pub async fn setup_project(working_dir: &Path) -> Result<()> {
     // Ensure task tool is available
@@ -148,16 +143,8 @@ async fn execute_workflow_task_with_mode(
 
     output::step(&format!("Executing workflow: {}", task_name));
 
-    // Check if Razdfile.yml exists - use it directly instead of creating temp file
-    if has_razdfile_config(&working_dir) {
-        let razdfile_path = working_dir.join("Razdfile.yml");
-        let args = vec!["--taskfile", razdfile_path.to_str().unwrap(), task_name];
-
-        let result = execute_task_command_with_mode(&args, &working_dir, interactive).await;
-        return result;
-    }
-
-    // Fallback: Create a temporary taskfile from workflow content
+    // Always create a temporary taskfile from workflow content
+    // This ensures version field is injected even if omitted in Razdfile.yml
     let temp_taskfile = working_dir.join(format!(".razd-workflow-{}.yml", task_name));
 
     fs::write(&temp_taskfile, workflow_content)

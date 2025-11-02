@@ -1,15 +1,7 @@
-# Razdfile.yml - Configuration for razd CLI tool
-# The 'version' field is optional - razd automatically uses Taskfile v3 format
-
-version: "3"
-
 mise:
   tools:
     node: "22"
     task: "latest"
-  plugins:
-    node: "https://github.com/asdf-vm/asdf-nodejs.git"
-
 tasks:
   default:
     desc: Set up and start Node.js project
