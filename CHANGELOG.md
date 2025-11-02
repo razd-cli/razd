@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2025-11-03
+
+### Fixed
+- **Critical fix**: Version field injection now works correctly when omitted from Razdfile.yml
+  - Fixed bug where Razdfile.yml was passed directly to task command without serialization
+  - razd now always serializes configuration through temporary files to ensure version field is injected
+  - Users can now reliably omit `version: '3'` from their Razdfile.yml files
+
+### Changed
+- Removed unused `has_razdfile_config()` function from taskfile integration
+- Workflow execution always uses serialized YAML to maintain consistency
+
 ## [0.3.2] - 2025-11-03
 
 ### Changed
