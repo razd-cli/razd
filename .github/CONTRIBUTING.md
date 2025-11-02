@@ -6,9 +6,10 @@ Thank you for your interest in contributing to razd!
 
 ### Prerequisites
 
-- Rust 1.82.0+
+
 - Git
 - mise installed (https://mise.jdx.dev)
+- Rust 1.82.0+ (optional if you don't use mise)
 
 **Install razd:**
 ```sh
