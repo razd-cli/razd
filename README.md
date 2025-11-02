@@ -4,6 +4,10 @@
 
 # razd
 
+[![CI](https://github.com/razd-cli/razd/workflows/CI/badge.svg)](https://github.com/razd-cli/razd/actions/workflows/ci.yml)
+![Release](https://github.com/razd-cli/razd/workflows/Release/badge.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/razd-cli/razd/blob/main/LICENSE)
+
 Razd is a modern project setup tool that helps you wake up your projects and get things sorted.
 
 It orchestrates [mise](https://github.com/jdx/mise) and [taskfile](https://github.com/go-task/task) for one-command project initialization.
