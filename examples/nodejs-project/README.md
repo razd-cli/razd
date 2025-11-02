@@ -42,10 +42,12 @@ From this directory:
 razd up
 
 # Or run specific tasks
-razd run install
-razd run dev
-razd run build
-razd run test
+razd install
+razd dev
+razd build
+
+# Or run custom tasks
+razd run test 
 ```
 
 ## How It Works
@@ -63,9 +65,6 @@ When razd processes this Razdfile, it generates:
 ```toml
 [tools]
 node = "22"
-
-[plugins]
-node = "https://github.com/asdf-vm/asdf-nodejs.git"
 ```
 
 ### Automatic Synchronization

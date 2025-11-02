@@ -2,16 +2,12 @@ mise:
   tools:
     node: "22"
     task: "latest"
-  plugins:
-    node: "https://github.com/asdf-vm/asdf-nodejs.git"
-
 tasks:
   default:
     desc: Set up and start Node.js project
     cmds:
-    - mise install
-    - npm install
-    - npm run dev
+    - task: install
+    - task: dev
 
   install:
     desc: Install dependencies
