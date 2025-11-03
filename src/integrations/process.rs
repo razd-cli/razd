@@ -52,7 +52,8 @@ pub async fn execute_command_interactive(
 ) -> Result<()> {
     output::step(&format!("Running: {} {}", program, args.join(" ")));
 
-    let mut cmd = Command::new(program);
+    // Use std::process::Command for better TTY/PTY handling on all platforms
+    let mut cmd = std::process::Command::new(program);
     cmd.args(args);
 
     // Inherit current environment and stdio for interactive execution
@@ -65,9 +66,10 @@ pub async fn execute_command_interactive(
         cmd.current_dir(dir);
     }
 
-    let status = cmd
-        .status()
+    // Use blocking spawn since we need to wait for the process anyway
+    let status = tokio::task::spawn_blocking(move || cmd.status())
         .await
+        .map_err(|e| RazdError::config(format!("Failed to spawn task: {}", e)))?
         .map_err(|e| RazdError::config(format!("Failed to execute {}: {}", program, e)))?;
 
     if !status.success() {
