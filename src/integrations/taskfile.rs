@@ -109,8 +109,15 @@ async fn execute_workflow_task_with_mode(
     fs::write(&temp_taskfile, workflow_content)
         .map_err(|e| RazdError::task(format!("Failed to create temporary taskfile: {}", e)))?;
 
-    // Execute task with custom taskfile in the working directory
-    let args = vec!["--taskfile", temp_taskfile.to_str().unwrap(), task_name];
+    // Execute task with --dir to ensure commands run in project directory, not temp directory.
+    // This is critical for CI/CD where project files must be accessible.
+    let args = vec![
+        "--dir",
+        working_dir.to_str().unwrap(),
+        "--taskfile",
+        temp_taskfile.to_str().unwrap(),
+        task_name,
+    ];
 
     let result = execute_task_command_with_mode(&args, &working_dir, interactive).await;
 

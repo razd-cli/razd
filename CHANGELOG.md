@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fixed workflow execution in CI/CD environments
+  - Added `--dir` parameter to `task` command to explicitly set working directory
+  - Ensures commands in workflows execute in project directory, not temp directory
+  - Fixes "file not found" errors for project files like `package.json` in CI/CD
+
 ## [0.4.5] - 2025-11-03
 
 ### Fixed
