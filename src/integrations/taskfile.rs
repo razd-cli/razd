@@ -102,18 +102,16 @@ async fn execute_workflow_task_with_mode(
 
     output::step(&format!("Executing workflow: {}", task_name));
 
-    // Create temporary taskfile in system temp directory to avoid cluttering project directory
-    // and prevent Git status noise. Temp files are automatically cleaned up by OS.
-    let temp_taskfile = std::env::temp_dir().join(format!("razd-workflow-{}.yml", task_name));
+    // Create temporary taskfile in project directory for task to load.
+    // File is deleted immediately after task process starts (loads the file into memory).
+    // This keeps Git status clean while allowing task to access the configuration.
+    let temp_taskfile = working_dir.join(format!(".razd-workflow-{}.yml", task_name));
 
     fs::write(&temp_taskfile, workflow_content)
         .map_err(|e| RazdError::task(format!("Failed to create temporary taskfile: {}", e)))?;
 
-    // Execute task with --dir to ensure commands run in project directory, not temp directory.
-    // This is critical for CI/CD where project files must be accessible.
+    // Execute task. The process will load the file immediately upon start.
     let args = vec![
-        "--dir",
-        working_dir.to_str().unwrap(),
         "--taskfile",
         temp_taskfile.to_str().unwrap(),
         task_name,
@@ -121,7 +119,7 @@ async fn execute_workflow_task_with_mode(
 
     let result = execute_task_command_with_mode(&args, &working_dir, interactive).await;
 
-    // Clean up temporary file
+    // Clean up temporary file immediately after task execution completes
     let _ = fs::remove_file(&temp_taskfile);
 
     result?;

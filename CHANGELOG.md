@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.7] - 2025-11-04
+
+### Changed
+- Reverted temporary workflow files to project directory with immediate cleanup
+  - Temporary `.razd-workflow-{task_name}.yml` files are now created in project directory
+  - Files are deleted immediately after task process loads them (typically within milliseconds)
+  - Added `.razd-workflow-*.yml` pattern to `.gitignore` to prevent Git tracking
+  - Removed `--dir` parameter from task command as it's no longer needed
+  - This approach keeps Git status clean while allowing proper variable resolution in workflows
+
+### Fixed
+- Environment variables and other Taskfile features now work correctly
+  - Task CLI loads the workflow file immediately upon start, allowing safe deletion
+  - Variables defined in `env:` and `vars:` sections are properly accessible
+  - Working directory is correctly set to project root
+
 ## [0.4.6] - 2025-11-04
 
 ### Fixed
