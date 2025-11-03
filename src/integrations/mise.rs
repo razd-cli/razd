@@ -18,6 +18,31 @@ pub fn has_mise_config(dir: &Path) -> bool {
         || dir.join(".tool-versions").exists()
 }
 
+/// Trust mise configuration files in the directory
+pub async fn trust_config(working_dir: &Path) -> Result<()> {
+    // Check if mise is available
+    if !process::check_command_available("mise").await {
+        return Err(RazdError::missing_tool(
+            "mise",
+            "https://mise.jdx.dev/getting-started.html",
+        ));
+    }
+
+    // Check if mise configuration exists
+    if !has_mise_config(working_dir) {
+        return Ok(());
+    }
+
+    output::step("Trusting mise configuration...");
+
+    // Run mise trust interactively so user can confirm
+    process::execute_command_interactive("mise", &["trust"], Some(working_dir))
+        .await
+        .map_err(|e| RazdError::mise(format!("Failed to trust configuration: {}", e)))?;
+
+    Ok(())
+}
+
 /// Install tools using mise
 pub async fn install_tools(working_dir: &Path) -> Result<()> {
     // Check if mise is available
@@ -34,9 +59,12 @@ pub async fn install_tools(working_dir: &Path) -> Result<()> {
         return Ok(());
     }
 
+    // Trust configuration first
+    trust_config(working_dir).await?;
+
     output::step("Installing development tools with mise");
 
-    process::execute_command("mise", &["install"], Some(working_dir))
+    process::execute_command_interactive("mise", &["install"], Some(working_dir))
         .await
         .map_err(|e| RazdError::mise(format!("Failed to install tools: {}", e)))?;
 
@@ -55,13 +83,16 @@ pub async fn install_specific_tool(tool: &str, version: &str, working_dir: &Path
         ));
     }
 
+    // Trust configuration first (if exists)
+    let _ = trust_config(working_dir).await; // Ignore error if no config to trust
+
     output::step(&format!("Installing {} via mise...", tool));
 
     // Install the tool
     let tool_spec = format!("{}@{}", tool, version);
     let install_args = vec!["install", &tool_spec];
 
-    process::execute_command("mise", &install_args, Some(working_dir))
+    process::execute_command_interactive("mise", &install_args, Some(working_dir))
         .await
         .map_err(|e| {
             RazdError::mise(format!(

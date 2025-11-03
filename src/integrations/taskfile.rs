@@ -16,6 +16,8 @@ async fn execute_task_command_with_mode(
     // First try direct execution
     if process::check_command_available("task").await {
         if interactive {
+            // Note: task doesn't have --interactive flag, but we use interactive execution
+            // to properly handle stdin/stdout for commands that task runs
             return process::execute_command_interactive("task", args, Some(working_dir))
                 .await
                 .map_err(|e| RazdError::task(format!("Failed to execute task: {}", e)));

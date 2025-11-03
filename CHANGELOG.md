@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.4] - 2025-11-03
+
+### Fixed
+- Fixed `mise trust` prompt not showing during interactive setup
+  - Changed `mise install` and `mise trust` to use interactive execution mode
+  - Users can now see and respond to mise trust prompts during `razd up`
+  - Ensures proper PTY/TTY handling for all interactive mise commands
+  
+### Changed
+- Removed non-existent `--interactive` flag from task command invocation
+- Interactive mode now properly forwards stdin/stdout for all subcommands in workflow
+
 ## [0.4.3] - 2025-11-03
 
 ### Fixed
