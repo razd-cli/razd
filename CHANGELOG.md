@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.3] - 2025-11-03
+
+### Fixed
+- Fixed interactive command execution hanging on Linux
+  - Switched from `tokio::process::Command` to `std::process::Command` for interactive commands
+  - This resolves PTY/TTY handling issues that caused commands like `npm install` to hang on Linux
+  - Commands now properly inherit stdio and work correctly across all platforms
+
 ## [0.4.2] - 2025-11-03
 
 ### Changed
