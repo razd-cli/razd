@@ -1,5 +1,6 @@
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
+use serde_yaml::Value;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -22,7 +23,39 @@ pub enum Command {
     TaskRef {
         task: String,
         #[serde(skip_serializing_if = "Option::is_none")]
-        vars: Option<HashMap<String, String>>,
+        vars: Option<HashMap<String, Value>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        silent: Option<bool>,
+    },
+    /// Complex command with additional options (Taskfile v3 full syntax)
+    Complex {
+        cmd: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        silent: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        platforms: Option<Vec<String>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        ignore_error: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        set: Option<Vec<String>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        shopt: Option<Vec<String>>,
+    },
+}
+
+/// Task dependency representation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Dependency {
+    /// Simple task name: "build"
+    Simple(String),
+    /// Complex dependency with variables
+    Complex {
+        task: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        vars: Option<HashMap<String, Value>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        silent: Option<bool>,
     },
 }
 
@@ -33,6 +66,10 @@ pub struct RazdfileConfig {
     pub version: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mise: Option<MiseConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub env: Option<IndexMap<String, Value>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vars: Option<IndexMap<String, Value>>,
     #[serde(default)]
     pub tasks: IndexMap<String, TaskConfig>,
 }
@@ -44,10 +81,21 @@ fn is_false(value: &bool) -> bool {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaskConfig {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub desc: Option<String>,
     pub cmds: Vec<Command>,
     #[serde(default, skip_serializing_if = "is_false")]
     pub internal: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub deps: Option<Vec<Dependency>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub env: Option<IndexMap<String, Value>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vars: Option<IndexMap<String, Value>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub silent: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub platforms: Option<Vec<String>>,
 }
 
 /// Mise configuration section in Razdfile.yml
@@ -303,7 +351,7 @@ tasks:
 
         // Verify commands are parsed as task references
         match &task.cmds[0] {
-            Command::TaskRef { task, vars } => {
+            Command::TaskRef { task, vars, .. } => {
                 assert_eq!(task, "install");
                 assert!(vars.is_none());
             }
@@ -345,7 +393,7 @@ tasks:
 
         // Verify second command is task reference
         match &task.cmds[1] {
-            Command::TaskRef { task, vars } => {
+            Command::TaskRef { task, vars, .. } => {
                 assert_eq!(task, "install");
                 assert!(vars.is_none());
             }
@@ -388,7 +436,7 @@ tasks:
 
         // Verify command is task reference with vars
         match &task.cmds[0] {
-            Command::TaskRef { task, vars } => {
+            Command::TaskRef { task, vars, .. } => {
                 assert_eq!(task, "build");
                 assert!(vars.is_some());
                 let vars_map = vars.as_ref().unwrap();
@@ -689,6 +737,11 @@ tasks:
             desc: Some("Test task".to_string()),
             cmds: vec![Command::String("echo test".to_string())],
             internal: false,
+            deps: None,
+            env: None,
+            vars: None,
+            silent: None,
+            platforms: None,
         };
         let yaml = serde_yaml::to_string(&task).unwrap();
         assert!(
@@ -704,6 +757,11 @@ tasks:
             desc: Some("Internal task".to_string()),
             cmds: vec![Command::String("echo internal".to_string())],
             internal: true,
+            deps: None,
+            env: None,
+            vars: None,
+            silent: None,
+            platforms: None,
         };
         let yaml = serde_yaml::to_string(&task).unwrap();
         assert!(

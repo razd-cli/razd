@@ -26,7 +26,12 @@ node = "https://github.com/asdf-vm/asdf-nodejs.git"
         TaskConfig {
             desc: Some("Build".to_string()),
             cmds: vec![Command::String("echo build".to_string())],
-            internal: false, // Keep explicit false for testing
+            internal: false,
+            deps: None,
+            env: None,
+            vars: None,
+            silent: None,
+            platforms: None,
         },
     );
     tasks.insert(
@@ -34,7 +39,12 @@ node = "https://github.com/asdf-vm/asdf-nodejs.git"
         TaskConfig {
             desc: Some("Custom".to_string()),
             cmds: vec![Command::String("echo custom".to_string())],
-            internal: false, // Keep explicit false for testing
+            internal: false,
+            deps: None,
+            env: None,
+            vars: None,
+            silent: None,
+            platforms: None,
         },
     );
     tasks.insert(
@@ -42,7 +52,12 @@ node = "https://github.com/asdf-vm/asdf-nodejs.git"
         TaskConfig {
             desc: Some("Install".to_string()),
             cmds: vec![Command::String("echo install".to_string())],
-            internal: false, // Keep explicit false for testing
+            internal: false,
+            deps: None,
+            env: None,
+            vars: None,
+            silent: None,
+            platforms: None,
         },
     );
     tasks.insert(
@@ -50,13 +65,20 @@ node = "https://github.com/asdf-vm/asdf-nodejs.git"
         TaskConfig {
             desc: Some("Default".to_string()),
             cmds: vec![Command::String("echo default".to_string())],
-            internal: false, // Keep explicit false for testing
+            internal: false,
+            deps: None,
+            env: None,
+            vars: None,
+            silent: None,
+            platforms: None,
         },
     );
 
     let razdfile = RazdfileConfig {
         version: "3".to_string(),
         mise: None,
+        env: None,
+        vars: None,
         tasks,
     };
 
@@ -122,3 +144,4 @@ node = "https://github.com/asdf-vm/asdf-nodejs.git"
     let tools = mise.tools.unwrap();
     assert!(tools.contains_key("python"), "Should have python tool");
 }
+

@@ -166,6 +166,8 @@ impl MiseSyncManager {
             RazdfileConfig {
                 version: "3".to_string(),
                 mise: None,
+                env: None,
+                vars: None,
                 tasks: IndexMap::new(),
             }
         };
@@ -459,6 +461,8 @@ mod tests {
         let razdfile = crate::config::razdfile::RazdfileConfig {
             version: "3".to_string(),
             mise: Some(mise_config),
+            env: None,
+            vars: None,
             tasks: IndexMap::new(),
         };
 

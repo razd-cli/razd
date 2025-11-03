@@ -9,10 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.4.7] - 2025-11-04
 
+### Added
+- **Full Taskfile v3 Schema Support**: Extended `Razdfile.yml` to support complete Taskfile v3 specification
+  - `env:` - Environment variables at root and task level (supports `sh:` dynamic values)
+  - `vars:` - Variables at root and task level (supports `sh:`, `ref:`, map types)
+  - `deps:` - Task dependencies (simple: `- task-name` or complex: `{task, vars, silent}`)
+  - `platforms:` - Platform-specific command filtering (e.g., `[windows, linux]`)
+  - `silent:` - Suppress command output
+  - Complex `cmd:` syntax with `cmd`, `platforms`, `silent`, `ignore_error`, `set`, `shopt` fields
+  - Task reference syntax: `{task: other-task, vars: {KEY: value}, silent: true}`
+  - See [Taskfile v3 Schema](https://taskfile.dev/docs/reference/schema) for full specification
+
 ### Changed
 - Reverted temporary workflow files to project directory with immediate cleanup
   - Temporary `.razd-workflow-{task_name}.yml` files are now created in project directory
   - Files are deleted immediately after task process loads them (typically within milliseconds)
+  - Added `.razd-workflow-*.yml` to `.gitignore` for version control safety
+
+### Technical
+- Used `serde_yaml::Value` for dynamic variable support (`sh:`, `ref:`, map types)
+- All new fields are `Option<T>` with `skip_serializing_if` for backward compatibility
+- Extended `Command` enum to 3 variants: `String`, `Complex`, `TaskRef`
+- Added `Dependency` enum: `Simple(String)`, `Complex{task, vars, silent}`
+- `IndexMap` for ordered variable maps
   - Added `.razd-workflow-*.yml` pattern to `.gitignore` to prevent Git tracking
   - Removed `--dir` parameter from task command as it's no longer needed
   - This approach keeps Git status clean while allowing proper variable resolution in workflows

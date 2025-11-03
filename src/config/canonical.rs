@@ -67,7 +67,7 @@ pub fn canonicalize_razdfile(config: &RazdfileConfig) -> String {
                 Command::String(s) => {
                     writeln!(output, "      -{}", s).unwrap();
                 }
-                Command::TaskRef { task, vars } => {
+                Command::TaskRef { task, vars, .. } => {
                     write!(output, "      -task:{}", task).unwrap();
                     if let Some(ref vars) = vars {
                         // Sort vars for determinism
@@ -77,9 +77,17 @@ pub fn canonicalize_razdfile(config: &RazdfileConfig) -> String {
                             if i > 0 {
                                 write!(output, ",").unwrap();
                             }
-                            write!(output, "{}:{}", k, v).unwrap();
+                            // Use Debug format for Value as it doesn't implement Display
+                            write!(output, "{}:{:?}", k, v).unwrap();
                         }
                         write!(output, "}}").unwrap();
+                    }
+                    writeln!(output).unwrap();
+                }
+                Command::Complex { cmd, platforms, .. } => {
+                    write!(output, "      -cmd:{}", cmd).unwrap();
+                    if let Some(ref platforms) = platforms {
+                        write!(output, ",platforms:[{}]", platforms.join(",")).unwrap();
                     }
                     writeln!(output).unwrap();
                 }
@@ -225,6 +233,8 @@ mod tests {
                 }),
                 plugins: None,
             }),
+            env: None,
+            vars: None,
             tasks: {
                 let mut map = IndexMap::new();
                 map.insert(
@@ -232,7 +242,12 @@ mod tests {
                     TaskConfig {
                         desc: Some("Test task".to_string()),
                         cmds: vec![Command::String("echo test".to_string())],
-                        internal: false, // Keep explicit false for testing
+                        internal: false,
+                        deps: None,
+                        env: None,
+                        vars: None,
+                        silent: None,
+                        platforms: None,
                     },
                 );
                 map
@@ -265,6 +280,8 @@ mod tests {
                 tools: Some(tools1),
                 plugins: None,
             }),
+            env: None,
+            vars: None,
             tasks: IndexMap::new(),
         };
 
@@ -274,6 +291,8 @@ mod tests {
                 tools: Some(tools2),
                 plugins: None,
             }),
+            env: None,
+            vars: None,
             tasks: IndexMap::new(),
         };
 
@@ -295,3 +314,4 @@ mod tests {
         assert_eq!(hash1.len(), 64); // SHA-256 produces 64 hex characters
     }
 }
+
