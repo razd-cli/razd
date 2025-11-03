@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.8] - 2025-11-04
+
+### Added
+- Full Taskfile v3 schema support (same as 0.4.7 but with proper release)
+
 ## [0.4.7] - 2025-11-04
 
 ### Added
