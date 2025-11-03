@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.5] - 2025-11-03
+
 ### Fixed
 - Moved temporary workflow files to system temp directory
   - Temporary `.razd-workflow-{task_name}.yml` files are now created in system temp directory instead of project directory
