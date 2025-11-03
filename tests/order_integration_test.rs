@@ -144,4 +144,3 @@ node = "https://github.com/asdf-vm/asdf-nodejs.git"
     let tools = mise.tools.unwrap();
     assert!(tools.contains_key("python"), "Should have python tool");
 }
-

@@ -111,11 +111,7 @@ async fn execute_workflow_task_with_mode(
         .map_err(|e| RazdError::task(format!("Failed to create temporary taskfile: {}", e)))?;
 
     // Execute task. The process will load the file immediately upon start.
-    let args = vec![
-        "--taskfile",
-        temp_taskfile.to_str().unwrap(),
-        task_name,
-    ];
+    let args = vec!["--taskfile", temp_taskfile.to_str().unwrap(), task_name];
 
     let result = execute_task_command_with_mode(&args, &working_dir, interactive).await;
 

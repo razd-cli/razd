@@ -314,4 +314,3 @@ mod tests {
         assert_eq!(hash1.len(), 64); // SHA-256 produces 64 hex characters
     }
 }
-
