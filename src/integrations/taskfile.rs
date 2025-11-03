@@ -102,9 +102,9 @@ async fn execute_workflow_task_with_mode(
 
     output::step(&format!("Executing workflow: {}", task_name));
 
-    // Always create a temporary taskfile from workflow content
-    // This ensures version field is injected even if omitted in Razdfile.yml
-    let temp_taskfile = working_dir.join(format!(".razd-workflow-{}.yml", task_name));
+    // Create temporary taskfile in system temp directory to avoid cluttering project directory
+    // and prevent Git status noise. Temp files are automatically cleaned up by OS.
+    let temp_taskfile = std::env::temp_dir().join(format!("razd-workflow-{}.yml", task_name));
 
     fs::write(&temp_taskfile, workflow_content)
         .map_err(|e| RazdError::task(format!("Failed to create temporary taskfile: {}", e)))?;

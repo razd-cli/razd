@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Moved temporary workflow files to system temp directory
+  - Temporary `.razd-workflow-{task_name}.yml` files are now created in system temp directory instead of project directory
+  - Prevents temporary files from appearing in Git status during workflow execution
+  - Follows OS best practices for temporary file management
+  - No changes needed to project `.gitignore` files
+
 ## [0.4.4] - 2025-11-03
 
 ### Fixed
