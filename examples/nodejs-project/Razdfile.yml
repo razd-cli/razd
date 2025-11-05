@@ -29,6 +29,10 @@ tasks:
     cmds:
       - npm run build
 
+  hello:
+    cmds:
+      - cp README.md hello.md
+
   test:
     desc: Run tests
     cmds:

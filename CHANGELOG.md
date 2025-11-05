@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.12] - 2025-11-05
+
+### Fixed
+- **Critical**: Task commands now execute in project directory instead of temp directory
+  - Added `--dir` flag to task command invocation to ensure correct working directory
+  - Fixes issue where file operations (cp, mv, etc.) failed because task was running in temp directory
+  - Maintains temp file location in system temp directory while executing commands in project directory
+
 ## [0.4.11] - 2025-11-05
 
 ### Changed
