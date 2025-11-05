@@ -1,6 +1,6 @@
 use crate::core::{output, RazdError, Result};
-use crate::integrations::{mise, process};
 use crate::defaults;
+use crate::integrations::{mise, process};
 use std::path::Path;
 use std::time::Duration;
 
@@ -118,7 +118,7 @@ async fn execute_workflow_task_with_mode(
         working_dir.to_str().unwrap(),
         task_name,
     ];
-    
+
     // Check if we can execute task directly (allows early cleanup) or need mise exec (keeps file)
     let result = if process::check_command_available("task").await {
         // Direct execution: spawn, wait briefly for file load, cleanup, then wait for completion
@@ -128,13 +128,13 @@ async fn execute_workflow_task_with_mode(
                     let _ = fs::remove_file(&temp_taskfile);
                     e
                 })?;
-            
+
             // Wait briefly to ensure the process has loaded the file
             tokio::time::sleep(Duration::from_millis(defaults::DEFAULT_SPAWN_DELAY_MS)).await;
-            
+
             // Clean up temporary file immediately after process has had time to load it
             let _ = fs::remove_file(&temp_taskfile);
-            
+
             // Wait for the task process to complete
             process::wait_for_command_interactive(child, "task").await
         } else {
@@ -144,13 +144,13 @@ async fn execute_workflow_task_with_mode(
                     let _ = fs::remove_file(&temp_taskfile);
                     e
                 })?;
-            
+
             // Wait briefly to ensure the process has loaded the file
             tokio::time::sleep(Duration::from_millis(defaults::DEFAULT_SPAWN_DELAY_MS)).await;
-            
+
             // Clean up temporary file immediately after process has had time to load it
             let _ = fs::remove_file(&temp_taskfile);
-            
+
             // Wait for the task process to complete
             process::wait_for_command(child, "task").await
         }
@@ -160,16 +160,16 @@ async fn execute_workflow_task_with_mode(
         output::step("Executing task via mise...");
         let mut mise_args = vec!["exec", "task", "--", "task"];
         mise_args.extend(&args);
-        
+
         let result = if interactive {
             process::execute_command_interactive("mise", &mise_args, Some(&working_dir)).await
         } else {
             process::execute_command("mise", &mise_args, Some(&working_dir)).await
         };
-        
+
         // Clean up temporary file after mise exec completes
         let _ = fs::remove_file(&temp_taskfile);
-        
+
         result
     };
 

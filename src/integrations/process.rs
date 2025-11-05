@@ -73,7 +73,10 @@ pub async fn wait_for_command(mut child: tokio::process::Child, program: &str) -
 }
 
 /// Wait for an interactive spawned process to complete
-pub async fn wait_for_command_interactive(mut child: std::process::Child, program: &str) -> Result<()> {
+pub async fn wait_for_command_interactive(
+    mut child: std::process::Child,
+    program: &str,
+) -> Result<()> {
     let status = tokio::task::spawn_blocking(move || child.wait())
         .await
         .map_err(|e| RazdError::config(format!("Failed to wait for task: {}", e)))?
