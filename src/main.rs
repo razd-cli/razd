@@ -19,6 +19,10 @@ struct Cli {
     #[arg(long, global = true)]
     no_sync: bool,
 
+    /// List all available tasks
+    #[arg(long, global = true)]
+    list: bool,
+
     #[command(subcommand)]
     command: Option<Commands>,
 }
@@ -36,6 +40,8 @@ enum Commands {
         #[arg(long)]
         init: bool,
     },
+    /// List all available tasks from Razdfile.yml
+    List,
     /// Install development tools via mise
     Install,
     /// Install project dependencies via task setup
@@ -47,10 +53,13 @@ enum Commands {
     /// Execute any custom task defined in Razdfile.yml
     Run {
         /// Task name to execute
-        task_name: String,
+        task_name: Option<String>,
         /// Arguments to pass to the task
         #[arg(trailing_var_arg = true)]
         args: Vec<String>,
+        /// List all available tasks instead of running
+        #[arg(long)]
+        list: bool,
     },
 }
 
@@ -75,9 +84,17 @@ async fn run(cli: Cli) -> core::Result<()> {
     // Store no_sync flag for use by commands
     std::env::set_var("RAZD_NO_SYNC", if cli.no_sync { "1" } else { "0" });
 
+    // Handle global --list flag
+    if cli.list {
+        return commands::list::execute().await;
+    }
+
     match cli.command {
         Some(Commands::Up { url, name, init }) => {
             commands::up::execute(url.as_deref(), name.as_deref(), init).await?;
+        }
+        Some(Commands::List) => {
+            commands::list::execute().await?;
         }
         Some(Commands::Install) => {
             commands::install::execute().await?;
@@ -91,8 +108,21 @@ async fn run(cli: Cli) -> core::Result<()> {
         Some(Commands::Build) => {
             commands::build::execute().await?;
         }
-        Some(Commands::Run { task_name, args }) => {
-            commands::run::execute(&task_name, &args).await?;
+        Some(Commands::Run {
+            task_name,
+            args,
+            list,
+        }) => {
+            if list {
+                commands::list::execute().await?;
+            } else {
+                let task = task_name.ok_or_else(|| {
+                    crate::core::error::RazdError::config(
+                        "Task name required unless --list is specified".to_string(),
+                    )
+                })?;
+                commands::run::execute(&task, &args).await?;
+            }
         }
         None => {
             // If no subcommand provided, run 'razd up' (local project setup)

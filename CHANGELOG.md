@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.10] - 2025-11-05
+
+### Added
+- `razd list` command to display all available tasks with descriptions
+- `razd run --list` flag to list tasks instead of running
+- `razd --list` global flag for task listing
+- Task list output with proper alignment and alphabetical sorting
+- Automatic filtering of internal tasks from list view
+
+### Changed
+- `razd run` task_name is now optional when using `--list` flag
+
 ## [0.4.9] - 2025-11-04
 
 ### Fixed
