@@ -124,9 +124,8 @@ async fn execute_workflow_task_with_mode(
         // Direct execution: spawn, wait briefly for file load, cleanup, then wait for completion
         if interactive {
             let child = process::spawn_command_interactive("task", &args, Some(&working_dir))
-                .map_err(|e| {
+                .inspect_err(|_| {
                     let _ = fs::remove_file(&temp_taskfile);
-                    e
                 })?;
 
             // Wait briefly to ensure the process has loaded the file
@@ -140,9 +139,8 @@ async fn execute_workflow_task_with_mode(
         } else {
             let child = process::spawn_command("task", &args, Some(&working_dir))
                 .await
-                .map_err(|e| {
+                .inspect_err(|_| {
                     let _ = fs::remove_file(&temp_taskfile);
-                    e
                 })?;
 
             // Wait briefly to ensure the process has loaded the file
