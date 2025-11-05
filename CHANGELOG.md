@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.11] - 2025-11-05
+
+### Changed
+- **Optimized temporary workflow file cleanup**: Temporary files are now deleted within ~100ms after spawning the task process, instead of waiting for task completion
+  - Reduces disk usage during long-running tasks (dev servers, builds)
+  - Prevents accumulation of temp files when running multiple workflows simultaneously
+  - Files are now created in system temp directory (`$TEMP` on Windows, `/tmp` on Unix)
+  - Added 100ms spawn delay to ensure reliable file loading across different system loads
+  - Direct task execution uses early cleanup; mise exec fallback maintains traditional cleanup for compatibility
+
+### Technical
+- Refactored process execution module to separate spawn and wait operations
+- Added `spawn_command()` and `wait_for_command()` functions for better control over process lifecycle
+- Introduced `DEFAULT_SPAWN_DELAY_MS` constant for configurable spawn delay
+
 ## [0.4.10] - 2025-11-05
 
 ### Added

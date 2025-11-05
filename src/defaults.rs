@@ -1,5 +1,11 @@
 //! Built-in default workflows for razd
 //! These workflows are used when no Razdfile.yml is present
+
+/// Default delay in milliseconds after spawning a process to ensure it has loaded files
+/// This delay is used when creating temporary workflow files to ensure the task process
+/// has time to open and read the file before it is deleted
+pub const DEFAULT_SPAWN_DELAY_MS: u64 = 100;
+
 pub const DEFAULT_WORKFLOWS: &str = r#"version: '3'
 mise:
   tools:

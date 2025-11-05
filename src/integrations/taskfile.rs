@@ -1,6 +1,8 @@
 use crate::core::{output, RazdError, Result};
 use crate::integrations::{mise, process};
+use crate::defaults;
 use std::path::Path;
+use std::time::Duration;
 
 /// Execute task command, trying direct execution first, then mise exec as fallback
 async fn execute_task_command(args: &[&str], working_dir: &Path) -> Result<()> {
@@ -102,21 +104,67 @@ async fn execute_workflow_task_with_mode(
 
     output::step(&format!("Executing workflow: {}", task_name));
 
-    // Create temporary taskfile in project directory for task to load.
-    // File is deleted immediately after task process starts (loads the file into memory).
-    // This keeps Git status clean while allowing task to access the configuration.
-    let temp_taskfile = working_dir.join(format!(".razd-workflow-{}.yml", task_name));
+    // Create temporary taskfile in system temp directory for task to load.
+    let temp_taskfile = env::temp_dir().join(format!("razd-workflow-{}.yml", task_name));
 
     fs::write(&temp_taskfile, workflow_content)
         .map_err(|e| RazdError::task(format!("Failed to create temporary taskfile: {}", e)))?;
 
-    // Execute task. The process will load the file immediately upon start.
     let args = vec!["--taskfile", temp_taskfile.to_str().unwrap(), task_name];
-
-    let result = execute_task_command_with_mode(&args, &working_dir, interactive).await;
-
-    // Clean up temporary file immediately after task execution completes
-    let _ = fs::remove_file(&temp_taskfile);
+    
+    // Check if we can execute task directly (allows early cleanup) or need mise exec (keeps file)
+    let result = if process::check_command_available("task").await {
+        // Direct execution: spawn, wait briefly for file load, cleanup, then wait for completion
+        if interactive {
+            let child = process::spawn_command_interactive("task", &args, Some(&working_dir))
+                .map_err(|e| {
+                    let _ = fs::remove_file(&temp_taskfile);
+                    e
+                })?;
+            
+            // Wait briefly to ensure the process has loaded the file
+            tokio::time::sleep(Duration::from_millis(defaults::DEFAULT_SPAWN_DELAY_MS)).await;
+            
+            // Clean up temporary file immediately after process has had time to load it
+            let _ = fs::remove_file(&temp_taskfile);
+            
+            // Wait for the task process to complete
+            process::wait_for_command_interactive(child, "task").await
+        } else {
+            let child = process::spawn_command("task", &args, Some(&working_dir))
+                .await
+                .map_err(|e| {
+                    let _ = fs::remove_file(&temp_taskfile);
+                    e
+                })?;
+            
+            // Wait briefly to ensure the process has loaded the file
+            tokio::time::sleep(Duration::from_millis(defaults::DEFAULT_SPAWN_DELAY_MS)).await;
+            
+            // Clean up temporary file immediately after process has had time to load it
+            let _ = fs::remove_file(&temp_taskfile);
+            
+            // Wait for the task process to complete
+            process::wait_for_command(child, "task").await
+        }
+    } else {
+        // Fallback via mise exec: file must exist for duration of execution
+        // because mise spawns a subshell that then runs task
+        output::step("Executing task via mise...");
+        let mut mise_args = vec!["exec", "task", "--", "task"];
+        mise_args.extend(&args);
+        
+        let result = if interactive {
+            process::execute_command_interactive("mise", &mise_args, Some(&working_dir)).await
+        } else {
+            process::execute_command("mise", &mise_args, Some(&working_dir)).await
+        };
+        
+        // Clean up temporary file after mise exec completes
+        let _ = fs::remove_file(&temp_taskfile);
+        
+        result
+    };
 
     result?;
 
