@@ -2,6 +2,7 @@ use crate::config::razdfile::RazdfileConfig;
 use crate::core::{output, Result};
 use colored::*;
 use serde::Serialize;
+use std::path::PathBuf;
 
 /// Helper function to skip serializing false boolean values for cleaner JSON
 fn is_false(b: &bool) -> bool {
@@ -34,10 +35,36 @@ struct TaskInfo {
     internal: bool,
 }
 
-/// Find the absolute path to Razdfile.yml
-fn find_razdfile_path() -> Result<std::path::PathBuf> {
+/// Find the absolute path to Razdfile.yml or custom config file
+fn find_razdfile_path(custom_path: Option<&PathBuf>) -> Result<std::path::PathBuf> {
     use std::env;
 
+    if let Some(path) = custom_path {
+        // Use custom path and make it absolute if relative
+        let absolute = if path.is_absolute() {
+            path.clone()
+        } else {
+            env::current_dir()
+                .map_err(|e| {
+                    crate::core::error::RazdError::config(format!(
+                        "Failed to get current directory: {}",
+                        e
+                    ))
+                })?
+                .join(path)
+        };
+
+        if !absolute.exists() {
+            return Err(crate::core::error::RazdError::config(format!(
+                "Specified configuration file not found: {}",
+                absolute.display()
+            )));
+        }
+
+        return Ok(absolute);
+    }
+
+    // Default behavior: look for Razdfile.yml in current directory
     let current_dir = env::current_dir().map_err(|e| {
         crate::core::error::RazdError::config(format!("Failed to get current directory: {}", e))
     })?;
@@ -73,9 +100,9 @@ fn estimate_task_line(task_name: &str, razdfile_path: &std::path::Path) -> Resul
     Ok(1)
 }
 
-pub async fn execute(list_all: bool, json: bool) -> Result<()> {
+pub async fn execute(list_all: bool, json: bool, custom_path: Option<PathBuf>) -> Result<()> {
     // Load Razdfile.yml
-    let razdfile = match RazdfileConfig::load()? {
+    let razdfile = match RazdfileConfig::load_with_path(custom_path.clone())? {
         Some(config) => config,
         None => {
             if json {
@@ -111,7 +138,7 @@ pub async fn execute(list_all: bool, json: bool) -> Result<()> {
     // Check if there are any tasks
     if tasks.is_empty() {
         if json {
-            let razdfile_path = find_razdfile_path().ok();
+            let razdfile_path = find_razdfile_path(custom_path.as_ref()).ok();
             let location = razdfile_path.map(|p| p.to_string_lossy().to_string());
 
             let output = TaskListOutput {
@@ -134,7 +161,7 @@ pub async fn execute(list_all: bool, json: bool) -> Result<()> {
 
     if json {
         // Get absolute path to Razdfile.yml for location metadata
-        let razdfile_path = find_razdfile_path()?;
+        let razdfile_path = find_razdfile_path(custom_path.as_ref())?;
         let razdfile_path_str = razdfile_path.to_string_lossy().to_string();
 
         // Output as JSON with enhanced taskfile-compatible format

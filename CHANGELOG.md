@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Custom configuration file path support**: Added `--taskfile` and `--razdfile` flags (with short form `-t`)
+  - Both flags work as synonyms, with `--razdfile` taking priority if both specified
+  - Global flags work with all commands that use configuration (list, run, up, setup)
+  - Support for both relative and absolute file paths
+  - Full backward compatibility - default to `Razdfile.yml` when no flag specified
+  - Clear error messages when specified file not found
+
 ## [0.5.2] - 2025-11-08
 
 ### Added

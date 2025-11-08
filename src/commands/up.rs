@@ -1,29 +1,38 @@
-use crate::config::get_workflow_config;
+use crate::config::get_workflow_config_with_path;
 use crate::core::{output, RazdError, Result};
 use crate::integrations::{git, mise, taskfile};
 use std::env;
 use std::fs;
 use std::io::{self, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// Execute the `razd up` command: clone repository + run up workflow, or set up local project
-pub async fn execute(url: Option<&str>, name: Option<&str>, init: bool) -> Result<()> {
+pub async fn execute(
+    url: Option<&str>,
+    name: Option<&str>,
+    init: bool,
+    custom_path: Option<PathBuf>,
+) -> Result<()> {
     if init {
         // Init mode: create new Razdfile.yml
-        execute_init().await
+        execute_init(custom_path).await
     } else if let Some(url_str) = url {
         // Clone mode: existing behavior
-        execute_with_clone(url_str, name).await
+        execute_with_clone(url_str, name, custom_path).await
     } else {
         // Local mode: new behavior
-        execute_local_project().await
+        execute_local_project(custom_path).await
     }
 }
 
 /// Initialize new Razdfile.yml with project template
-async fn execute_init() -> Result<()> {
+async fn execute_init(custom_path: Option<PathBuf>) -> Result<()> {
     let current_dir = env::current_dir()?;
-    let razdfile_path = current_dir.join("Razdfile.yml");
+    let razdfile_path = if let Some(path) = custom_path {
+        path
+    } else {
+        current_dir.join("Razdfile.yml")
+    };
 
     // Check if Razdfile already exists
     if razdfile_path.exists() {
@@ -56,7 +65,11 @@ async fn execute_init() -> Result<()> {
 }
 
 /// Clone repository and set up project
-async fn execute_with_clone(url: &str, name: Option<&str>) -> Result<()> {
+async fn execute_with_clone(
+    url: &str,
+    name: Option<&str>,
+    custom_path: Option<PathBuf>,
+) -> Result<()> {
     output::info(&format!("Setting up project from {}", url));
 
     // Step 1: Clone the repository
@@ -71,7 +84,7 @@ async fn execute_with_clone(url: &str, name: Option<&str>) -> Result<()> {
     ));
 
     // Step 3: Execute up workflow
-    execute_up_workflow().await?;
+    execute_up_workflow(custom_path).await?;
 
     // Step 4: Show success message
     show_success_message()?;
@@ -80,7 +93,7 @@ async fn execute_with_clone(url: &str, name: Option<&str>) -> Result<()> {
 }
 
 /// Set up project in current directory
-async fn execute_local_project() -> Result<()> {
+async fn execute_local_project(custom_path: Option<PathBuf>) -> Result<()> {
     output::info("Setting up local project...");
 
     let current_dir = env::current_dir()?;
@@ -89,7 +102,7 @@ async fn execute_local_project() -> Result<()> {
     // Check if project has configuration
     if has_project_configuration(&current_dir) {
         // Step 1: Execute up workflow
-        execute_up_workflow().await?;
+        execute_up_workflow(custom_path).await?;
 
         // Step 2: Show success message
         show_success_message()?;
@@ -102,7 +115,7 @@ async fn execute_local_project() -> Result<()> {
             output::info("Razdfile.yml created successfully!");
 
             // Run the workflow we just created
-            execute_up_workflow().await?;
+            execute_up_workflow(custom_path).await?;
             show_success_message()?;
         } else {
             output::info("Hint: Run 'razd up <url>' to clone a repository, or manually create a Razdfile.yml");
@@ -127,14 +140,14 @@ fn has_project_configuration(dir: &Path) -> bool {
 }
 
 /// Execute up workflow (with fallback chain)
-async fn execute_up_workflow() -> Result<()> {
+async fn execute_up_workflow(custom_path: Option<PathBuf>) -> Result<()> {
     // Check and sync mise configuration before executing workflow
     let current_dir = env::current_dir()?;
     if let Err(e) = crate::config::check_and_sync_mise(&current_dir) {
         output::warning(&format!("Mise sync check failed: {}", e));
     }
 
-    if let Some(workflow_content) = get_workflow_config("default")? {
+    if let Some(workflow_content) = get_workflow_config_with_path("default", custom_path)? {
         output::step("Executing up workflow...");
         taskfile::execute_workflow_task_interactive("default", &workflow_content).await?;
     } else {

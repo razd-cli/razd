@@ -6,6 +6,7 @@ mod integrations;
 
 use clap::{Parser, Subcommand};
 use colored::*;
+use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(
@@ -15,6 +16,14 @@ use colored::*;
     long_about = "razd (раздуплиться - to get things sorted) simplifies project setup by combining git clone, mise install, and task setup into single commands."
 )]
 struct Cli {
+    /// Specify custom taskfile/razdfile path
+    #[arg(short = 't', long, global = true, value_name = "FILE")]
+    taskfile: Option<String>,
+
+    /// Specify custom razdfile path (overrides --taskfile)
+    #[arg(long, global = true, value_name = "FILE")]
+    razdfile: Option<String>,
+
     /// Skip automatic synchronization between Razdfile.yml and mise.toml
     #[arg(long, global = true)]
     no_sync: bool,
@@ -25,6 +34,15 @@ struct Cli {
 
     #[command(subcommand)]
     command: Option<Commands>,
+}
+
+/// Resolve the configuration file path based on CLI flags
+/// Priority: --razdfile > --taskfile > None (default)
+fn resolve_config_path(cli: &Cli) -> Option<PathBuf> {
+    cli.razdfile
+        .as_ref()
+        .or(cli.taskfile.as_ref())
+        .map(PathBuf::from)
 }
 
 #[derive(Subcommand)]
@@ -91,23 +109,26 @@ async fn run(cli: Cli) -> core::Result<()> {
     // Store no_sync flag for use by commands
     std::env::set_var("RAZD_NO_SYNC", if cli.no_sync { "1" } else { "0" });
 
+    // Resolve custom config path from flags
+    let custom_path = resolve_config_path(&cli);
+
     // Handle global --list flag
     if cli.list {
-        return commands::list::execute(false, false).await;
+        return commands::list::execute(false, false, custom_path).await;
     }
 
     match cli.command {
         Some(Commands::Up { url, name, init }) => {
-            commands::up::execute(url.as_deref(), name.as_deref(), init).await?;
+            commands::up::execute(url.as_deref(), name.as_deref(), init, custom_path).await?;
         }
         Some(Commands::List { list_all, json }) => {
-            commands::list::execute(list_all, json).await?;
+            commands::list::execute(list_all, json, custom_path).await?;
         }
         Some(Commands::Install) => {
             commands::install::execute().await?;
         }
         Some(Commands::Setup) => {
-            commands::setup::execute().await?;
+            commands::setup::execute(custom_path).await?;
         }
         Some(Commands::Dev) => {
             commands::dev::execute().await?;
@@ -121,19 +142,19 @@ async fn run(cli: Cli) -> core::Result<()> {
             list,
         }) => {
             if list {
-                commands::list::execute(false, false).await?;
+                commands::list::execute(false, false, custom_path).await?;
             } else {
                 let task = task_name.ok_or_else(|| {
                     crate::core::error::RazdError::config(
                         "Task name required unless --list is specified".to_string(),
                     )
                 })?;
-                commands::run::execute(&task, &args).await?;
+                commands::run::execute(&task, &args, custom_path).await?;
             }
         }
         None => {
             // If no subcommand provided, run 'razd up' (local project setup)
-            commands::up::execute(None, None, false).await?;
+            commands::up::execute(None, None, false, custom_path).await?;
         }
     }
 

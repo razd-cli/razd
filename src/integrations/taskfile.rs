@@ -9,6 +9,19 @@ async fn execute_task_command(args: &[&str], working_dir: &Path) -> Result<()> {
     execute_task_command_with_mode(args, working_dir, false).await
 }
 
+/// Execute task command with custom taskfile path
+async fn execute_task_command_with_taskfile(
+    args: &[&str],
+    working_dir: &Path,
+    taskfile_path: &Path,
+) -> Result<()> {
+    // Add --taskfile flag to arguments
+    let mut task_args = vec!["--taskfile", taskfile_path.to_str().unwrap()];
+    task_args.extend(args);
+
+    execute_task_command_with_mode(&task_args, working_dir, false).await
+}
+
 /// Execute task command with option for interactive mode
 async fn execute_task_command_with_mode(
     args: &[&str],
@@ -53,11 +66,25 @@ pub fn has_taskfile_config(dir: &Path) -> bool {
 
 /// Run task setup to install project dependencies
 pub async fn setup_project(working_dir: &Path) -> Result<()> {
+    setup_project_with_path(working_dir, None).await
+}
+
+/// Run task setup with custom taskfile path
+pub async fn setup_project_with_path(
+    working_dir: &Path,
+    custom_path: Option<std::path::PathBuf>,
+) -> Result<()> {
     // Ensure task tool is available
     mise::ensure_tool_available("task", "latest", working_dir).await?;
 
     // Check if Taskfile exists
-    if !has_taskfile_config(working_dir) {
+    let has_config = if let Some(ref path) = custom_path {
+        path.exists()
+    } else {
+        has_taskfile_config(working_dir)
+    };
+
+    if !has_config {
         output::warning(
             "No Taskfile found (Taskfile.yml or Taskfile.yaml), skipping project setup",
         );
@@ -66,7 +93,11 @@ pub async fn setup_project(working_dir: &Path) -> Result<()> {
 
     output::step("Setting up project dependencies with task");
 
-    execute_task_command(&["setup"], working_dir).await?;
+    if let Some(path) = custom_path {
+        execute_task_command_with_taskfile(&["setup"], working_dir, &path).await?;
+    } else {
+        execute_task_command(&["setup"], working_dir).await?;
+    }
 
     output::success("Successfully set up project dependencies");
 

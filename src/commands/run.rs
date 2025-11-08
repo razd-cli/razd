@@ -1,11 +1,15 @@
-use crate::config::get_workflow_config;
 use crate::core::Result;
 use crate::integrations::taskfile;
 use colored::*;
 use std::env;
+use std::path::PathBuf;
 
 /// Execute a custom task defined in Razdfile.yml
-pub async fn execute(task_name: &str, _args: &[String]) -> Result<()> {
+pub async fn execute(
+    task_name: &str,
+    _args: &[String],
+    custom_path: Option<PathBuf>,
+) -> Result<()> {
     println!(
         "{}",
         format!("🚀 Running task '{}'...", task_name).cyan().bold()
@@ -17,8 +21,10 @@ pub async fn execute(task_name: &str, _args: &[String]) -> Result<()> {
         eprintln!("Warning: Mise sync check failed: {}", e);
     }
 
-    // Get workflow config with fallback chain
-    if let Some(workflow_content) = get_workflow_config(task_name)? {
+    // Get workflow config with fallback chain (with custom path support)
+    if let Some(workflow_content) =
+        crate::config::get_workflow_config_with_path(task_name, custom_path)?
+    {
         // Execute via taskfile with the workflow content in interactive mode
         taskfile::execute_workflow_task_interactive(task_name, &workflow_content).await?;
     } else {

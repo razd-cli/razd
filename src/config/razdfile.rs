@@ -2,8 +2,9 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
 use std::collections::HashMap;
+use std::env;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::core::RazdError;
 use crate::defaults;
@@ -126,9 +127,38 @@ pub enum ToolConfig {
 }
 
 impl RazdfileConfig {
-    /// Load Razdfile.yml from the current directory
+    /// Load Razdfile.yml from the current directory (convenience wrapper)
+    #[allow(dead_code)]
     pub fn load() -> Result<Option<Self>, RazdError> {
-        Self::load_from_path("Razdfile.yml")
+        Self::load_with_path(None)
+    }
+
+    /// Load configuration from custom path or default Razdfile.yml
+    pub fn load_with_path(custom_path: Option<PathBuf>) -> Result<Option<Self>, RazdError> {
+        let path = match custom_path {
+            Some(p) => {
+                if !p.exists() {
+                    return Err(RazdError::config(format!(
+                        "Specified configuration file not found: {}",
+                        p.display()
+                    )));
+                }
+                p
+            }
+            None => {
+                let default = env::current_dir()
+                    .map_err(|e| {
+                        RazdError::config(format!("Failed to get current directory: {}", e))
+                    })?
+                    .join("Razdfile.yml");
+                if !default.exists() {
+                    return Ok(None);
+                }
+                default
+            }
+        };
+
+        Self::load_from_path(path)
     }
 
     /// Load Razdfile.yml from a specific path
@@ -200,8 +230,16 @@ impl RazdfileConfig {
 /// Priority: Razdfile.yml → built-in defaults
 /// For "default" task: uses get_primary_task which returns "default" task
 pub fn get_workflow_config(command: &str) -> Result<Option<String>, RazdError> {
+    get_workflow_config_with_path(command, None)
+}
+
+/// Get workflow configuration with custom path support
+pub fn get_workflow_config_with_path(
+    command: &str,
+    custom_path: Option<PathBuf>,
+) -> Result<Option<String>, RazdError> {
     // Try to load Razdfile.yml first
-    if let Some(razdfile) = RazdfileConfig::load()? {
+    if let Some(razdfile) = RazdfileConfig::load_with_path(custom_path)? {
         let task_name = if command == "default" {
             // For "default" command, use get_primary_task
             razdfile.get_primary_task()

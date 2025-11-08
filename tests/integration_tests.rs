@@ -467,3 +467,194 @@ tasks: {}
     assert_eq!(json["tasks"].as_array().unwrap().len(), 0);
     assert!(json["location"].is_string());
 }
+
+#[test]
+fn test_list_with_custom_taskfile_flag() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+    let custom_file = temp_dir.path().join("custom.yml");
+
+    let custom_content = r#"version: '3'
+tasks:
+  build:
+    desc: Build the project
+    cmds:
+      - echo "Building..."
+  test:
+    desc: Run tests
+    cmds:
+      - echo "Testing..."
+"#;
+    fs::write(&custom_file, custom_content).unwrap();
+
+    let mut cmd = Command::cargo_bin("razd").unwrap();
+    cmd.args(["list", "--taskfile", custom_file.to_str().unwrap()]);
+    cmd.current_dir(temp_dir.path());
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("build"))
+        .stdout(predicate::str::contains("Build the project"))
+        .stdout(predicate::str::contains("test"))
+        .stdout(predicate::str::contains("Run tests"));
+}
+
+#[test]
+fn test_list_with_custom_razdfile_flag() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+    let custom_file = temp_dir.path().join("my-config.yml");
+
+    let custom_content = r#"version: '3'
+tasks:
+  deploy:
+    desc: Deploy application
+    cmds:
+      - echo "Deploying..."
+"#;
+    fs::write(&custom_file, custom_content).unwrap();
+
+    let mut cmd = Command::cargo_bin("razd").unwrap();
+    cmd.args(["list", "--razdfile", custom_file.to_str().unwrap()]);
+    cmd.current_dir(temp_dir.path());
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("deploy"))
+        .stdout(predicate::str::contains("Deploy application"));
+}
+
+#[test]
+fn test_short_form_taskfile_flag() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+    let custom_file = temp_dir.path().join("tasks.yml");
+
+    let custom_content = r#"version: '3'
+tasks:
+  lint:
+    desc: Lint code
+    cmds:
+      - echo "Linting..."
+"#;
+    fs::write(&custom_file, custom_content).unwrap();
+
+    let mut cmd = Command::cargo_bin("razd").unwrap();
+    cmd.args(["list", "-t", custom_file.to_str().unwrap()]);
+    cmd.current_dir(temp_dir.path());
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("lint"))
+        .stdout(predicate::str::contains("Lint code"));
+}
+
+#[test]
+fn test_custom_file_not_found_error() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+    let nonexistent = temp_dir.path().join("nonexistent.yml");
+
+    let mut cmd = Command::cargo_bin("razd").unwrap();
+    cmd.args(["list", "--taskfile", nonexistent.to_str().unwrap()]);
+    cmd.current_dir(temp_dir.path());
+
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains("not found"));
+}
+
+#[test]
+fn test_razdfile_priority_over_taskfile() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+    let file1 = temp_dir.path().join("file1.yml");
+    let file2 = temp_dir.path().join("file2.yml");
+
+    let content1 = r#"version: '3'
+tasks:
+  task1:
+    desc: From file1
+    cmds:
+      - echo "File 1"
+"#;
+    let content2 = r#"version: '3'
+tasks:
+  task2:
+    desc: From file2
+    cmds:
+      - echo "File 2"
+"#;
+    fs::write(&file1, content1).unwrap();
+    fs::write(&file2, content2).unwrap();
+
+    let mut cmd = Command::cargo_bin("razd").unwrap();
+    cmd.args([
+        "list",
+        "--taskfile",
+        file1.to_str().unwrap(),
+        "--razdfile",
+        file2.to_str().unwrap(),
+    ]);
+    cmd.current_dir(temp_dir.path());
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("task2")) // Should use file2
+        .stdout(predicate::str::contains("From file2"))
+        .stdout(predicate::str::contains("task1").not()); // Should NOT have task1 from file1
+}
+
+#[test]
+fn test_list_json_with_custom_path() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+    let custom_file = temp_dir.path().join("custom.yml");
+
+    let custom_content = r#"version: '3'
+tasks:
+  build:
+    desc: Build the project
+    cmds:
+      - echo "Building..."
+"#;
+    fs::write(&custom_file, custom_content).unwrap();
+
+    let mut cmd = Command::cargo_bin("razd").unwrap();
+    cmd.args([
+        "list",
+        "--taskfile",
+        custom_file.to_str().unwrap(),
+        "--json",
+    ]);
+    cmd.current_dir(temp_dir.path());
+
+    let output = cmd.output().unwrap();
+
+    // Check if command succeeded
+    if !output.status.success() {
+        eprintln!("Command failed!");
+        eprintln!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+        eprintln!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+        panic!("Command failed with status: {}", output.status);
+    }
+
+    let json_str = String::from_utf8(output.stdout).unwrap();
+    if json_str.is_empty() {
+        panic!("Empty JSON output");
+    }
+
+    let json: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+
+    assert!(json["tasks"].is_array());
+    let tasks = json["tasks"].as_array().unwrap();
+    assert_eq!(tasks.len(), 1);
+    assert_eq!(tasks[0]["name"], "build");
+    assert_eq!(tasks[0]["desc"], "Build the project");
+}
