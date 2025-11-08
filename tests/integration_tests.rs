@@ -303,7 +303,8 @@ tasks:
         .iter()
         .find(|t| t["name"] == "public")
         .expect("Should find public task");
-    assert_eq!(public_task["internal"], false);
+    // When internal is false, it may be omitted from JSON
+    assert!(public_task["internal"].is_null() || public_task["internal"] == false);
 }
 
 #[test]
@@ -333,4 +334,136 @@ tasks:
         .success()
         .stdout(predicate::str::contains("Available tasks"))
         .stdout(predicate::str::contains("build"));
+}
+
+#[test]
+fn test_list_json_enhanced_output() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+    let razdfile_path = temp_dir.path().join("Razdfile.yml");
+
+    let razdfile_content = r#"version: '3'
+tasks:
+  hello:
+    desc: Test task
+    cmds:
+      - echo "hello"
+"#;
+    fs::write(&razdfile_path, razdfile_content).unwrap();
+
+    let mut cmd = Command::cargo_bin("razd").unwrap();
+    cmd.args(["list", "--json"]);
+    cmd.current_dir(temp_dir.path());
+
+    let output = cmd.output().unwrap();
+    assert!(output.status.success());
+
+    let json_str = String::from_utf8(output.stdout).unwrap();
+    let json: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+
+    // Verify structure
+    assert!(json["tasks"].is_array());
+    assert_eq!(json["tasks"].as_array().unwrap().len(), 1);
+
+    // Verify taskfile-compatible fields
+    let task = &json["tasks"][0];
+    assert_eq!(task["name"], "hello");
+    assert_eq!(task["task"], "hello"); // Duplicate of name
+    assert_eq!(task["desc"], "Test task");
+    assert_eq!(task["summary"], "");
+    assert_eq!(task["aliases"], serde_json::json!([]));
+
+    // Verify location object
+    assert!(task["location"]["taskfile"].is_string());
+    assert!(task["location"]["taskfile"]
+        .as_str()
+        .unwrap()
+        .ends_with("Razdfile.yml"));
+    assert!(task["location"]["line"].is_number());
+    assert_eq!(task["location"]["column"], 3);
+
+    // Verify root location
+    assert!(json["location"].is_string());
+    assert!(json["location"].as_str().unwrap().ends_with("Razdfile.yml"));
+}
+
+#[test]
+fn test_list_json_with_internal_tasks() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+    let razdfile_path = temp_dir.path().join("Razdfile.yml");
+
+    let razdfile_content = r#"version: '3'
+tasks:
+  public:
+    desc: Public task
+    cmds:
+      - echo "public"
+  _internal:
+    desc: Internal task
+    internal: true
+    cmds:
+      - echo "internal"
+"#;
+    fs::write(&razdfile_path, razdfile_content).unwrap();
+
+    // Test without --list-all (should exclude internal)
+    let mut cmd = Command::cargo_bin("razd").unwrap();
+    cmd.args(["list", "--json"]);
+    cmd.current_dir(temp_dir.path());
+
+    let output = cmd.output().unwrap();
+    let json_str = String::from_utf8(output.stdout).unwrap();
+    let json: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+
+    assert_eq!(json["tasks"].as_array().unwrap().len(), 1);
+    assert_eq!(json["tasks"][0]["name"], "public");
+
+    // Test with --list-all (should include internal)
+    let mut cmd = Command::cargo_bin("razd").unwrap();
+    cmd.args(["list", "--list-all", "--json"]);
+    cmd.current_dir(temp_dir.path());
+
+    let output = cmd.output().unwrap();
+    let json_str = String::from_utf8(output.stdout).unwrap();
+    let json: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+
+    assert_eq!(json["tasks"].as_array().unwrap().len(), 2);
+
+    // Find internal task
+    let internal_task = json["tasks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["name"] == "_internal")
+        .unwrap();
+
+    assert_eq!(internal_task["internal"], true);
+}
+
+#[test]
+fn test_list_json_empty_tasks() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+    let razdfile_path = temp_dir.path().join("Razdfile.yml");
+
+    let razdfile_content = r#"version: '3'
+tasks: {}
+"#;
+    fs::write(&razdfile_path, razdfile_content).unwrap();
+
+    let mut cmd = Command::cargo_bin("razd").unwrap();
+    cmd.args(["list", "--json"]);
+    cmd.current_dir(temp_dir.path());
+
+    let output = cmd.output().unwrap();
+    let json_str = String::from_utf8(output.stdout).unwrap();
+    let json: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+
+    assert!(json["tasks"].is_array());
+    assert_eq!(json["tasks"].as_array().unwrap().len(), 0);
+    assert!(json["location"].is_string());
 }

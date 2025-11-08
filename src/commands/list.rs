@@ -3,16 +3,74 @@ use crate::core::{output, Result};
 use colored::*;
 use serde::Serialize;
 
+/// Helper function to skip serializing false boolean values for cleaner JSON
+fn is_false(b: &bool) -> bool {
+    !b
+}
+
+#[derive(Serialize)]
+struct TaskLocation {
+    taskfile: String,
+    line: usize,
+    column: usize,
+}
+
 #[derive(Serialize)]
 struct TaskListOutput {
     tasks: Vec<TaskInfo>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    location: Option<String>,
 }
 
 #[derive(Serialize)]
 struct TaskInfo {
     name: String,
+    task: String,
     desc: String,
+    summary: String,
+    aliases: Vec<String>,
+    location: TaskLocation,
+    #[serde(skip_serializing_if = "is_false")]
     internal: bool,
+}
+
+/// Find the absolute path to Razdfile.yml
+fn find_razdfile_path() -> Result<std::path::PathBuf> {
+    use std::env;
+
+    let current_dir = env::current_dir().map_err(|e| {
+        crate::core::error::RazdError::config(format!("Failed to get current directory: {}", e))
+    })?;
+
+    let razdfile_path = current_dir.join("Razdfile.yml");
+
+    if !razdfile_path.exists() {
+        return Err(crate::core::error::RazdError::config(
+            "Razdfile.yml not found in current directory".to_string(),
+        ));
+    }
+
+    Ok(razdfile_path)
+}
+
+/// Estimate the line number where a task is defined in Razdfile.yml
+fn estimate_task_line(task_name: &str, razdfile_path: &std::path::Path) -> Result<usize> {
+    use std::fs;
+
+    let content = fs::read_to_string(razdfile_path).map_err(|e| {
+        crate::core::error::RazdError::config(format!("Failed to read file: {}", e))
+    })?;
+
+    // Find line containing "  task_name:"
+    for (idx, line) in content.lines().enumerate() {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with(&format!("{}:", task_name)) && !trimmed.starts_with('#') {
+            return Ok(idx + 1); // 1-indexed
+        }
+    }
+
+    // Fallback: return line 1 if not found
+    Ok(1)
 }
 
 pub async fn execute(list_all: bool, json: bool) -> Result<()> {
@@ -53,7 +111,13 @@ pub async fn execute(list_all: bool, json: bool) -> Result<()> {
     // Check if there are any tasks
     if tasks.is_empty() {
         if json {
-            let output = TaskListOutput { tasks: vec![] };
+            let razdfile_path = find_razdfile_path().ok();
+            let location = razdfile_path.map(|p| p.to_string_lossy().to_string());
+
+            let output = TaskListOutput {
+                tasks: vec![],
+                location,
+            };
             println!(
                 "{}",
                 serde_json::to_string_pretty(&output)
@@ -69,17 +133,36 @@ pub async fn execute(list_all: bool, json: bool) -> Result<()> {
     tasks.sort_by(|a, b| a.0.cmp(&b.0));
 
     if json {
-        // Output as JSON
+        // Get absolute path to Razdfile.yml for location metadata
+        let razdfile_path = find_razdfile_path()?;
+        let razdfile_path_str = razdfile_path.to_string_lossy().to_string();
+
+        // Output as JSON with enhanced taskfile-compatible format
         let task_infos: Vec<TaskInfo> = tasks
             .iter()
-            .map(|(name, desc, internal)| TaskInfo {
-                name: name.clone(),
-                desc: desc.clone(),
-                internal: *internal,
+            .map(|(name, desc, internal)| {
+                let line = estimate_task_line(name, &razdfile_path).unwrap_or(1);
+
+                TaskInfo {
+                    name: name.clone(),
+                    task: name.clone(), // Duplicate of name per taskfile convention
+                    desc: desc.clone(),
+                    summary: String::new(), // Placeholder for future feature
+                    aliases: Vec::new(),    // Placeholder for future feature
+                    location: TaskLocation {
+                        taskfile: razdfile_path_str.clone(),
+                        line,
+                        column: 3, // Tasks are typically indented 2 spaces (column 3)
+                    },
+                    internal: *internal,
+                }
             })
             .collect();
 
-        let output = TaskListOutput { tasks: task_infos };
+        let output = TaskListOutput {
+            tasks: task_infos,
+            location: Some(razdfile_path_str),
+        };
         println!(
             "{}",
             serde_json::to_string_pretty(&output).unwrap_or_else(|_| r#"{"tasks":[]}"#.to_string())
@@ -231,22 +314,41 @@ mod tests {
 
     #[test]
     fn test_json_serialization() {
-        use super::{TaskInfo, TaskListOutput};
+        use super::{TaskInfo, TaskListOutput, TaskLocation};
 
         let tasks = vec![
             TaskInfo {
                 name: "build".to_string(),
+                task: "build".to_string(),
                 desc: "Build project".to_string(),
+                summary: String::new(),
+                aliases: Vec::new(),
+                location: TaskLocation {
+                    taskfile: "Razdfile.yml".to_string(),
+                    line: 1,
+                    column: 3,
+                },
                 internal: false,
             },
             TaskInfo {
                 name: "test".to_string(),
+                task: "test".to_string(),
                 desc: "".to_string(),
+                summary: String::new(),
+                aliases: Vec::new(),
+                location: TaskLocation {
+                    taskfile: "Razdfile.yml".to_string(),
+                    line: 5,
+                    column: 3,
+                },
                 internal: false,
             },
         ];
 
-        let output = TaskListOutput { tasks };
+        let output = TaskListOutput {
+            tasks,
+            location: Some("Razdfile.yml".to_string()),
+        };
         let json = serde_json::to_string_pretty(&output).unwrap();
 
         // Verify it's valid JSON
@@ -259,26 +361,158 @@ mod tests {
 
     #[test]
     fn test_json_with_internal_task() {
-        use super::{TaskInfo, TaskListOutput};
+        use super::{TaskInfo, TaskListOutput, TaskLocation};
 
         let tasks = vec![
             TaskInfo {
                 name: "public".to_string(),
+                task: "public".to_string(),
                 desc: "Public task".to_string(),
+                summary: String::new(),
+                aliases: Vec::new(),
+                location: TaskLocation {
+                    taskfile: "Razdfile.yml".to_string(),
+                    line: 1,
+                    column: 3,
+                },
                 internal: false,
             },
             TaskInfo {
                 name: "internal".to_string(),
+                task: "internal".to_string(),
                 desc: "Internal task".to_string(),
+                summary: String::new(),
+                aliases: Vec::new(),
+                location: TaskLocation {
+                    taskfile: "Razdfile.yml".to_string(),
+                    line: 5,
+                    column: 3,
+                },
                 internal: true,
             },
         ];
 
-        let output = TaskListOutput { tasks };
+        let output = TaskListOutput {
+            tasks,
+            location: Some("Razdfile.yml".to_string()),
+        };
         let json = serde_json::to_string_pretty(&output).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
 
-        assert_eq!(parsed["tasks"][0]["internal"], false);
+        // When internal is false, it's omitted from JSON (for cleaner output)
+        assert!(
+            parsed["tasks"][0]["internal"].is_null() || parsed["tasks"][0]["internal"] == false
+        );
         assert_eq!(parsed["tasks"][1]["internal"], true);
+    }
+
+    #[test]
+    fn test_json_structure_with_enhanced_fields() {
+        use super::{TaskInfo, TaskListOutput, TaskLocation};
+
+        let tasks = vec![TaskInfo {
+            name: "build".to_string(),
+            task: "build".to_string(),
+            desc: "Build project".to_string(),
+            summary: String::new(),
+            aliases: Vec::new(),
+            location: TaskLocation {
+                taskfile: "/path/to/Razdfile.yml".to_string(),
+                line: 5,
+                column: 3,
+            },
+            internal: false,
+        }];
+
+        let output = TaskListOutput {
+            tasks,
+            location: Some("/path/to/Razdfile.yml".to_string()),
+        };
+
+        let json = serde_json::to_string_pretty(&output).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        // Verify all taskfile-compatible fields are present
+        assert_eq!(parsed["tasks"][0]["name"], "build");
+        assert_eq!(parsed["tasks"][0]["task"], "build"); // Duplicate of name
+        assert_eq!(parsed["tasks"][0]["desc"], "Build project");
+        assert_eq!(parsed["tasks"][0]["summary"], "");
+        assert_eq!(parsed["tasks"][0]["aliases"], serde_json::json!([]));
+
+        // Verify location object
+        assert_eq!(
+            parsed["tasks"][0]["location"]["taskfile"],
+            "/path/to/Razdfile.yml"
+        );
+        assert_eq!(parsed["tasks"][0]["location"]["line"], 5);
+        assert_eq!(parsed["tasks"][0]["location"]["column"], 3);
+
+        // Verify root location
+        assert_eq!(parsed["location"], "/path/to/Razdfile.yml");
+    }
+
+    #[test]
+    fn test_task_field_equals_name() {
+        use super::{TaskInfo, TaskLocation};
+
+        let task = TaskInfo {
+            name: "test-task".to_string(),
+            task: "test-task".to_string(),
+            desc: "".to_string(),
+            summary: String::new(),
+            aliases: Vec::new(),
+            location: TaskLocation {
+                taskfile: "Razdfile.yml".to_string(),
+                line: 1,
+                column: 3,
+            },
+            internal: false,
+        };
+
+        assert_eq!(task.name, task.task);
+    }
+
+    #[test]
+    fn test_location_has_all_required_fields() {
+        use super::TaskLocation;
+
+        let location = TaskLocation {
+            taskfile: "/absolute/path/Razdfile.yml".to_string(),
+            line: 10,
+            column: 3,
+        };
+
+        assert!(!location.taskfile.is_empty());
+        assert!(location.line > 0);
+        assert!(location.column > 0);
+    }
+
+    #[test]
+    fn test_internal_field_skips_false() {
+        use super::{TaskInfo, TaskListOutput, TaskLocation};
+
+        let tasks = vec![TaskInfo {
+            name: "public".to_string(),
+            task: "public".to_string(),
+            desc: "".to_string(),
+            summary: String::new(),
+            aliases: Vec::new(),
+            location: TaskLocation {
+                taskfile: "Razdfile.yml".to_string(),
+                line: 1,
+                column: 3,
+            },
+            internal: false, // Should be omitted from JSON
+        }];
+
+        let output = TaskListOutput {
+            tasks,
+            location: Some("Razdfile.yml".to_string()),
+        };
+
+        let json = serde_json::to_string(&output).unwrap();
+
+        // When internal is false, it should not appear in JSON
+        assert!(!json.contains("\"internal\""));
     }
 }

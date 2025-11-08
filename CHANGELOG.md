@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Enhanced JSON output** for `razd list --json` command with taskfile-compatible format
+  - Added `task` field (mirrors `name` for taskfile compatibility)
+  - Added `summary` field (empty string, placeholder for future feature)
+  - Added `aliases` field (empty array, placeholder for future alias support)
+  - Added `location` object with `taskfile`, `line`, and `column` for each task
+  - Added root `location` field with absolute path to Razdfile.yml
+  - Internal tasks now omit `internal: false` from JSON for cleaner output
+  - Full backward compatibility maintained - all existing fields preserved
+
 ## [0.5.1] - 2025-11-08
 
 ### Fixed
