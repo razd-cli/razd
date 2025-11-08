@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2025-11-09
+
+### Fixed
+- **Task list ordering**: Task list now displays tasks in the same order as defined in Razdfile.yml instead of alphabetically
+  - Preserves original task order from configuration file
+  - Improves readability when tasks are organized logically in the file
+  - Applies to both text and JSON output formats
+
 ## [0.6.0] - 2025-11-08
 
 ### Added
