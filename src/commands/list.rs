@@ -125,7 +125,7 @@ pub async fn execute(list_all: bool, json: bool, custom_path: Option<PathBuf>) -
     };
 
     // Extract tasks based on list_all flag
-    let mut tasks: Vec<(String, String, bool)> = razdfile
+    let tasks: Vec<(String, String, bool)> = razdfile
         .tasks
         .iter()
         .filter(|(_, config)| list_all || !config.internal)
@@ -156,8 +156,7 @@ pub async fn execute(list_all: bool, json: bool, custom_path: Option<PathBuf>) -
         return Ok(());
     }
 
-    // Sort alphabetically by task name
-    tasks.sort_by(|a, b| a.0.cmp(&b.0));
+    // Tasks are already in the order they appear in Razdfile.yml (IndexMap preserves order)
 
     if json {
         // Get absolute path to Razdfile.yml for location metadata
