@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2025-11-08
+
+### Added
+- **CLI Arguments Support**: Added support for passing arguments to tasks via `--` separator
+  - Use `razd run <task> -- <arguments>` to pass arguments to tasks
+  - Arguments are available in tasks via `{{.CLI_ARGS}}` template variable
+  - Works seamlessly with taskfile.dev's standard CLI_ARGS behavior
+  - Example: `razd run test -- -v -race` executes task with `-v -race` arguments
+  - Full support for arguments with spaces and special characters
+  - Empty arguments handled gracefully when no `--` separator provided
+
 ## [0.5.4] - 2025-11-08
 
 ### Added
