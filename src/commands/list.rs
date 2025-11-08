@@ -82,13 +82,16 @@ pub async fn execute(list_all: bool, json: bool) -> Result<()> {
         let output = TaskListOutput { tasks: task_infos };
         println!(
             "{}",
-            serde_json::to_string_pretty(&output)
-                .unwrap_or_else(|_| r#"{"tasks":[]}"#.to_string())
+            serde_json::to_string_pretty(&output).unwrap_or_else(|_| r#"{"tasks":[]}"#.to_string())
         );
     } else {
         // Output as text
         // Calculate maximum task name length for proper alignment
-        let max_name_len = tasks.iter().map(|(name, _, _)| name.len()).max().unwrap_or(0);
+        let max_name_len = tasks
+            .iter()
+            .map(|(name, _, _)| name.len())
+            .max()
+            .unwrap_or(0);
         let column_width = max_name_len + 1; // +1 for the colon
 
         // Display header
@@ -207,18 +210,20 @@ mod tests {
         );
 
         // Test with list_all = false (default behavior)
+        let list_all = false;
         let filtered_tasks: Vec<_> = tasks
             .iter()
-            .filter(|(_, config)| false || !config.internal) // list_all = false
+            .filter(|(_, config)| list_all || !config.internal)
             .map(|(name, _)| name.clone())
             .collect();
         assert_eq!(filtered_tasks.len(), 1);
         assert_eq!(filtered_tasks[0], "public-task");
 
         // Test with list_all = true
+        let list_all = true;
         let all_tasks: Vec<_> = tasks
             .iter()
-            .filter(|(_, config)| true || !config.internal) // list_all = true
+            .filter(|(_, config)| list_all || !config.internal)
             .map(|(name, _)| name.clone())
             .collect();
         assert_eq!(all_tasks.len(), 2);

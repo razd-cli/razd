@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2025-11-08
+
+### Added
+- **Task listing enhancements**: Added `--list-all` and `--json` flags to `razd list` command
+  - `--list-all` flag shows all tasks including those marked as internal
+  - `--json` flag outputs task information in JSON format for scripting and automation
+  - Flags can be combined: `razd list --list-all --json` shows all tasks in JSON format
+  - Maintains full backward compatibility - `razd list` works exactly as before
+  - Added 9 new tests (5 unit tests, 4 integration tests) to ensure reliability
+
+### Documentation
+- Added OpenSpec proposal for surgical mise.toml synchronization to preserve platform-specific commands
+
 ## [0.4.12] - 2025-11-05
 
 ### Fixed

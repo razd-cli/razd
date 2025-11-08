@@ -334,4 +334,3 @@ tasks:
         .stdout(predicate::str::contains("Available tasks"))
         .stdout(predicate::str::contains("build"));
 }
-
