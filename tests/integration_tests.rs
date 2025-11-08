@@ -1,5 +1,6 @@
 use assert_cmd::prelude::*;
 use predicates::prelude::*;
+use std::fs;
 use std::process::Command;
 
 #[test]
@@ -175,3 +176,162 @@ tasks:
         );
     }
 }
+
+#[test]
+fn test_list_command_json_output() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+    let razdfile_path = temp_dir.path().join("Razdfile.yml");
+
+    // Create a test Razdfile
+    let razdfile_content = r#"
+version: '3'
+tasks:
+  build:
+    desc: Build project
+    cmds:
+      - echo "building"
+  test:
+    desc: Run tests
+    cmds:
+      - echo "testing"
+"#;
+    fs::write(&razdfile_path, razdfile_content).unwrap();
+
+    let mut cmd = Command::cargo_bin("razd").unwrap();
+    cmd.arg("list").arg("--json");
+    cmd.current_dir(temp_dir.path());
+
+    let output = cmd.output().unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    // Verify it's valid JSON
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert!(json.get("tasks").is_some());
+    assert!(json["tasks"].is_array());
+    assert_eq!(json["tasks"].as_array().unwrap().len(), 2);
+}
+
+#[test]
+fn test_list_command_list_all_flag() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+    let razdfile_path = temp_dir.path().join("Razdfile.yml");
+
+    // Create a test Razdfile with internal task
+    let razdfile_content = r#"
+version: '3'
+tasks:
+  build:
+    desc: Build project
+    cmds:
+      - echo "building"
+  internal-setup:
+    desc: Internal setup
+    internal: true
+    cmds:
+      - echo "setup"
+"#;
+    fs::write(&razdfile_path, razdfile_content).unwrap();
+
+    // Test without --list-all (should not show internal)
+    let mut cmd = Command::cargo_bin("razd").unwrap();
+    cmd.arg("list");
+    cmd.current_dir(temp_dir.path());
+
+    let output = cmd.output().unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(!stdout.contains("internal-setup"));
+    assert!(stdout.contains("build"));
+
+    // Test with --list-all (should show internal)
+    let mut cmd = Command::cargo_bin("razd").unwrap();
+    cmd.arg("list").arg("--list-all");
+    cmd.current_dir(temp_dir.path());
+
+    let output = cmd.output().unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("internal-setup"));
+    assert!(stdout.contains("build"));
+}
+
+#[test]
+fn test_list_command_json_with_list_all() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+    let razdfile_path = temp_dir.path().join("Razdfile.yml");
+
+    // Create a test Razdfile with internal task
+    let razdfile_content = r#"
+version: '3'
+tasks:
+  public:
+    desc: Public task
+    cmds:
+      - echo "public"
+  internal:
+    desc: Internal task
+    internal: true
+    cmds:
+      - echo "internal"
+"#;
+    fs::write(&razdfile_path, razdfile_content).unwrap();
+
+    let mut cmd = Command::cargo_bin("razd").unwrap();
+    cmd.arg("list").arg("--list-all").arg("--json");
+    cmd.current_dir(temp_dir.path());
+
+    let output = cmd.output().unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    // Verify JSON contains both tasks with correct internal flags
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    let tasks = json["tasks"].as_array().unwrap();
+    assert_eq!(tasks.len(), 2);
+
+    // Find the internal task
+    let internal_task = tasks
+        .iter()
+        .find(|t| t["name"] == "internal")
+        .expect("Should find internal task");
+    assert_eq!(internal_task["internal"], true);
+
+    let public_task = tasks
+        .iter()
+        .find(|t| t["name"] == "public")
+        .expect("Should find public task");
+    assert_eq!(public_task["internal"], false);
+}
+
+#[test]
+fn test_list_backward_compatibility() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+    let razdfile_path = temp_dir.path().join("Razdfile.yml");
+
+    // Create a test Razdfile
+    let razdfile_content = r#"
+version: '3'
+tasks:
+  build:
+    desc: Build project
+    cmds:
+      - echo "building"
+"#;
+    fs::write(&razdfile_path, razdfile_content).unwrap();
+
+    // Test that basic list still works as before
+    let mut cmd = Command::cargo_bin("razd").unwrap();
+    cmd.arg("list");
+    cmd.current_dir(temp_dir.path());
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Available tasks"))
+        .stdout(predicate::str::contains("build"));
+}
+

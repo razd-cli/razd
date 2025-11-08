@@ -41,7 +41,14 @@ enum Commands {
         init: bool,
     },
     /// List all available tasks from Razdfile.yml
-    List,
+    List {
+        /// List all tasks, including internal ones
+        #[arg(long)]
+        list_all: bool,
+        /// Output in JSON format
+        #[arg(long)]
+        json: bool,
+    },
     /// Install development tools via mise
     Install,
     /// Install project dependencies via task setup
@@ -86,15 +93,15 @@ async fn run(cli: Cli) -> core::Result<()> {
 
     // Handle global --list flag
     if cli.list {
-        return commands::list::execute().await;
+        return commands::list::execute(false, false).await;
     }
 
     match cli.command {
         Some(Commands::Up { url, name, init }) => {
             commands::up::execute(url.as_deref(), name.as_deref(), init).await?;
         }
-        Some(Commands::List) => {
-            commands::list::execute().await?;
+        Some(Commands::List { list_all, json }) => {
+            commands::list::execute(list_all, json).await?;
         }
         Some(Commands::Install) => {
             commands::install::execute().await?;
@@ -114,7 +121,7 @@ async fn run(cli: Cli) -> core::Result<()> {
             list,
         }) => {
             if list {
-                commands::list::execute().await?;
+                commands::list::execute(false, false).await?;
             } else {
                 let task = task_name.ok_or_else(|| {
                     crate::core::error::RazdError::config(
