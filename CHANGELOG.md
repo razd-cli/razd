@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.4] - 2025-11-08
+
 ### Added
 - **Automation support**: Added `-y, --yes` flag for unattended execution
   - Automatically answers "yes" to all interactive prompts
