@@ -28,6 +28,10 @@ struct Cli {
     #[arg(long, global = true)]
     no_sync: bool,
 
+    /// Automatically answer "yes" to all prompts
+    #[arg(short = 'y', long, global = true)]
+    yes: bool,
+
     /// List all available tasks
     #[arg(long, global = true)]
     list: bool,
@@ -108,6 +112,9 @@ async fn main() {
 async fn run(cli: Cli) -> core::Result<()> {
     // Store no_sync flag for use by commands
     std::env::set_var("RAZD_NO_SYNC", if cli.no_sync { "1" } else { "0" });
+
+    // Store yes flag for use by commands
+    std::env::set_var("RAZD_AUTO_YES", if cli.yes { "1" } else { "0" });
 
     // Resolve custom config path from flags
     let custom_path = resolve_config_path(&cli);

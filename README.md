@@ -14,6 +14,8 @@ Razd is a modern project setup tool that helps you wake up your projects and get
 
 It orchestrates [mise](https://github.com/jdx/mise) and [taskfile](https://github.com/go-task/task) for one-command project initialization.
 
+**Automation-friendly**: Use the `--yes` flag to skip all interactive prompts, perfect for CI/CD pipelines and unattended execution.
+
 [Installation](https://razd-cli.github.io/docs/installation) | [Documentation](https://razd-cli.github.io/docs/guide/) | [Telegram](https://t.me/razd_cli)
 
 </div>

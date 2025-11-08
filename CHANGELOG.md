@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Automation support**: Added `-y, --yes` flag for unattended execution
+  - Automatically answers "yes" to all interactive prompts
+  - Enables CI/CD pipeline integration without manual intervention
+  - Auto-approves Razdfile.yml creation in `razd up` command
+  - Auto-resolves mise sync conflicts (prefers Razdfile.yml as source of truth)
+  - Automatically creates backups during sync operations when needed
+  - Works as global flag with all commands: `razd --yes up`, `razd -y list`, etc.
+  - Default behavior (without flag) remains unchanged - all prompts work as before
+
 ## [0.5.3] - 2025-11-08
 
 ### Added

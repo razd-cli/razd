@@ -658,3 +658,72 @@ tasks:
     assert_eq!(tasks[0]["name"], "build");
     assert_eq!(tasks[0]["desc"], "Build the project");
 }
+
+#[test]
+fn test_yes_flag_in_help() {
+    let mut cmd = Command::cargo_bin("razd").unwrap();
+    cmd.arg("--help");
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("-y, --yes"))
+        .stdout(predicate::str::contains(
+            "Automatically answer \"yes\" to all prompts",
+        ));
+}
+
+#[test]
+fn test_short_yes_flag_works() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+
+    // Create a basic Razdfile.yml for list command
+    let razdfile_content = r#"version: '3'
+tasks:
+  test:
+    desc: Test task
+    cmds:
+      - echo "test"
+"#;
+    fs::write(temp_dir.path().join("Razdfile.yml"), razdfile_content).unwrap();
+
+    // Test with short form -y
+    let mut cmd = Command::cargo_bin("razd").unwrap();
+    cmd.args(["-y", "list"]);
+    cmd.current_dir(temp_dir.path());
+
+    cmd.assert().success();
+
+    // Test with long form --yes
+    let mut cmd2 = Command::cargo_bin("razd").unwrap();
+    cmd2.args(["--yes", "list"]);
+    cmd2.current_dir(temp_dir.path());
+
+    cmd2.assert().success();
+}
+
+#[test]
+fn test_yes_flag_with_list_command() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+
+    let razdfile_content = r#"version: '3'
+tasks:
+  build:
+    desc: Build project
+    cmds:
+      - echo "Building..."
+"#;
+    fs::write(temp_dir.path().join("Razdfile.yml"), razdfile_content).unwrap();
+
+    let mut cmd = Command::cargo_bin("razd").unwrap();
+    cmd.args(["--yes", "list"]);
+    cmd.current_dir(temp_dir.path());
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("build"))
+        .stdout(predicate::str::contains("Build project"));
+}

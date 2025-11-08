@@ -172,6 +172,12 @@ fn show_success_message() -> Result<()> {
 
 /// Prompt user for yes/no answer
 fn prompt_yes_no(message: &str, default: bool) -> Result<bool> {
+    // Check if auto-approve is enabled
+    let auto_yes = env::var("RAZD_AUTO_YES").unwrap_or_default() == "1";
+    if auto_yes {
+        return Ok(true);
+    }
+
     let default_str = if default { "Y/n" } else { "y/N" };
     output::info(&format!("{} [{}] ", message, default_str));
 

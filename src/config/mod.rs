@@ -15,14 +15,17 @@ use std::env;
 use std::path::Path;
 
 /// Check and perform mise configuration sync if needed
-/// Respects the RAZD_NO_SYNC environment variable
+/// Respects the RAZD_NO_SYNC and RAZD_AUTO_YES environment variables
 pub fn check_and_sync_mise(project_dir: &Path) -> Result<()> {
     // Check if sync is disabled
     let no_sync = env::var("RAZD_NO_SYNC").unwrap_or_default() == "1";
 
+    // Check if auto-approve is enabled
+    let auto_yes = env::var("RAZD_AUTO_YES").unwrap_or_default() == "1";
+
     let config = SyncConfig {
         no_sync,
-        auto_approve: false, // Always prompt user for manual operations
+        auto_approve: auto_yes,
         create_backups: true,
     };
 

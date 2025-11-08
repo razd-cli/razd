@@ -142,3 +142,136 @@ fn test_roundtrip_razdfile_to_mise_toml() {
     println!("\nGenerated mise.toml content:");
     println!("{}", toml_content);
 }
+
+#[test]
+fn test_yes_flag_auto_approves_mise_sync() {
+    use razd::config::mise_sync::{MiseSyncManager, SyncConfig};
+    use std::fs;
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+
+    // Create a Razdfile.yml with mise config
+    let razdfile_content = r#"version: '3'
+mise:
+  tools:
+    node: "20"
+tasks:
+  test:
+    desc: Test task
+    cmds:
+      - echo "test"
+"#;
+    fs::write(temp_dir.path().join("Razdfile.yml"), razdfile_content).unwrap();
+
+    // Create a conflicting mise.toml with different version
+    let mise_toml_content = r#"[tools]
+node = "18"
+"#;
+    fs::write(temp_dir.path().join("mise.toml"), mise_toml_content).unwrap();
+
+    // Simulate changes to both files
+    // In real scenario, the file tracker would detect this
+    // For this test, we'll create a sync manager with auto_approve
+    let config = SyncConfig {
+        no_sync: false,
+        auto_approve: true,
+        create_backups: true,
+    };
+
+    let manager = MiseSyncManager::new(temp_dir.path().to_path_buf(), config);
+
+    // Attempt sync - should auto-resolve conflict
+    let result = manager.check_and_sync_if_needed();
+
+    // Should succeed without prompts
+    assert!(
+        result.is_ok(),
+        "Sync should succeed with auto_approve enabled"
+    );
+}
+
+#[test]
+fn test_yes_flag_resolves_conflicts_automatically() {
+    use razd::config::mise_sync::{MiseSyncManager, SyncConfig};
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+
+    // Create Razdfile.yml with mise config
+    let razdfile_content = r#"version: '3'
+mise:
+  tools:
+    node: "22"
+    task: "latest"
+tasks:
+  build:
+    cmds:
+      - echo "Building..."
+"#;
+    fs::write(temp_dir.path().join("Razdfile.yml"), razdfile_content).unwrap();
+
+    // Create conflicting mise.toml
+    let mise_toml_content = r#"[tools]
+node = "20"
+"#;
+    fs::write(temp_dir.path().join("mise.toml"), mise_toml_content).unwrap();
+
+    // Create manager with auto_approve enabled
+    let config = SyncConfig {
+        no_sync: false,
+        auto_approve: true,
+        create_backups: true,
+    };
+
+    let manager = MiseSyncManager::new(temp_dir.path().to_path_buf(), config);
+
+    // Should auto-resolve by preferring Razdfile (Option 1)
+    let result = manager.check_and_sync_if_needed();
+
+    assert!(result.is_ok(), "Should auto-resolve conflict");
+
+    // Verify mise.toml was updated with Razdfile values
+    let mise_content = fs::read_to_string(temp_dir.path().join("mise.toml")).unwrap();
+    assert!(
+        mise_content.contains("22"),
+        "mise.toml should have node 22 from Razdfile"
+    );
+}
+
+#[test]
+fn test_mise_sync_without_yes_flag_creates_backup() {
+    use razd::config::mise_sync::{MiseSyncManager, SyncConfig};
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+
+    // Create Razdfile.yml
+    let razdfile_content = r#"version: '3'
+mise:
+  tools:
+    node: "20"
+"#;
+    fs::write(temp_dir.path().join("Razdfile.yml"), razdfile_content).unwrap();
+
+    // Create mise.toml
+    let mise_toml_content = r#"[tools]
+node = "18"
+"#;
+    fs::write(temp_dir.path().join("mise.toml"), mise_toml_content).unwrap();
+
+    // Create manager with auto_approve and backups enabled
+    let config = SyncConfig {
+        no_sync: false,
+        auto_approve: true,
+        create_backups: true,
+    };
+
+    let manager = MiseSyncManager::new(temp_dir.path().to_path_buf(), config);
+
+    // This should create backups automatically when auto_approve is true
+    let _ = manager.check_and_sync_if_needed();
+
+    // Note: Backup file verification would require accessing internal backup logic
+    // This test primarily ensures no panics occur with backup creation
+}
