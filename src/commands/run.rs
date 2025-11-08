@@ -5,11 +5,7 @@ use std::env;
 use std::path::PathBuf;
 
 /// Execute a custom task defined in Razdfile.yml
-pub async fn execute(
-    task_name: &str,
-    args: &[String],
-    custom_path: Option<PathBuf>,
-) -> Result<()> {
+pub async fn execute(task_name: &str, args: &[String], custom_path: Option<PathBuf>) -> Result<()> {
     println!(
         "{}",
         format!("🚀 Running task '{}'...", task_name).cyan().bold()

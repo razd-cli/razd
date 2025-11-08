@@ -929,8 +929,7 @@ tasks:
 
         fs::write(&razdfile_path, content).unwrap();
 
-        let result = get_workflow_config_with_path("test", Some(razdfile_path))
-            .unwrap();
+        let result = get_workflow_config_with_path("test", Some(razdfile_path)).unwrap();
 
         assert!(result.is_some());
         let yaml = result.unwrap();
