@@ -914,4 +914,29 @@ tasks:
         assert!(yaml.contains("version:"));
         assert!(yaml.contains("'3'") || yaml.contains("\"3\"") || yaml.contains("version: 3"));
     }
+
+    #[test]
+    fn test_workflow_config_loads_task() {
+        let temp_dir = TempDir::new().unwrap();
+        let razdfile_path = temp_dir.path().join("Razdfile.yml");
+
+        let content = r#"
+tasks:
+  test:
+    cmds:
+      - echo "test {{.CLI_ARGS}}"
+"#;
+
+        fs::write(&razdfile_path, content).unwrap();
+
+        let result = get_workflow_config_with_path("test", Some(razdfile_path))
+            .unwrap();
+
+        assert!(result.is_some());
+        let yaml = result.unwrap();
+
+        // Verify task is present in generated YAML
+        assert!(yaml.contains("test"));
+        assert!(yaml.contains("echo"));
+    }
 }

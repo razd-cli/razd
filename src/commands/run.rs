@@ -7,7 +7,7 @@ use std::path::PathBuf;
 /// Execute a custom task defined in Razdfile.yml
 pub async fn execute(
     task_name: &str,
-    _args: &[String],
+    args: &[String],
     custom_path: Option<PathBuf>,
 ) -> Result<()> {
     println!(
@@ -25,8 +25,12 @@ pub async fn execute(
     if let Some(workflow_content) =
         crate::config::get_workflow_config_with_path(task_name, custom_path)?
     {
-        // Execute via taskfile with the workflow content in interactive mode
-        taskfile::execute_workflow_task_interactive(task_name, &workflow_content).await?;
+        // Execute via taskfile with the workflow content and CLI arguments
+        if args.is_empty() {
+            taskfile::execute_workflow_task_interactive(task_name, &workflow_content).await?;
+        } else {
+            taskfile::execute_workflow_task_with_args(task_name, &workflow_content, args).await?;
+        }
     } else {
         return Err(crate::core::RazdError::command(format!(
             "Task '{}' not found in Razdfile.yml. Try running 'task --list' to see available tasks",

@@ -727,3 +727,47 @@ tasks:
         .stdout(predicate::str::contains("build"))
         .stdout(predicate::str::contains("Build project"));
 }
+
+#[test]
+fn test_cli_args_passed_to_task() {
+    use tempfile::TempDir;
+
+    let temp_dir = TempDir::new().unwrap();
+
+    // Create a Razdfile with a task that uses CLI_ARGS
+    let razdfile_content = r"
+version: '3'
+tasks:
+  echo-args:
+    desc: Echo CLI arguments
+    cmds:
+      - echo Args are {{.CLI_ARGS}}
+";
+    fs::write(temp_dir.path().join("Razdfile.yml"), razdfile_content).unwrap();
+
+    let mut cmd = Command::cargo_bin("razd").unwrap();
+    cmd.args(["run", "echo-args", "--", "-v", "-race"]);
+    cmd.current_dir(temp_dir.path());
+
+    // Note: This test will fail if task is not installed
+    // In that case, it should attempt to install it via mise
+    let output = cmd.output().unwrap();
+
+    if output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        // The task execution should include the arguments
+        assert!(
+            stdout.contains("-v") || stdout.contains("-race"),
+            "CLI_ARGS should be passed to the task. Stdout: {}",
+            stdout
+        );
+    } else {
+        // If task tool is not available, should show helpful error
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("mise") || stderr.contains("task"),
+            "Should show error about missing tools. Stderr: {}",
+            stderr
+        );
+    }
+}

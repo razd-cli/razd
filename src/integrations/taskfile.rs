@@ -106,7 +106,7 @@ pub async fn setup_project_with_path(
 
 /// Execute a workflow task using custom taskfile content
 pub async fn execute_workflow_task(task_name: &str, workflow_content: &str) -> Result<()> {
-    execute_workflow_task_with_mode(task_name, workflow_content, false).await
+    execute_workflow_task_with_mode(task_name, workflow_content, false, None).await
 }
 
 /// Execute a workflow task with option for interactive mode
@@ -114,14 +114,24 @@ pub async fn execute_workflow_task_interactive(
     task_name: &str,
     workflow_content: &str,
 ) -> Result<()> {
-    execute_workflow_task_with_mode(task_name, workflow_content, true).await
+    execute_workflow_task_with_mode(task_name, workflow_content, true, None).await
 }
 
-/// Execute a workflow task using custom taskfile content with interactive option
+/// Execute a workflow task with CLI arguments
+pub async fn execute_workflow_task_with_args(
+    task_name: &str,
+    workflow_content: &str,
+    cli_args: &[String],
+) -> Result<()> {
+    execute_workflow_task_with_mode(task_name, workflow_content, true, Some(cli_args)).await
+}
+
+/// Execute a workflow task using custom taskfile content with interactive option and CLI args
 async fn execute_workflow_task_with_mode(
     task_name: &str,
     workflow_content: &str,
     interactive: bool,
+    cli_args: Option<&[String]>,
 ) -> Result<()> {
     use std::env;
     use std::fs;
@@ -142,13 +152,25 @@ async fn execute_workflow_task_with_mode(
         .map_err(|e| RazdError::task(format!("Failed to create temporary taskfile: {}", e)))?;
 
     // Use --dir/-d flag to ensure task executes in project directory, not temp directory
-    let args = vec![
+    let mut args = vec![
         "--taskfile",
         temp_taskfile.to_str().unwrap(),
         "--dir",
         working_dir.to_str().unwrap(),
         task_name,
     ];
+
+    // Add CLI arguments if provided (after task name, with -- separator)
+    let cli_arg_strings: Vec<String>;
+    if let Some(cli_args_slice) = cli_args {
+        if !cli_args_slice.is_empty() {
+            args.push("--");
+            cli_arg_strings = cli_args_slice.to_vec();
+            for arg in &cli_arg_strings {
+                args.push(arg.as_str());
+            }
+        }
+    }
 
     // Check if we can execute task directly (allows early cleanup) or need mise exec (keeps file)
     let result = if process::check_command_available("task").await {

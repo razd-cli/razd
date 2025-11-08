@@ -36,4 +36,7 @@ tasks:
   test:
     desc: Run tests
     cmds:
-      - npm test
+      - npm test {{.CLI_ARGS}}
+      
+  # Example: razd run test -- --coverage
+  # This passes --coverage to npm test
