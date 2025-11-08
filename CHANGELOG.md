@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2] - 2025-11-08
+
 ### Added
 - **Enhanced JSON output** for `razd list --json` command with taskfile-compatible format
   - Added `task` field (mirrors `name` for taskfile compatibility)
