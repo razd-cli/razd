@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.3] - 2025-11-08
+
 ### Added
 - **Custom configuration file path support**: Added `--taskfile` and `--razdfile` flags (with short form `-t`)
   - Both flags work as synonyms, with `--razdfile` taking priority if both specified
