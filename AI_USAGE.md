@@ -280,6 +280,12 @@ Use content hashing (not timestamps) to detect config changes:
 
 razd uses **spec-driven development**. Before making changes:
 
+### Three-Stage Workflow
+
+1. **Creating Changes** - Scaffold proposal, spec deltas, and tasks
+2. **Implementing Changes** - Follow tasks.md checklist
+3. **Archiving Changes** - Move to archive after deployment
+
 ### When to Create a Proposal
 
 **Always create proposal for**:
@@ -301,26 +307,27 @@ razd uses **spec-driven development**. Before making changes:
 1. **Review existing work**:
    ```bash
    openspec list              # Active changes
-   openspec list --specs      # Existing specs
-   rg "Requirement:|Scenario:" openspec/specs  # Search requirements
+   openspec list --specs      # Existing specs (or: openspec spec list --long)
+   rg -n "Requirement:|Scenario:" openspec/specs  # Search requirements
    ```
 
 2. **Choose unique change-id**:
    - Format: `kebab-case`, verb-led
+   - Prefixes: `add-`, `update-`, `remove-`, `refactor-`
    - Examples: `add-docker-support`, `refactor-config-sync`, `remove-deprecated-flag`
 
 3. **Scaffold proposal**:
    ```
    openspec/changes/<change-id>/
-   ├── proposal.md           # Overview, motivation, goals
+   ├── proposal.md           # Why, what, impact
    ├── tasks.md              # Ordered implementation steps
-   ├── design.md             # Architecture decisions (if complex)
+   ├── design.md             # Technical decisions (optional, see criteria)
    └── specs/                # Spec deltas per affected capability
        └── <capability>/
            └── spec.md       # ADDED/MODIFIED/REMOVED requirements
    ```
 
-4. **Write spec deltas**:
+4. **Write spec deltas** (use `## ADDED|MODIFIED|REMOVED Requirements`):
    ```markdown
    ## ADDED Requirements
    
@@ -328,23 +335,36 @@ razd uses **spec-driven development**. Before making changes:
    razd SHALL support running projects in Docker containers.
    
    #### Scenario: Detect Dockerfile
-   GIVEN a project with Dockerfile
-   WHEN user runs `razd up`
-   THEN razd SHALL offer to start Docker container
+   - **WHEN** a project with Dockerfile exists
+   - **THEN** razd SHALL offer to start Docker container
    
    #### Scenario: Build and run container
-   GIVEN user accepts Docker option
-   WHEN razd builds container
-   THEN container SHALL have all mise tools installed
+   - **WHEN** user accepts Docker option
+   - **THEN** container SHALL have all mise tools installed
    ```
 
-5. **Validate**:
+5. **Create design.md when needed** (optional):
+   - Cross-cutting change (multiple services/modules)
+   - New external dependency or data model changes
+   - Security, performance, or migration complexity
+   - Ambiguity that benefits from technical decisions before coding
+
+6. **Validate strictly**:
    ```bash
    openspec validate <change-id> --strict
-   # Fix all issues before proceeding
+   # Fix ALL issues before proceeding
    ```
 
-6. **Request approval** - Don't implement until proposal is approved
+7. **Request approval** - Don't implement until proposal is approved
+
+### Delta Operations
+
+- `## ADDED Requirements` - New capabilities
+- `## MODIFIED Requirements` - Changed behavior (paste full updated requirement)
+- `## REMOVED Requirements` - Deprecated features (include reason and migration)
+- `## RENAMED Requirements` - Name changes only
+
+**Critical**: Every requirement MUST have at least one `#### Scenario:` (use 4 hashtags).
 
 ### Existing Specifications
 
@@ -356,6 +376,17 @@ Current capabilities (run `openspec list --specs`):
 - **release-automation** - Automated releases
 - **task-auto-installation** - Auto-install missing tools
 - **tool-integration** - Mise and taskfile integration
+
+### Key CLI Commands
+
+```bash
+openspec list                  # List active changes
+openspec list --specs          # List specifications
+openspec show [item]           # Display change or spec
+openspec diff [change]         # Show spec differences
+openspec validate [item] --strict  # Validate (always use --strict)
+openspec archive [change] --yes    # Archive after deployment
+```
 
 ### Key Files
 
@@ -465,25 +496,36 @@ task --list            # List tasks from Taskfile.yml (if exists)
 
 ### When Making Code Changes
 
-1. ✅ **Check OpenSpec first**:
+1. ✅ **Review context first**:
    ```bash
    openspec list --specs      # What specs exist?
-   rg "keyword" openspec/     # Search requirements
+   openspec list              # Active changes
+   rg -n "Requirement:|Scenario:" openspec/specs  # Search requirements
    ```
 
-2. ✅ **Create proposal if needed** (see OpenSpec Workflow above)
+2. ✅ **Decide scope**: Does this need a proposal?
+   - New feature → Create proposal
+   - Breaking change → Create proposal
+   - Bug fix → Fix directly
+   - Typo/format → Fix directly
 
-3. ✅ **Follow existing patterns**:
+3. ✅ **Create proposal if needed**:
+   - Pick unique verb-led `change-id`
+   - Scaffold `proposal.md`, `tasks.md`, and spec deltas
+   - Validate with `openspec validate <id> --strict`
+   - Request approval before implementing
+
+4. ✅ **Follow existing patterns**:
    - Look at similar command implementations
    - Match error handling style
    - Use existing integration wrappers
 
-4. ✅ **Test cross-platform**:
+5. ✅ **Test cross-platform**:
    - Test on Windows (PowerShell) and Unix (bash)
    - Use `std::process::Command` (cross-platform)
    - Avoid platform-specific code
 
-5. ✅ **Write tests**:
+6. ✅ **Write tests**:
    - Unit tests for new functions
    - Integration tests for command flows
    - Add test cases to `tests/` directory
@@ -802,11 +844,12 @@ razd uses **spec-driven development**:
 
 ### When Making Code Changes:
 
-1. **Read specs first**: Check `openspec/specs/` for relevant capability
-2. **Follow patterns**: Look at existing command implementations
-3. **Cross-platform**: Test on Windows and Unix
-4. **Error handling**: Use `Result<T, RazdError>`, no panics
-5. **Create proposals**: For features, follow OpenSpec workflow
+1. **Review context**: `openspec list --specs`, `openspec list`, `rg -n "Requirement:|Scenario:" openspec/specs`
+2. **Decide scope**: New feature/breaking change → Create proposal; Bug fix/typo → Fix directly
+3. **Create proposal if needed**: Scaffold under `openspec/changes/<id>/`, validate with `openspec validate <id> --strict`
+4. **Follow patterns**: Look at existing command implementations
+5. **Cross-platform**: Test on Windows and Unix
+6. **Error handling**: Use `Result<T, RazdError>`, no panics
 
 ### Key Files to Know:
 
