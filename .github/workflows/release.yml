@@ -166,9 +166,8 @@ jobs:
         echo "2. Create release at: https://github.com/${{ github.repository }}/releases/new?tag=${{ github.ref_name }}"
         echo "3. Upload the binary files"
 
-    - name: Create Release (if token available)
+    - name: Create Release
       uses: softprops/action-gh-release@v2
-      continue-on-error: true
       with:
         body: |
           ## Release v${{ needs.create-release.outputs.version }}
@@ -183,7 +182,7 @@ jobs:
         files: artifacts/**/*
         make_latest: true
       env:
-        GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   smoke-test:
     name: Smoke Test
