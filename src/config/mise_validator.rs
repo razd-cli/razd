@@ -64,31 +64,31 @@ pub fn validate_tool_name(name: &str) -> Result<(), RazdError> {
 fn determine_backend_type(name: &str) -> (BackendType, &str) {
     // Check for package manager backends
     for prefix in PACKAGE_MANAGER_BACKENDS {
-        if name.starts_with(prefix) {
-            return (BackendType::PackageManager, &name[prefix.len()..]);
+        if let Some(stripped) = name.strip_prefix(prefix) {
+            return (BackendType::PackageManager, stripped);
         }
     }
 
     // Check for repository backends
     for prefix in REPOSITORY_BACKENDS {
-        if name.starts_with(prefix) {
-            return (BackendType::Repository, &name[prefix.len()..]);
+        if let Some(stripped) = name.strip_prefix(prefix) {
+            return (BackendType::Repository, stripped);
         }
     }
 
     // Check for go backend
-    if name.starts_with(GO_BACKEND) {
-        return (BackendType::Go, &name[GO_BACKEND.len()..]);
+    if let Some(stripped) = name.strip_prefix(GO_BACKEND) {
+        return (BackendType::Go, stripped);
     }
 
     // Check for http backend
-    if name.starts_with(HTTP_BACKEND) {
-        return (BackendType::Http, &name[HTTP_BACKEND.len()..]);
+    if let Some(stripped) = name.strip_prefix(HTTP_BACKEND) {
+        return (BackendType::Http, stripped);
     }
 
     // Check for core backend
-    if name.starts_with(CORE_BACKEND) {
-        return (BackendType::Strict, &name[CORE_BACKEND.len()..]);
+    if let Some(stripped) = name.strip_prefix(CORE_BACKEND) {
+        return (BackendType::Strict, stripped);
     }
 
     // Check for any other prefix (legacy support)
