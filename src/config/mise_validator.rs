@@ -41,9 +41,7 @@ const CORE_BACKEND: &str = "core:";
 /// - Standalone tools: Strict alphanumeric, hyphens, underscores only
 pub fn validate_tool_name(name: &str) -> Result<(), RazdError> {
     if name.is_empty() {
-        return Err(RazdError::config(
-            "Tool name cannot be empty".to_string(),
-        ));
+        return Err(RazdError::config("Tool name cannot be empty".to_string()));
     }
 
     // Determine backend type and extract name after prefix
@@ -349,7 +347,9 @@ mod tests {
 
     #[test]
     fn test_valid_go_module_paths() {
-        assert!(validate_tool_name("go:github.com/golangci/golangci-lint/cmd/golangci-lint").is_ok());
+        assert!(
+            validate_tool_name("go:github.com/golangci/golangci-lint/cmd/golangci-lint").is_ok()
+        );
         assert!(validate_tool_name("go:golang.org/x/tools/gopls").is_ok());
         assert!(validate_tool_name("go:github.com/owner/repo").is_ok());
         assert!(validate_tool_name("go:mvdan.cc/sh/v3/cmd/shfmt").is_ok());
