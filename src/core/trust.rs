@@ -68,8 +68,11 @@ impl TrustStore {
 
     /// Load trust store from disk
     pub fn load() -> Result<Self> {
-        let path = Self::get_store_path();
+        Self::load_from_path(Self::get_store_path())
+    }
 
+    /// Load trust store from a specific path (useful for testing)
+    pub fn load_from_path(path: PathBuf) -> Result<Self> {
         let data = if path.exists() {
             let content = fs::read_to_string(&path)
                 .map_err(|e| RazdError::config(format!("Failed to read trust store: {}", e)))?;
@@ -172,6 +175,7 @@ impl TrustStore {
     }
 
     /// Remove a path from the trusted list
+    #[allow(dead_code)]
     pub fn remove_trusted(&mut self, path: &Path) -> Result<()> {
         let normalized = Self::normalize_path(path);
         self.data.trusted.retain(|entry| entry.path != normalized);
@@ -202,6 +206,7 @@ impl TrustStore {
     }
 
     /// Remove a path from the ignored list
+    #[allow(dead_code)]
     pub fn remove_ignored(&mut self, path: &Path) -> Result<()> {
         let normalized = Self::normalize_path(path);
         self.data.ignored.retain(|entry| entry.path != normalized);
@@ -337,7 +342,9 @@ pub async fn run_mise_trust_if_needed(path: &Path) -> Result<()> {
         // Check if mise is available
         if process::check_command_available("mise").await {
             output::step("Running mise trust...");
-            process::execute_command_interactive("mise", &["trust"], Some(path))
+            // Use non-interactive execution - mise trust just adds to trusted list
+            // without showing any prompts
+            process::execute_command("mise", &["trust"], Some(path))
                 .await
                 .map_err(|e| RazdError::mise(format!("Failed to run mise trust: {}", e)))?;
         }
@@ -350,87 +357,95 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
+    /// Helper to create a test store with isolated path
+    fn create_test_store() -> (TrustStore, TempDir) {
+        let temp_dir = TempDir::new().unwrap();
+        let store_path = temp_dir.path().join("trusted.json");
+        let store = TrustStore::load_from_path(store_path).unwrap();
+        (store, temp_dir)
+    }
+
     #[test]
     fn test_trust_store_load_empty() {
-        let store = TrustStore::load().unwrap();
+        let (store, _temp) = create_test_store();
         assert!(store.data.trusted.is_empty());
         assert!(store.data.ignored.is_empty());
     }
 
     #[test]
     fn test_trust_status_unknown_by_default() {
-        let store = TrustStore::load().unwrap();
-        let temp_dir = TempDir::new().unwrap();
-        assert_eq!(store.get_status(temp_dir.path()), TrustStatus::Unknown);
+        let (store, _temp) = create_test_store();
+        let project_dir = TempDir::new().unwrap();
+        assert_eq!(store.get_status(project_dir.path()), TrustStatus::Unknown);
     }
 
     #[test]
     fn test_add_and_check_trusted() {
-        let mut store = TrustStore::load().unwrap();
-        let temp_dir = TempDir::new().unwrap();
+        let (mut store, _temp) = create_test_store();
+        let project_dir = TempDir::new().unwrap();
 
-        store.add_trusted(temp_dir.path()).unwrap();
-        assert!(store.is_trusted(temp_dir.path()));
-        assert!(!store.is_ignored(temp_dir.path()));
-        assert_eq!(store.get_status(temp_dir.path()), TrustStatus::Trusted);
+        store.add_trusted(project_dir.path()).unwrap();
+        assert!(store.is_trusted(project_dir.path()));
+        assert!(!store.is_ignored(project_dir.path()));
+        assert_eq!(store.get_status(project_dir.path()), TrustStatus::Trusted);
     }
 
     #[test]
     fn test_add_and_check_ignored() {
-        let mut store = TrustStore::load().unwrap();
-        let temp_dir = TempDir::new().unwrap();
+        let (mut store, _temp) = create_test_store();
+        let project_dir = TempDir::new().unwrap();
 
-        store.add_ignored(temp_dir.path()).unwrap();
-        assert!(!store.is_trusted(temp_dir.path()));
-        assert!(store.is_ignored(temp_dir.path()));
-        assert_eq!(store.get_status(temp_dir.path()), TrustStatus::Ignored);
+        store.add_ignored(project_dir.path()).unwrap();
+        assert!(!store.is_trusted(project_dir.path()));
+        assert!(store.is_ignored(project_dir.path()));
+        assert_eq!(store.get_status(project_dir.path()), TrustStatus::Ignored);
     }
 
     #[test]
     fn test_trust_replaces_ignore() {
-        let mut store = TrustStore::load().unwrap();
-        let temp_dir = TempDir::new().unwrap();
+        let (mut store, _temp) = create_test_store();
+        let project_dir = TempDir::new().unwrap();
 
-        store.add_ignored(temp_dir.path()).unwrap();
-        assert!(store.is_ignored(temp_dir.path()));
+        store.add_ignored(project_dir.path()).unwrap();
+        assert!(store.is_ignored(project_dir.path()));
 
-        store.add_trusted(temp_dir.path()).unwrap();
-        assert!(store.is_trusted(temp_dir.path()));
-        assert!(!store.is_ignored(temp_dir.path()));
+        store.add_trusted(project_dir.path()).unwrap();
+        assert!(store.is_trusted(project_dir.path()));
+        assert!(!store.is_ignored(project_dir.path()));
     }
 
     #[test]
     fn test_ignore_replaces_trust() {
-        let mut store = TrustStore::load().unwrap();
-        let temp_dir = TempDir::new().unwrap();
+        let (mut store, _temp) = create_test_store();
+        let project_dir = TempDir::new().unwrap();
 
-        store.add_trusted(temp_dir.path()).unwrap();
-        assert!(store.is_trusted(temp_dir.path()));
+        store.add_trusted(project_dir.path()).unwrap();
+        assert!(store.is_trusted(project_dir.path()));
 
-        store.add_ignored(temp_dir.path()).unwrap();
-        assert!(!store.is_trusted(temp_dir.path()));
-        assert!(store.is_ignored(temp_dir.path()));
+        store.add_ignored(project_dir.path()).unwrap();
+        assert!(!store.is_trusted(project_dir.path()));
+        assert!(store.is_ignored(project_dir.path()));
     }
 
     #[test]
     fn test_remove_trusted() {
-        let mut store = TrustStore::load().unwrap();
-        let temp_dir = TempDir::new().unwrap();
+        let (mut store, _temp) = create_test_store();
+        let project_dir = TempDir::new().unwrap();
 
-        store.add_trusted(temp_dir.path()).unwrap();
-        assert!(store.is_trusted(temp_dir.path()));
+        store.add_trusted(project_dir.path()).unwrap();
+        assert!(store.is_trusted(project_dir.path()));
 
-        store.remove_trusted(temp_dir.path()).unwrap();
-        assert!(!store.is_trusted(temp_dir.path()));
+        store.remove_trusted(project_dir.path()).unwrap();
+        assert!(!store.is_trusted(project_dir.path()));
     }
 
     #[test]
     fn test_remove_all() {
-        let mut store = TrustStore::load().unwrap();
-        let temp_dir = TempDir::new().unwrap();
+        let (mut store, _temp) = create_test_store();
+        let project_dir = TempDir::new().unwrap();
 
-        store.add_trusted(temp_dir.path()).unwrap();
-        store.remove_all(temp_dir.path()).unwrap();
-        assert_eq!(store.get_status(temp_dir.path()), TrustStatus::Unknown);
+        store.add_trusted(project_dir.path()).unwrap();
+        store.remove_all(project_dir.path()).unwrap();
+        assert_eq!(store.get_status(project_dir.path()), TrustStatus::Unknown);
     }
 }
