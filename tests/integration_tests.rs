@@ -104,7 +104,7 @@ tasks:
     .unwrap();
 
     let mut cmd = Command::cargo_bin("razd").unwrap();
-    cmd.arg("up");
+    cmd.args(["--yes", "up"]); // --yes to auto-trust in CI (no terminal)
     cmd.current_dir(temp_dir.path());
 
     // This test will exercise the task auto-installation code path
@@ -746,7 +746,7 @@ tasks:
     fs::write(temp_dir.path().join("Razdfile.yml"), razdfile_content).unwrap();
 
     let mut cmd = Command::cargo_bin("razd").unwrap();
-    cmd.args(["run", "echo-args", "--", "-v", "-race"]);
+    cmd.args(["--yes", "run", "echo-args", "--", "-v", "-race"]); // --yes to auto-trust in CI
     cmd.current_dir(temp_dir.path());
 
     // Note: This test will fail if task is not installed
