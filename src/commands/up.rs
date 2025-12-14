@@ -1,4 +1,5 @@
 use crate::config::get_workflow_config_with_path;
+use crate::core::trust::ensure_trusted;
 use crate::core::{output, RazdError, Result};
 use crate::integrations::{git, mise, taskfile};
 use std::env;
@@ -83,10 +84,14 @@ async fn execute_with_clone(
         absolute_repo_path.display()
     ));
 
-    // Step 3: Execute up workflow
+    // Step 3: Check trust before executing
+    let auto_yes = env::var("RAZD_AUTO_YES").unwrap_or_default() == "1";
+    ensure_trusted(&absolute_repo_path, auto_yes).await?;
+
+    // Step 4: Execute up workflow
     execute_up_workflow(custom_path).await?;
 
-    // Step 4: Show success message
+    // Step 5: Show success message
     show_success_message()?;
 
     Ok(())
@@ -99,13 +104,17 @@ async fn execute_local_project(custom_path: Option<PathBuf>) -> Result<()> {
     let current_dir = env::current_dir()?;
     output::info(&format!("Working in directory: {}", current_dir.display()));
 
+    // Check trust before executing
+    let auto_yes = env::var("RAZD_AUTO_YES").unwrap_or_default() == "1";
+    ensure_trusted(&current_dir, auto_yes).await?;
+
     // Check if project has configuration
     if has_project_configuration(&current_dir) {
         // Step 1: Execute up workflow
         execute_up_workflow(custom_path).await?;
 
         // Step 2: Show success message
-        show_success_message()?;
+        show_success_message()?
     } else {
         // Step 1: Offer to create configuration interactively
         output::info("No project configuration found.");

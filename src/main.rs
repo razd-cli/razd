@@ -90,6 +90,23 @@ enum Commands {
         #[arg(long)]
         list: bool,
     },
+    /// Manage project trust status
+    Trust {
+        /// Path to trust (defaults to current directory)
+        path: Option<String>,
+        /// Remove trust status from the project
+        #[arg(long)]
+        untrust: bool,
+        /// Show trust status without modifying
+        #[arg(long)]
+        show: bool,
+        /// Trust all parent directories with config
+        #[arg(short, long)]
+        all: bool,
+        /// Ignore this project (never trust, never prompt)
+        #[arg(long)]
+        ignore: bool,
+    },
 }
 
 #[tokio::main]
@@ -158,6 +175,15 @@ async fn run(cli: Cli) -> core::Result<()> {
                 })?;
                 commands::run::execute(&task, &args, custom_path).await?;
             }
+        }
+        Some(Commands::Trust {
+            path,
+            untrust,
+            show,
+            all,
+            ignore,
+        }) => {
+            commands::trust::execute(path.as_deref(), untrust, show, all, ignore).await?;
         }
         None => {
             // If no subcommand provided, run 'razd up' (local project setup)

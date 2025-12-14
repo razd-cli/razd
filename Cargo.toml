@@ -51,6 +51,12 @@ sha2 = "0.10"
 # Path handling
 path-clean = "1.0"
 
+# Interactive prompts
+dialoguer = "0.11"
+
+# Platform-specific directories
+dirs = "6.0"
+
 [dev-dependencies]
 tempfile = "3.8"
 assert_cmd = "2.0"

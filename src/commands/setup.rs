@@ -1,3 +1,4 @@
+use crate::core::trust::ensure_trusted;
 use crate::core::{output, Result};
 use crate::integrations::taskfile;
 use std::env;
@@ -6,6 +7,10 @@ use std::path::PathBuf;
 /// Execute the `razd setup` command: install project dependencies via task setup
 pub async fn execute(custom_path: Option<PathBuf>) -> Result<()> {
     let current_dir = env::current_dir()?;
+
+    // Check trust before executing
+    let auto_yes = env::var("RAZD_AUTO_YES").unwrap_or_default() == "1";
+    ensure_trusted(&current_dir, auto_yes).await?;
 
     // Check and sync mise configuration before executing
     if let Err(e) = crate::config::check_and_sync_mise(&current_dir) {
