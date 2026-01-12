@@ -59,7 +59,7 @@ dirs = "6.0"
 
 [dev-dependencies]
 tempfile = "3.8"
-assert_cmd = "2.0"
+assert_cmd = "2.1"
 predicates = "3.0"
 
 [profile.release]
