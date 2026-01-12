@@ -1,4 +1,0 @@
-[tools]
-rust = "1.82.0"
-task = "latest"
-"npm:@fission-ai/openspec"  = "latest"
