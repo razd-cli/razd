@@ -231,6 +231,133 @@
       },
       "additionalProperties": false
     },
+    "devbox_config": {
+      "type": "object",
+      "description": "Devbox configuration for Nix-based development environments",
+      "properties": {
+        "packages": {
+          "description": "Collection of packages to install",
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "description": "Package name in name@version format"
+              }
+            },
+            {
+              "type": "object",
+              "description": "Package configuration with version and platform options",
+              "patternProperties": {
+                ".*": {
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "description": "Version of the package"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "version": {
+                          "type": "string",
+                          "description": "Version of the package"
+                        },
+                        "platforms": {
+                          "type": "array",
+                          "description": "Platforms to install on",
+                          "items": {
+                            "type": "string",
+                            "enum": ["i686-linux", "aarch64-linux", "aarch64-darwin", "x86_64-darwin", "x86_64-linux", "armv7l-linux"]
+                          }
+                        },
+                        "excluded_platforms": {
+                          "type": "array",
+                          "description": "Platforms to exclude",
+                          "items": {
+                            "type": "string",
+                            "enum": ["i686-linux", "aarch64-linux", "aarch64-darwin", "x86_64-darwin", "x86_64-linux", "armv7l-linux"]
+                          }
+                        },
+                        "glibc_patch": {
+                          "type": "boolean",
+                          "description": "Whether to patch glibc"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "env": {
+          "type": "object",
+          "description": "Environment variables for devbox shell",
+          "patternProperties": {
+            ".*": {
+              "type": "string",
+              "description": "Value of the environment variable"
+            }
+          }
+        },
+        "shell": {
+          "type": "object",
+          "description": "Shell configuration with hooks and scripts",
+          "properties": {
+            "init_hook": {
+              "description": "Commands to run when shell starts",
+              "oneOf": [
+                { "type": "string" },
+                {
+                  "type": "array",
+                  "items": { "type": "string" }
+                }
+              ]
+            },
+            "scripts": {
+              "type": "object",
+              "description": "Named scripts runnable with 'devbox run <name>'",
+              "patternProperties": {
+                ".*": {
+                  "description": "Script commands",
+                  "oneOf": [
+                    { "type": "string" },
+                    {
+                      "type": "array",
+                      "items": { "type": "string" }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "include": {
+          "type": "array",
+          "description": "Additional plugins to activate",
+          "items": {
+            "type": "string",
+            "description": "Plugin name"
+          }
+        },
+        "env_from": {
+          "type": "string",
+          "description": "File to load environment variables from"
+        },
+        "nixpkgs": {
+          "type": "object",
+          "description": "Nixpkgs configuration",
+          "properties": {
+            "commit": {
+              "type": "string",
+              "description": "Commit hash of nixpkgs repository"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
     "env": {
       "$ref": "#/definitions/vars"
     },
@@ -711,6 +838,10 @@
     "mise": {
       "$ref": "#/definitions/mise_config",
       "description": "Mise configuration for tool management (YAML format equivalent of mise.toml)"
+    },
+    "devbox": {
+      "$ref": "#/definitions/devbox_config",
+      "description": "Devbox configuration for Nix-based development environments (YAML format equivalent of devbox.json)"
     },
     "output": {
       "description": "Defines how the STDOUT and STDERR are printed when running tasks in parallel.",

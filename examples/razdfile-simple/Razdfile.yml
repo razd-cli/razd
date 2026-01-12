@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../../schemas/razdfile.json
+# yaml-language-server: $schema=../../.schema/razdfile.schema.json
 
 version: "1"
 

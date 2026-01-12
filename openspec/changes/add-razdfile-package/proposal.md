@@ -109,4 +109,4 @@ rf, err := reader.Read(ctx, node)
 ## References
 
 - [go-task/taskfile](https://github.com/go-task/task/tree/main/taskfile) — reference architecture
-- [schemas/razdfile.json](../../schemas/razdfile.json) — JSON Schema для Razdfile
+- [.schema/razdfile.schema.json](../../.schema/razdfile.schema.json) — JSON Schema для Razdfile

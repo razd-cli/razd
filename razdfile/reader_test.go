@@ -66,6 +66,45 @@ tasks:
 	assert.Equal(t, "22", rf.Mise.Tools["node"].Version)
 }
 
+func TestReader_Read_WithDevbox(t *testing.T) {
+	// Create a temporary directory
+	dir := t.TempDir()
+	
+	// Create a test Razdfile with devbox config
+	content := []byte(`
+version: "1"
+
+devbox:
+  packages:
+    - python@3.11
+    - ripgrep@latest
+  shell:
+    init_hook: echo "Hello devbox!"
+    scripts:
+      test: python --version
+
+tasks:
+  hello:
+    cmds:
+      - echo "Hello"
+`)
+	err := os.WriteFile(filepath.Join(dir, "Razdfile.yml"), content, 0644)
+	require.NoError(t, err)
+	
+	// Create a reader and read the file
+	reader := NewReader(WithDir(dir))
+	rf, err := reader.Read()
+	
+	require.NoError(t, err)
+	assert.True(t, rf.HasTasks())
+	assert.True(t, rf.HasDevbox())
+	require.True(t, rf.Devbox.HasPackages())
+	assert.Len(t, rf.Devbox.Packages.List, 2)
+	assert.Equal(t, "python@3.11", rf.Devbox.Packages.List[0])
+	assert.True(t, rf.Devbox.HasShell())
+	assert.Equal(t, []string{"echo \"Hello devbox!\""}, rf.Devbox.Shell.InitHook.Commands)
+}
+
 func TestReader_Read_NotFound(t *testing.T) {
 	// Create an empty temporary directory
 	dir := t.TempDir()

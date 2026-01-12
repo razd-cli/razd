@@ -56,6 +56,18 @@ func main() {
 
 	fmt.Printf("Razdfile version: %s\n", rf.Version)
 	
+	if rf.HasDevbox() && rf.Devbox.HasPackages() {
+		fmt.Println("Devbox packages detected:")
+		for _, pkg := range rf.Devbox.Packages.List {
+			fmt.Printf("  - %s\n", pkg)
+		}
+		for name, cfg := range rf.Devbox.Packages.Map {
+			if cfg != nil {
+				fmt.Printf("  - %s: %s\n", name, cfg.Version)
+			}
+		}
+	}
+
 	if rf.HasMise() && rf.Mise.HasTools() {
 		fmt.Println("Mise tools detected:")
 		for name, tool := range rf.Mise.Tools {
