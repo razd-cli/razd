@@ -4,6 +4,7 @@
 *.dll
 *.so
 *.dylib
+/razd
 
 # Test binary
 *.test
@@ -13,6 +14,11 @@
 
 # Go workspace file
 go.work
+go.work.sum
+
+# Node.js
+node_modules/
+package-lock.json
 
 # IDE
 .idea/
@@ -23,3 +29,6 @@ go.work
 # OS
 .DS_Store
 Thumbs.db
+
+# Devbox
+.devbox/
