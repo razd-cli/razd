@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/go-task/task/v3"
+	"github.com/razd-cli/razd/razdfile"
 )
 
 type NativeRunner struct {
@@ -38,11 +39,43 @@ func main() {
 		os.Exit(1)
 	}
 
-	taskDir := cwd + "/examples/simple-task-file"
+	// Try to find Razdfile.yml first using razdfile.Reader
+	taskDir := cwd + "/examples/nodejs-project"
+	reader := razdfile.NewReader(
+		razdfile.WithDir(taskDir),
+		razdfile.WithDebugFunc(func(format string, args ...any) {
+			fmt.Printf("[DEBUG] "+format+"\n", args...)
+		}),
+	)
 
+	rf, err := reader.Read()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading Razdfile: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Razdfile version: %s\n", rf.Version)
+	
+	if rf.HasMise() && rf.Mise.HasTools() {
+		fmt.Println("Mise tools detected:")
+		for name, tool := range rf.Mise.Tools {
+			fmt.Printf("  - %s: %s\n", name, tool.Version)
+		}
+	}
+
+	if rf.HasTasks() {
+		fmt.Println("Tasks detected:")
+		for name := range rf.Tasks.All(nil) {
+			fmt.Printf("  - %s\n", name)
+		}
+	}
+
+	// Use Razdfile.yml as entrypoint for go-task
+	entrypoint := taskDir + "/Razdfile.yml"
+	
 	runner := &NativeRunner{
 		WorkDir:    taskDir,
-		Entrypoint: taskDir + "/Taskfile.yml",
+		Entrypoint: entrypoint,
 	}
 
 	ctx := context.Background()
