@@ -1,0 +1,122 @@
+# yaml-language-server: $schema=../schemas/razdfile.json
+
+# Razdfile.yml - объединённый формат Taskfile + mise в YAML
+# Этот файл совместим с go-task и расширяет его конфигурацией mise
+
+version: "1"
+
+# =============================================================================
+# MISE Configuration (YAML эквивалент mise.toml)
+# =============================================================================
+mise:
+  # Инструменты для установки
+  tools:
+    node: "22"
+    python: "3.11"
+    go: "1.22"
+
+  # Переменные окружения
+  env:
+    NODE_ENV: development
+    DEBUG: "true"
+    
+    # Специальные директивы
+    _:
+      # Загрузка .env файлов
+      file: .env.local
+      
+      # Добавление путей в PATH
+      path:
+        - ./node_modules/.bin
+        - ./bin
+
+  # Настройки mise
+  settings:
+    auto_install: true
+    experimental: false
+
+# =============================================================================
+# TASKFILE Configuration (стандартный Taskfile формат)
+# =============================================================================
+
+# Глобальные переменные для задач
+vars:
+  PROJECT_NAME: my-app
+  BUILD_DIR: ./dist
+
+# Глобальные переменные окружения для задач
+env:
+  GOOS: linux
+  GOARCH: amd64
+
+tasks:
+  # Задача по умолчанию
+  default:
+    desc: "Запуск полного цикла разработки"
+    cmds:
+      - task: install
+      - task: dev
+
+  # Установка зависимостей
+  install:
+    desc: "Установка всех зависимостей проекта"
+    cmds:
+      - npm install
+      - pip install -r requirements.txt
+    sources:
+      - package.json
+      - requirements.txt
+    generates:
+      - node_modules/**/*
+    method: checksum
+
+  # Режим разработки
+  dev:
+    desc: "Запуск в режиме разработки"
+    deps:
+      - install
+    cmds:
+      - npm run dev
+    interactive: true
+
+  # Сборка проекта
+  build:
+    desc: "Сборка проекта для production"
+    deps:
+      - install
+    cmds:
+      - npm run build
+      - go build -o {{.BUILD_DIR}}/{{.PROJECT_NAME}} ./cmd/main.go
+    env:
+      NODE_ENV: production
+
+  # Тестирование
+  test:
+    desc: "Запуск тестов"
+    cmds:
+      - npm test
+      - go test ./...
+
+  # Линтинг
+  lint:
+    desc: "Проверка кода линтерами"
+    cmds:
+      - npm run lint
+      - golangci-lint run
+
+  # Очистка
+  clean:
+    desc: "Очистка артефактов сборки"
+    cmds:
+      - rm -rf {{.BUILD_DIR}}
+      - rm -rf node_modules
+      - rm -rf __pycache__
+
+  # CI/CD пайплайн
+  ci:
+    desc: "Полный CI пайплайн"
+    cmds:
+      - task: install
+      - task: lint
+      - task: test
+      - task: build

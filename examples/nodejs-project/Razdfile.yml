@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=./schemas/razdfile.json
+version: "1"
+
+# Mise configuration for tool management
+mise:
+  tools:
+    node: "22"
+    python: "3.11"
+  env:
+    NODE_ENV: development
+  settings:
+    experimental: true
+
+tasks:
+  default:
+    desc: Run install and dev tasks
+    cmds:
+      - task: install
+      - task: dev
+
+  install:
+    desc: Install project dependencies
+    cmds:
+      - npm install
+
+  dev:
+    desc: Start development server
+    cmds:
+      - npm run dev
+
+  build:
+    desc: Build for production
+    cmds:
+      - npm run build
+
+  test:
+    desc: Run tests
+    cmds:
+      - npm test
+
+  lint:
+    desc: Lint code
+    cmds:
+      - npm run lint

@@ -1,0 +1,801 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "title": "Razdfile YAML Schema",
+  "description": "Schema for Razdfile.yml - unified configuration combining Taskfile tasks with mise tool management in YAML format.",
+  "definitions": {
+    "mise_tool": {
+      "description": "Tool version specification for mise",
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "Simple version string (e.g., '22', '3.11', 'latest')"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Multiple versions to install"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "type": "string",
+              "description": "Version of the tool to install"
+            },
+            "os": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "description": "Operating system to install on"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "List of operating systems"
+                }
+              ]
+            },
+            "install_env": {
+              "type": "object",
+              "additionalProperties": {
+                "oneOf": [
+                  { "type": "string" },
+                  { "type": "number" },
+                  { "type": "boolean" }
+                ]
+              },
+              "description": "Environment variables during tool installation"
+            },
+            "postinstall": {
+              "type": "string",
+              "description": "Command to run after tool installation"
+            }
+          },
+          "required": ["version"],
+          "additionalProperties": true
+        }
+      ]
+    },
+    "mise_env_value": {
+      "description": "Environment variable value",
+      "oneOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" },
+        {
+          "type": "object",
+          "properties": {
+            "value": {
+              "oneOf": [
+                { "type": "string" },
+                { "type": "number" },
+                { "type": "boolean" }
+              ]
+            },
+            "redact": {
+              "type": "boolean",
+              "description": "Redact the value from logs"
+            },
+            "required": {
+              "type": "boolean",
+              "description": "Require this environment variable to be defined"
+            }
+          }
+        }
+      ]
+    },
+    "mise_env_special": {
+      "type": "object",
+      "properties": {
+        "file": {
+          "oneOf": [
+            { "type": "string", "description": "dotenv file to load" },
+            {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "dotenv files to load"
+            }
+          ]
+        },
+        "path": {
+          "oneOf": [
+            { "type": "string", "description": "PATH entry to add" },
+            {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "PATH entries to add"
+            }
+          ]
+        },
+        "source": {
+          "oneOf": [
+            { "type": "string", "description": "bash script to source" },
+            {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "bash scripts to source"
+            }
+          ]
+        },
+        "python": {
+          "type": "object",
+          "properties": {
+            "venv": {
+              "oneOf": [
+                { "type": "string", "description": "Path to python virtual environment" },
+                {
+                  "type": "object",
+                  "properties": {
+                    "path": { "type": "string", "description": "Path to virtual environment" },
+                    "create": { "type": "boolean", "description": "Create venv if not exists" },
+                    "python": { "type": "string", "description": "Python version to use" }
+                  },
+                  "required": ["path"]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "mise_config": {
+      "type": "object",
+      "description": "Mise configuration adapted for YAML format",
+      "properties": {
+        "tools": {
+          "type": "object",
+          "description": "Development tools to install via mise",
+          "additionalProperties": {
+            "$ref": "#/definitions/mise_tool"
+          },
+          "examples": [
+            {
+              "node": "22",
+              "python": "3.11",
+              "go": "latest"
+            }
+          ]
+        },
+        "env": {
+          "type": "object",
+          "description": "Environment variables",
+          "properties": {
+            "_": {
+              "$ref": "#/definitions/mise_env_special",
+              "description": "Special environment directives (file, path, source, python)"
+            }
+          },
+          "additionalProperties": {
+            "$ref": "#/definitions/mise_env_value"
+          }
+        },
+        "settings": {
+          "type": "object",
+          "description": "Mise settings",
+          "properties": {
+            "auto_install": {
+              "type": "boolean",
+              "default": true,
+              "description": "Automatically install missing tools"
+            },
+            "experimental": {
+              "type": "boolean",
+              "description": "Enable experimental features"
+            },
+            "quiet": {
+              "type": "boolean",
+              "description": "Suppress output"
+            },
+            "verbose": {
+              "type": "boolean",
+              "description": "Enable verbose output"
+            },
+            "jobs": {
+              "type": "integer",
+              "description": "Number of parallel jobs for tool installation"
+            }
+          },
+          "additionalProperties": true
+        },
+        "hooks": {
+          "type": "object",
+          "description": "Lifecycle hooks",
+          "additionalProperties": {
+            "oneOf": [
+              { "type": "string", "description": "Script to run" },
+              {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Scripts to run"
+              }
+            ]
+          }
+        },
+        "plugins": {
+          "type": "object",
+          "description": "Custom plugin URLs",
+          "additionalProperties": {
+            "type": "string",
+            "description": "URL to plugin repository"
+          }
+        },
+        "min_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Minimum mise version required"
+        }
+      },
+      "additionalProperties": false
+    },
+    "env": {
+      "$ref": "#/definitions/vars"
+    },
+    "platforms": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tasks": {
+      "type": "object",
+      "patternProperties": {
+        "^.*$": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/definitions/task_call"
+                  },
+                  {
+                    "$ref": "#/definitions/defer_task_call"
+                  },
+                  {
+                    "$ref": "#/definitions/defer_cmd_call"
+                  }
+                ]
+              }
+            },
+            {
+              "$ref": "#/definitions/task"
+            }
+          ]
+        }
+      }
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cmds": {
+          "description": "A list of commands to be executed.",
+          "$ref": "#/definitions/cmds"
+        },
+        "cmd": {
+          "description": "The command to be executed.",
+          "$ref": "#/definitions/cmd"
+        },
+        "deps": {
+          "description": "A list of dependencies of this task. Tasks defined here will run in parallel before this task.",
+          "$ref": "#/definitions/deps"
+        },
+        "label": {
+          "description": "Overrides the name of the task in the output when a task is run. Supports variables.",
+          "type": "string"
+        },
+        "desc": {
+          "description": "A short description of the task. This is displayed when calling `task --list`.",
+          "type": "string"
+        },
+        "prompt": {
+          "description": "One or more prompts that will be presented before a task is run.",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        },
+        "summary": {
+          "description": "A longer description of the task.",
+          "type": "string"
+        },
+        "aliases": {
+          "description": "A list of alternative names by which the task can be called.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "sources": {
+          "description": "A list of sources to check before running this task.",
+          "type": "array",
+          "items": { "$ref": "#/definitions/glob" }
+        },
+        "generates": {
+          "description": "A list of files meant to be generated by this task.",
+          "type": "array",
+          "items": { "$ref": "#/definitions/glob" }
+        },
+        "status": {
+          "description": "A list of commands to check if this task should run.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "preconditions": {
+          "description": "A list of commands to check if this task should run.",
+          "type": "array",
+          "items": { "$ref": "#/definitions/precondition" }
+        },
+        "dir": {
+          "description": "The directory in which this task should run.",
+          "type": "string"
+        },
+        "set": {
+          "description": "Enables POSIX shell options for all of a task's commands.",
+          "type": "array",
+          "items": { "$ref": "#/definitions/set" }
+        },
+        "shopt": {
+          "description": "Enables Bash shell options for all of a task's commands.",
+          "type": "array",
+          "items": { "$ref": "#/definitions/shopt" }
+        },
+        "vars": {
+          "description": "A set of variables that can be used in the task.",
+          "$ref": "#/definitions/vars"
+        },
+        "env": {
+          "description": "A set of environment variables for shell commands.",
+          "$ref": "#/definitions/env"
+        },
+        "dotenv": {
+          "description": "A list of `.env` file paths to be parsed.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "silent": {
+          "description": "Hides task name and command from output.",
+          "type": "boolean",
+          "default": false
+        },
+        "interactive": {
+          "description": "Tells task that the command is interactive.",
+          "type": "boolean",
+          "default": false
+        },
+        "internal": {
+          "description": "Stops a task from being callable on the command line.",
+          "type": "boolean",
+          "default": false
+        },
+        "method": {
+          "description": "Defines which method is used to check the task is up-to-date.",
+          "type": "string",
+          "enum": ["none", "checksum", "timestamp"],
+          "default": "none"
+        },
+        "prefix": {
+          "description": "Defines a string to prefix the output of tasks running in parallel.",
+          "type": "string"
+        },
+        "ignore_error": {
+          "description": "Continue execution if errors happen while executing commands.",
+          "type": "boolean"
+        },
+        "run": {
+          "description": "Specifies whether the task should run again or not if called more than once.",
+          "$ref": "#/definitions/run"
+        },
+        "platforms": {
+          "description": "Specifies which platforms the task should be run on.",
+          "$ref": "#/definitions/platforms"
+        },
+        "requires": {
+          "description": "A list of variables which should be set if this task is to run.",
+          "$ref": "#/definitions/requires_obj"
+        },
+        "watch": {
+          "description": "Configures a task to run in watch mode automatically.",
+          "type": "boolean",
+          "default": false
+        },
+        "failfast": {
+          "description": "When running tasks in parallel, stop all tasks if one fails.",
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "cmds": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/cmd"
+      }
+    },
+    "cmd": {
+      "anyOf": [
+        { "type": "string" },
+        { "$ref": "#/definitions/cmd_call" },
+        { "$ref": "#/definitions/task_call" },
+        { "$ref": "#/definitions/defer_task_call" },
+        { "$ref": "#/definitions/defer_cmd_call" },
+        { "$ref": "#/definitions/for_cmd_call" },
+        { "$ref": "#/definitions/for_task_call" }
+      ]
+    },
+    "deps": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "type": "string" },
+          { "$ref": "#/definitions/task_call" },
+          { "$ref": "#/definitions/for_deps_call" }
+        ]
+      }
+    },
+    "set": {
+      "type": "string",
+      "enum": ["allexport", "a", "errexit", "e", "noexec", "n", "noglob", "f", "nounset", "u", "xtrace", "x", "pipefail"]
+    },
+    "shopt": {
+      "type": "string",
+      "enum": ["expand_aliases", "globstar", "nullglob"]
+    },
+    "vars": {
+      "type": "object",
+      "patternProperties": {
+        "^.*$": {
+          "anyOf": [
+            { "type": ["boolean", "integer", "null", "number", "string", "array"] },
+            { "$ref": "#/definitions/var_subkey" }
+          ]
+        }
+      }
+    },
+    "var_subkey": {
+      "type": "object",
+      "properties": {
+        "sh": {
+          "type": "string",
+          "description": "The value will be treated as a command and the output assigned to the variable"
+        },
+        "ref": {
+          "type": "string",
+          "description": "The value will be used to lookup the value of another variable"
+        },
+        "map": {
+          "type": "object",
+          "description": "The value will be treated as a literal map type"
+        }
+      },
+      "additionalProperties": false
+    },
+    "task_call": {
+      "type": "object",
+      "properties": {
+        "task": {
+          "description": "Name of the task to run",
+          "type": "string"
+        },
+        "vars": {
+          "description": "Values passed to the task called",
+          "$ref": "#/definitions/vars"
+        },
+        "silent": {
+          "description": "Hides task name and command from output.",
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["task"]
+    },
+    "cmd_call": {
+      "type": "object",
+      "properties": {
+        "cmd": {
+          "description": "Command to run",
+          "type": "string"
+        },
+        "silent": {
+          "description": "Silent mode disables echoing of command",
+          "type": "boolean"
+        },
+        "set": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/set" }
+        },
+        "shopt": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/shopt" }
+        },
+        "ignore_error": {
+          "description": "Prevent command from aborting the execution of task",
+          "type": "boolean"
+        },
+        "platforms": {
+          "$ref": "#/definitions/platforms"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["cmd"]
+    },
+    "defer_task_call": {
+      "type": "object",
+      "properties": {
+        "defer": {
+          "description": "Run a command when the task completes",
+          "anyOf": [{ "$ref": "#/definitions/task_call" }]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["defer"]
+    },
+    "defer_cmd_call": {
+      "type": "object",
+      "properties": {
+        "defer": {
+          "description": "Name of the command to defer",
+          "type": "string"
+        },
+        "silent": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["defer"]
+    },
+    "for_cmd_call": {
+      "type": "object",
+      "properties": {
+        "for": { "$ref": "#/definitions/for" },
+        "cmd": { "type": "string" },
+        "silent": { "type": "boolean" },
+        "platforms": { "$ref": "#/definitions/platforms" }
+      },
+      "additionalProperties": false,
+      "required": ["for", "cmd"]
+    },
+    "for_task_call": {
+      "type": "object",
+      "properties": {
+        "for": { "$ref": "#/definitions/for" },
+        "task": { "type": "string" },
+        "vars": { "$ref": "#/definitions/vars" },
+        "silent": { "type": "boolean" },
+        "platforms": { "$ref": "#/definitions/platforms" }
+      },
+      "additionalProperties": false,
+      "required": ["for", "task"]
+    },
+    "for_deps_call": {
+      "type": "object",
+      "properties": {
+        "for": { "$ref": "#/definitions/for" },
+        "silent": { "type": "boolean" },
+        "task": { "type": "string" },
+        "vars": { "$ref": "#/definitions/vars" }
+      },
+      "additionalProperties": false,
+      "required": ["for", "task"]
+    },
+    "for": {
+      "anyOf": [
+        { "$ref": "#/definitions/for_list" },
+        { "$ref": "#/definitions/for_attribute" },
+        { "$ref": "#/definitions/for_var" },
+        { "$ref": "#/definitions/for_matrix" }
+      ]
+    },
+    "for_list": {
+      "description": "A list of values to iterate over",
+      "type": "array",
+      "items": { "type": ["string", "number"] }
+    },
+    "for_attribute": {
+      "description": "The task attribute to iterate over",
+      "type": "string",
+      "enum": ["sources", "generates"]
+    },
+    "for_var": {
+      "type": "object",
+      "properties": {
+        "var": { "type": "string" },
+        "split": { "type": "string" },
+        "as": { "type": "string", "default": "ITEM" }
+      },
+      "additionalProperties": false,
+      "required": ["var"]
+    },
+    "for_matrix": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["matrix"]
+    },
+    "precondition": {
+      "anyOf": [
+        { "type": "string" },
+        { "$ref": "#/definitions/precondition_obj" }
+      ]
+    },
+    "precondition_obj": {
+      "type": "object",
+      "properties": {
+        "sh": { "type": "string" },
+        "msg": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "glob": {
+      "anyOf": [
+        { "type": "string" },
+        { "$ref": "#/definitions/glob_obj" }
+      ]
+    },
+    "glob_obj": {
+      "type": "object",
+      "properties": {
+        "exclude": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "run": {
+      "type": "string",
+      "enum": ["always", "once", "when_changed"]
+    },
+    "outputString": {
+      "type": "string",
+      "enum": ["interleaved", "prefixed", "group"],
+      "default": "interleaved"
+    },
+    "outputObject": {
+      "type": "object",
+      "properties": {
+        "group": {
+          "type": "object",
+          "properties": {
+            "begin": { "type": "string" },
+            "end": { "type": "string" },
+            "error_only": { "type": "boolean", "default": false }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "requires_obj": {
+      "type": "object",
+      "properties": {
+        "vars": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              { "type": "string" },
+              {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "enum": { "type": "array", "items": { "type": "string" } }
+                },
+                "required": ["name", "enum"],
+                "additionalProperties": false
+              }
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "properties": {
+    "version": {
+      "description": "Razdfile schema version.",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": ["1"]
+        },
+        {
+          "type": "number",
+          "enum": [1]
+        }
+      ]
+    },
+    "mise": {
+      "$ref": "#/definitions/mise_config",
+      "description": "Mise configuration for tool management (YAML format equivalent of mise.toml)"
+    },
+    "output": {
+      "description": "Defines how the STDOUT and STDERR are printed when running tasks in parallel.",
+      "anyOf": [
+        { "$ref": "#/definitions/outputString" },
+        { "$ref": "#/definitions/outputObject" }
+      ]
+    },
+    "method": {
+      "description": "Defines which method is used to check the task is up-to-date.",
+      "type": "string",
+      "enum": ["none", "checksum", "timestamp"],
+      "default": "checksum"
+    },
+    "includes": {
+      "description": "Imports tasks from the specified taskfiles.",
+      "type": "object",
+      "patternProperties": {
+        "^.*$": {
+          "anyOf": [
+            { "type": "string" },
+            {
+              "type": "object",
+              "properties": {
+                "taskfile": { "type": "string" },
+                "dir": { "type": "string" },
+                "optional": { "type": "boolean" },
+                "flatten": { "type": "boolean" },
+                "internal": { "type": "boolean" },
+                "aliases": { "type": "array", "items": { "type": "string" } },
+                "excludes": { "type": "array", "items": { "type": "string" } },
+                "vars": { "$ref": "#/definitions/vars" },
+                "checksum": { "type": "string" }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "vars": {
+      "description": "A set of global variables.",
+      "$ref": "#/definitions/vars"
+    },
+    "env": {
+      "description": "A set of global environment variables.",
+      "$ref": "#/definitions/env"
+    },
+    "tasks": {
+      "description": "A set of task definitions.",
+      "$ref": "#/definitions/tasks"
+    },
+    "silent": {
+      "description": "Default 'silent' options for this Taskfile.",
+      "type": "boolean"
+    },
+    "set": {
+      "description": "Enables POSIX shell options for all commands.",
+      "type": "array",
+      "items": { "$ref": "#/definitions/set" }
+    },
+    "shopt": {
+      "description": "Enables Bash shell options for all commands.",
+      "type": "array",
+      "items": { "$ref": "#/definitions/shopt" }
+    },
+    "dotenv": {
+      "type": "array",
+      "description": "A list of `.env` file paths to be parsed.",
+      "items": { "type": "string" }
+    },
+    "run": {
+      "description": "Default 'run' option for this Taskfile.",
+      "$ref": "#/definitions/run"
+    },
+    "interval": {
+      "description": "Sets a different watch interval when using `--watch`.",
+      "type": "string",
+      "pattern": "^[0-9]+(?:m|s|ms)$"
+    }
+  },
+  "required": ["version"],
+  "anyOf": [
+    { "required": ["tasks"] },
+    { "required": ["includes"] },
+    { "required": ["mise"] }
+  ],
+  "additionalProperties": false
+}
