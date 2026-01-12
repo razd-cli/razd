@@ -1,0 +1,15 @@
+{
+  "name": "nodejs-project",
+  "version": "1.0.0",
+  "description": "Example Node.js project for razd",
+  "main": "index.js",
+  "scripts": {
+    "dev": "echo 'Starting dev server...'",
+    "build": "echo 'Building project...'",
+    "test": "echo 'Running tests...'",
+    "lint": "echo 'Linting code...'"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT"
+}
