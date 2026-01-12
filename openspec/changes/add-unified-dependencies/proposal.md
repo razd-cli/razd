@@ -191,3 +191,22 @@ mise:
 | Несовместимые имена пакетов | Таблица маппинга + документация |
 | Ограниченные возможности vs нативные секции | Чёткая документация "когда использовать dependencies vs mise/devbox" |
 | Версии могут различаться между менеджерами | Документировать известные различия |
+
+## Related Changes
+
+### `add-cli-architecture` (дополняет)
+
+Этот proposal **дополняет** `add-cli-architecture`:
+
+| Область | add-cli-architecture | add-unified-dependencies |
+|---------|---------------------|--------------------------|
+| Фокус | CLI команды и структура | AST и Provisioner интерфейс |
+| `razd install` | Вызывает provisioner | Предоставляет Provisioner |
+| Razdfile | Использует `razdfile.Reader` | Расширяет AST полем `Dependencies` |
+
+**Порядок имплементации**:
+1. `add-razdfile-package` — базовый парсинг Razdfile (✓ Complete)
+2. `add-unified-dependencies` — AST для `dependencies` + Provisioner интерфейс
+3. `add-cli-architecture` — CLI, использует Provisioner для `razd install`
+
+**Нет конфликтов**: Proposals работают на разных уровнях абстракции.
