@@ -66,10 +66,10 @@
   - Pass CLI_ARGS after `--` to task
 
 - [ ] **4.2 Implement `razd up`**
-  - Support `razd up` (local project setup)
-  - Support `razd up <url>` (clone + setup)
-  - Support `razd up --init` (create Razdfile.yml)
-  - Auto-detect project type (Node.js, Rust, Python, Go, Generic)
+  - Support `razd up` — setup current project (install tools)
+  - Support `razd up <url>` (git clone + setup)
+  - Support short GitHub syntax: `razd up gh:user/repo`
+  - Steps: trust check → mise install / devbox install
   - Check trust before execution
   - Handle `--yes` for non-interactive mode
 
@@ -80,26 +80,36 @@
   - Support `--all` to show internal tasks
   - Include task location (file, line, column) in JSON
 
-## Phase 5: Tool Integration Commands
+## Phase 5: Project Commands
 
-- [ ] **5.1 Implement `razd install`**
-  - Read mise/devbox config from Razdfile
+- [ ] **5.1 Implement `razd init`**
+  - Create new Razdfile.yml in current directory
+  - Support `--using mise|devbox` flag
+  - Interactive mode: prompt for provisioner if not specified
+  - Detect existing mise.toml/devbox.json and offer migration
+  - Support `--force` to overwrite existing file
+  - Support `--migrate` for automatic migration
+
+- [ ] **5.2 Implement `razd add`**
+  - Parse `tool@version` arguments
+  - Read existing Razdfile.yml
+  - Append to `dependencies.ensure` list (avoid duplicates)
+  - Save updated Razdfile.yml preserving formatting
+  - Validate dependency format before adding
+
+- [ ] **5.3 Implement `razd shell`**
   - Check trust before execution
-  - If mise: run `mise install`
-  - If devbox: run `devbox install`
-  - Fallback to legacy behavior if no workflow
+  - Detect provisioner from Razdfile
+  - If mise: run `mise shell`
+  - If devbox: run `devbox shell`
+  - Fallback: run $SHELL with configured PATH
 
-- [ ] **5.2 Implement `razd setup`**
-  - Run "setup" task if exists
-  - Check trust before execution
-  - Install project dependencies
-
-- [ ] **5.3 Implement `razd dev`**
+- [ ] **5.4 Implement `razd dev`**
   - Run "dev" task if exists
   - Check trust before execution
   - Otherwise, show helpful error
 
-- [ ] **5.4 Implement `razd build`**
+- [ ] **5.5 Implement `razd build`**
   - Run "build" task if exists
   - Check trust before execution
   - Otherwise, show helpful error
@@ -135,7 +145,9 @@
 - [ ] **7.2 Integration tests**
   - Test `razd run` with example project
   - Test `razd list` output (text and JSON)
-  - Test `razd up --init` creates valid file
+  - Test `razd init` creates valid file
+  - Test `razd add` modifies Razdfile correctly
+  - Test `razd prepare --dry-run` output
   - Test `razd trust` commands
   - Test error handling and exit codes
 

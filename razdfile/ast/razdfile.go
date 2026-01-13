@@ -12,6 +12,9 @@ type Razdfile struct {
 	// Required field
 	Version string `yaml:"version"`
 
+	// Unified dependencies (mutually exclusive with Mise/Devbox)
+	Dependencies *DependenciesConfig `yaml:"dependencies,omitempty"`
+
 	// Devbox configuration (razd-specific)
 	Devbox *DevboxConfig `yaml:"devbox,omitempty"`
 
@@ -53,10 +56,15 @@ func (r *Razdfile) HasDevbox() bool {
 	return r.Devbox != nil
 }
 
+// HasDependencies returns true if the Razdfile has dependencies configuration
+func (r *Razdfile) HasDependencies() bool {
+	return r.Dependencies != nil
+}
+
 // HasContent returns true if the Razdfile has any meaningful content
-// (tasks, includes, mise, or devbox configuration)
+// (tasks, includes, mise, devbox, or dependencies configuration)
 func (r *Razdfile) HasContent() bool {
-	return r.HasTasks() || r.HasIncludes() || r.HasMise() || r.HasDevbox()
+	return r.HasTasks() || r.HasIncludes() || r.HasMise() || r.HasDevbox() || r.HasDependencies()
 }
 
 // GetTask returns a task by name, or nil if not found

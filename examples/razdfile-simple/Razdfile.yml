@@ -2,10 +2,12 @@
 
 version: "1"
 
-mise:
-  tools:
-    node: "22"
-    python: "3.11"
+# Unified dependencies - simple format
+dependencies:
+  using: "mise"
+  ensure:
+    - "node@22"
+    - "python@3.11"
 
 tasks:
   default:

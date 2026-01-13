@@ -1,26 +1,26 @@
 # yaml-language-server: $schema=../../.schema/razdfile.schema.json
 version: "1"
 
-# Devbox configuration for Nix-based environment
-devbox:
-  packages:
-    - python@3.11
-    - ripgrep@latest
-  shell:
-    init_hook: echo "Welcome to the devbox shell!"
-    scripts:
-      check: python --version && node --version
+# =============================================================================
+# Unified Dependencies
+# =============================================================================
+dependencies:
+  using: "mise"
+  
+  ensure:
+    - "node@22"
+    - "python@3.11"
+  
+  extra:
+    mise:
+      env:
+        NODE_ENV: development
+      settings:
+        experimental: true
 
-# Mise configuration for tool management
-mise:
-  tools:
-    node: "22"
-    python: "3.11"
-  env:
-    NODE_ENV: development
-  settings:
-    experimental: true
-
+# =============================================================================
+# Tasks
+# =============================================================================
 tasks:
   default:
     desc: Run install and dev tasks

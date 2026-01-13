@@ -20,10 +20,11 @@ razd/
 │   ├── cli/
 │   │   ├── cli.go               # CLI orchestrator
 │   │   ├── commands.go          # Command registry
-│   │   ├── up.go                # razd up (clone + setup, или local setup)
+│   │   ├── up.go                # razd up (install tools via mise/devbox)
 │   │   ├── run.go               # razd run <task>
-│   │   ├── install.go           # razd install (mise/devbox)
-│   │   ├── setup.go             # razd setup (project dependencies)
+│   │   ├── init.go              # razd init (create Razdfile.yml)
+│   │   ├── add.go               # razd add <tool@version>
+│   │   ├── shell.go             # razd shell (interactive shell)
 │   │   ├── dev.go               # razd dev
 │   │   ├── build.go             # razd build
 │   │   ├── list.go              # razd list (--json, --all)
@@ -119,10 +120,11 @@ type Command struct {
 }
 
 var commands = map[string]*Command{
-    "up":      {Name: "up", Run: runUp, Description: "Clone and set up project, or set up local project"},
+    "up":      {Name: "up", Run: runUp, Description: "Set up project (install tools)"},
     "run":     {Name: "run", Run: runRun, Description: "Execute a custom task"},
-    "install": {Name: "install", Run: runInstall, Description: "Install development tools via mise/devbox"},
-    "setup":   {Name: "setup", Run: runSetup, Description: "Install project dependencies"},
+    "init":    {Name: "init", Run: runInit, Description: "Create new Razdfile.yml"},
+    "add":     {Name: "add", Run: runAdd, Description: "Add dependencies to Razdfile"},
+    "shell":   {Name: "shell", Aliases: []string{"sh"}, Run: runShell, Description: "Start interactive shell with environment"},
     "dev":     {Name: "dev", Run: runDev, Description: "Start development workflow"},
     "build":   {Name: "build", Run: runBuild, Description: "Build project"},
     "list":    {Name: "list", Aliases: []string{"ls"}, Run: runList, Description: "List available tasks"},
@@ -135,6 +137,196 @@ var commands = map[string]*Command{
 - Автогенерации help
 - Shell completion
 - Расширяемости
+
+### 3.1 Command Details
+
+#### `razd up` — настройка проекта
+
+Устанавливает dev tools через provisioner. Работает как `npx` / `pnpm dlx` для клонирования.
+
+**Сценарий 1: Локальный проект**
+```bash
+cd my-project
+razd up           # настроить текущий проект
+```
+
+Выполняет:
+1. Читает Razdfile.yml
+2. Проверяет trust (спрашивает при первом запуске)
+3. Устанавливает dev tools (`mise install` / `devbox install`)
+
+**Сценарий 2: Клонирование + настройка**
+```bash
+razd up https://github.com/user/repo
+razd up git@github.com:user/repo.git
+razd up gh:user/repo                    # короткий синтаксис GitHub
+```
+
+Выполняет:
+1. `git clone <url>` в текущую директорию
+2. `cd <repo-name>`
+3. То же что Сценарий 1
+
+```go
+// internal/cli/up.go
+func runUp(args []string) error {
+    if len(args) > 0 {
+        // Clone mode
+        url := args[0]
+        repoDir, err := gitClone(url)
+        if err != nil {
+            return err
+        }
+        if err := os.Chdir(repoDir); err != nil {
+            return err
+        }
+    }
+    
+    // Local setup mode
+    rf, err := razdfile.NewReader().Read()
+    if err != nil {
+        return err
+    }
+    
+    if err := trust.EnsureTrusted(rf.Location, flags.Yes); err != nil {
+        return err
+    }
+    
+    // Install dev tools via provisioner
+    return installTools(rf)
+}
+
+func installTools(rf *ast.Razdfile) error {
+    if rf.Dependencies == nil {
+        return nil
+    }
+    
+    switch rf.Dependencies.Using {
+    case "mise":
+        return exec.Command("mise", "install").Run()
+    case "devbox":
+        return exec.Command("devbox", "install").Run()
+    }
+    return nil
+}
+```
+
+**Флаги:**
+- `--yes` / `-y` — автоматически доверять проекту
+
+#### `razd` (без аргументов) — запуск проекта
+
+Запускает задачу `default` из Razdfile. Предполагает что проект уже настроен.
+
+```bash
+razd              # → run default task
+razd dev          # → run dev task  
+razd build        # → run build task
+razd mytask       # → run mytask
+```
+
+#### `razd init`
+
+Создаёт новый Razdfile.yml в текущей директории.
+
+```go
+// internal/cli/init.go
+func runInit(args []string) error {
+    if razdfile.Exists(".") && !flags.Force {
+        return errors.New("Razdfile.yml already exists, use --force to overwrite")
+    }
+    
+    config := InitConfig{
+        Using: flags.Using,  // --using mise|devbox
+    }
+    
+    if config.Using == "" {
+        // Interactive mode: спрашиваем пользователя
+        config.Using = promptUsing()
+    }
+    
+    // Сканируем проект и предлагаем миграцию
+    if existingMise := detectMiseToml("."); existingMise != nil {
+        if promptMigrate("mise.toml") {
+            config.Ensure = parseMiseTools(existingMise)
+        }
+    }
+    
+    return writeRazdfile(config)
+}
+```
+
+**Флаги:**
+- `--using mise|devbox` — выбор provisioner
+- `--force` — перезаписать существующий файл
+- `--migrate` — автоматически мигрировать из mise.toml/devbox.json
+
+#### `razd add`
+
+Добавляет зависимости в `dependencies.ensure` секцию Razdfile.yml.
+
+```go
+// internal/cli/add.go
+func runAdd(args []string) error {
+    if len(args) == 0 {
+        return errors.New("usage: razd add <tool@version> [tool@version...]")
+    }
+    
+    rf, err := razdfile.NewReader().Read()
+    if err != nil {
+        return err
+    }
+    
+    for _, dep := range args {
+        parsed, err := ast.ParseDependency(dep)
+        if err != nil {
+            return fmt.Errorf("invalid dependency format: %s", dep)
+        }
+        rf.Dependencies.Ensure = appendUnique(rf.Dependencies.Ensure, dep)
+    }
+    
+    return rf.Save()
+}
+```
+
+**Использование:**
+```bash
+razd add node@22                    # Добавить node v22
+razd add python@3.12 go@1.22       # Добавить несколько
+razd add node@latest               # Последняя версия
+```
+
+#### `razd shell`
+
+Запускает интерактивную оболочку с настроенным окружением.
+
+```go
+// internal/cli/shell.go
+func runShell(args []string) error {
+    rf, err := razdfile.NewReader().Read()
+    if err != nil {
+        return err
+    }
+    
+    if err := trust.EnsureTrusted(rf.Location, flags.Yes); err != nil {
+        return err
+    }
+    
+    provisioner := rf.Dependencies.Using // "mise" или "devbox"
+    
+    switch provisioner {
+    case "mise":
+        return exec.Command("mise", "shell").Run()
+    case "devbox":
+        return exec.Command("devbox", "shell").Run()
+    default:
+        // Fallback: запускаем $SHELL с настроенным PATH
+        return runDefaultShell(rf)
+    }
+}
+```
+
+**Примечание**: Алиас `razd sh` для краткости.
 
 ### 4. CLI Orchestrator
 
@@ -180,8 +372,8 @@ func (c *CLI) Run() error {
     
     args := pflag.Args()
     if len(args) == 0 {
-        // Default: run "default" task or "up"
-        return c.runDefault()
+        // No args: run default task (assumes project is set up)
+        return c.runTask("default", nil)
     }
     
     cmd := args[0]
@@ -189,7 +381,7 @@ func (c *CLI) Run() error {
         return command.Run(args[1:])
     }
     
-    // Assume it's a task name
+    // Assume it's a task name (like pnpm behavior)
     return c.runTask(cmd, args[1:])
 }
 ```
@@ -360,8 +552,8 @@ _razd() {
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
-    commands="up run install dev build list init"
-    opts="--help --version --verbose --silent --dir --yes"
+    commands="up run init add shell sh dev build list ls trust"
+    opts="--help --version --verbose --silent --dir --yes --force"
     
     if [[ ${cur} == -* ]]; then
         COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )

@@ -1,39 +1,36 @@
 # yaml-language-server: $schema=../../.schema/razdfile.schema.json
 
-# Razdfile.yml - объединённый формат Taskfile + mise в YAML
-# Этот файл совместим с go-task и расширяет его конфигурацией mise
+# Razdfile.yml - полный пример с unified dependencies
+# Демонстрирует все возможности формата
 
 version: "1"
 
 # =============================================================================
-# MISE Configuration (YAML эквивалент mise.toml)
+# Unified Dependencies
 # =============================================================================
-mise:
-  # Инструменты для установки
-  tools:
-    node: "22"
-    python: "3.11"
-    go: "1.22"
-
-  # Переменные окружения
-  env:
-    NODE_ENV: development
-    DEBUG: "true"
-    
-    # Специальные директивы
-    _:
-      # Загрузка .env файлов
-      file: .env.local
-      
-      # Добавление путей в PATH
-      path:
-        - ./node_modules/.bin
-        - ./bin
-
-  # Настройки mise
-  settings:
-    auto_install: true
-    experimental: false
+dependencies:
+  using: "mise"
+  
+  # Простой формат tool@version
+  ensure:
+    - "node@22"
+    - "python@3.11"
+    - "go@1.22"
+  
+  # Pass-through конфигурация для mise
+  extra:
+    mise:
+      env:
+        NODE_ENV: development
+        DEBUG: "true"
+        _:
+          file: .env.local
+          path:
+            - ./node_modules/.bin
+            - ./bin
+      settings:
+        auto_install: true
+        experimental: false
 
 # =============================================================================
 # TASKFILE Configuration (стандартный Taskfile формат)

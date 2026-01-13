@@ -2,33 +2,33 @@
 
 ## 1. AST Types
 
-- [ ] Создать `razdfile/ast/dependencies.go` с типом `DependenciesConfig`
-- [ ] Создать тип `DependenciesExtra` для pass-through конфигурации
-- [ ] Создать тип `ParsedDependency` для распарсенных зависимостей
-- [ ] Добавить поле `Dependencies` в `ast.Razdfile`
-- [ ] Добавить методы `HasDependencies()`, `ParseEnsure()`
-- [ ] Unit тесты для `DependenciesConfig` и `DependenciesExtra`
+- [x] Создать `razdfile/ast/dependencies.go` с типом `DependenciesConfig`
+- [x] Создать тип `DependenciesExtra` для pass-through конфигурации
+- [x] Создать тип `ParsedDependency` для распарсенных зависимостей
+- [x] Добавить поле `Dependencies` в `ast.Razdfile`
+- [x] Добавить методы `HasDependencies()`, `ParseEnsure()`
+- [x] Unit тесты для `DependenciesConfig` и `DependenciesExtra`
 
 ## 2. Validation
 
-- [ ] Добавить правило mutual exclusion (dependencies vs mise/devbox)
-- [ ] Добавить валидацию обязательного поля `using`
-- [ ] Добавить валидацию допустимых значений `using` (mise, devbox)
-- [ ] Добавить валидацию формата `ensure` строк (tool@version)
-- [ ] НЕ валидировать структуру `extra` — pass-through
-- [ ] Unit тесты для валидации
+- [x] Добавить правило mutual exclusion (dependencies vs mise/devbox)
+- [x] Добавить валидацию обязательного поля `using`
+- [x] Добавить валидацию допустимых значений `using` (mise, devbox)
+- [x] Добавить валидацию формата `ensure` строк (tool@version)
+- [x] НЕ валидировать структуру `extra` — pass-through
+- [x] Unit тесты для валидации
 
 ## 3. Parsing
 
-- [ ] Добавить парсинг `dependencies` секции в Reader
-- [ ] Добавить парсинг `extra` как `map[string]any`
-- [ ] Integration тесты с примерами Razdfile
-- [ ] Обновить примеры в `examples/` (опционально)
+- [x] Добавить парсинг `dependencies` секции в Reader
+- [x] Добавить парсинг `extra` как `map[string]any`
+- [x] Integration тесты с примерами Razdfile
+- [x] Обновить примеры в `examples/`
 
 ## 4. Documentation
 
 - [ ] Обновить JSON schema если есть
-- [ ] Добавить пример использования в README или examples/
+- [x] Добавить пример использования в examples/
 
 ---
 

@@ -1,0 +1,81 @@
+# yaml-language-server: $schema=../../.schema/razdfile.schema.json
+version: "1"
+
+# =============================================================================
+# Unified Dependencies Section
+# =============================================================================
+# This format allows you to specify dependencies in a simple, unified way
+# that works with both mise and devbox.
+
+dependencies:
+  # Choose your package manager: "mise" or "devbox"
+  using: "devbox"
+  
+  # Simple tool@version format - works with any manager
+  ensure:
+    - "node@22"
+    - "go@1.21"
+    - "pnpm@latest"
+    - "ripgrep@latest"
+  
+  # Pass-through native configuration (optional)
+  # Structure mirrors the native format of the chosen manager
+  extra:
+    devbox:
+      # Shell configuration (devbox.json structure)
+      shell:
+        init_hook: |
+          echo "Welcome to the dev environment!"
+          export GOPATH=$PWD/.go
+        scripts:
+          check: "node --version && go version"
+      
+      # Environment variables
+      env:
+        NODE_ENV: development
+        DEBUG: "true"
+      
+      # Additional packages not expressible in ensure format
+      # (e.g., extensions, flakes)
+      packages:
+        - "php84Extensions.xdebug@latest"
+
+    # Mise-specific config (ignored when using: devbox)
+    mise:
+      env:
+        NODE_ENV: development
+      settings:
+        experimental: true
+
+# =============================================================================
+# Tasks
+# =============================================================================
+
+tasks:
+  default:
+    desc: Run install and dev tasks
+    cmds:
+      - task: install
+      - task: dev
+
+  install:
+    desc: Install project dependencies
+    cmds:
+      - pnpm install
+
+  dev:
+    desc: Start development server
+    cmds:
+      - echo "Starting dev server..."
+
+  build:
+    desc: Build for production
+    cmds:
+      - pnpm run build
+      - go build -o dist/app ./cmd/main.go
+
+  test:
+    desc: Run tests
+    cmds:
+      - pnpm test
+      - go test ./...

@@ -18,12 +18,12 @@ func TestReader_ReadExample(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "1", rf.Version)
 	
-	// Check mise config
-	assert.True(t, rf.HasMise())
-	require.NotNil(t, rf.Mise.Tools["node"])
-	assert.Equal(t, "22", rf.Mise.Tools["node"].Version)
-	require.NotNil(t, rf.Mise.Tools["python"])
-	assert.Equal(t, "3.11", rf.Mise.Tools["python"].Version)
+	// Check dependencies config (unified format)
+	assert.True(t, rf.HasDependencies())
+	assert.Equal(t, "mise", rf.Dependencies.Using)
+	assert.Len(t, rf.Dependencies.Ensure, 2)
+	assert.Contains(t, rf.Dependencies.Ensure, "node@22")
+	assert.Contains(t, rf.Dependencies.Ensure, "python@3.11")
 	
 	// Check tasks
 	assert.True(t, rf.HasTasks())

@@ -191,3 +191,128 @@ tasks:
 	require.NoError(t, err)
 	assert.True(t, debugCalled)
 }
+
+func TestReader_Read_WithDependencies(t *testing.T) {
+	// Create a temporary directory
+	dir := t.TempDir()
+	
+	// Create a test Razdfile with dependencies
+	content := []byte(`
+version: "1"
+
+dependencies:
+  using: "mise"
+  ensure:
+    - "node@22"
+    - "php@8.4"
+    - "pnpm@latest"
+
+tasks:
+  install:
+    cmds:
+      - npm install
+`)
+	err := os.WriteFile(filepath.Join(dir, "Razdfile.yml"), content, 0644)
+	require.NoError(t, err)
+	
+	// Create a reader and read the file
+	reader := NewReader(WithDir(dir))
+	rf, err := reader.Read()
+	
+	require.NoError(t, err)
+	assert.True(t, rf.HasDependencies())
+	assert.Equal(t, "mise", rf.Dependencies.Using)
+	assert.Len(t, rf.Dependencies.Ensure, 3)
+	assert.Equal(t, "node@22", rf.Dependencies.Ensure[0])
+	
+	// Test ParseEnsure
+	parsed, err := rf.Dependencies.ParseEnsure()
+	require.NoError(t, err)
+	assert.Len(t, parsed, 3)
+	assert.Equal(t, "node", parsed[0].Tool)
+	assert.Equal(t, "22", parsed[0].Version)
+}
+
+func TestReader_Read_WithDependenciesDevbox(t *testing.T) {
+	dir := t.TempDir()
+	
+	content := []byte(`
+version: "1"
+
+dependencies:
+  using: "devbox"
+  ensure:
+    - "go@1.21"
+    - "ripgrep@latest"
+  extra:
+    devbox:
+      shell:
+        init_hook: |
+          echo "Welcome!"
+          export GOPATH=$PWD/.go
+        scripts:
+          build: "go build ."
+      env:
+        MY_VAR: "production"
+
+tasks:
+  build:
+    cmds:
+      - go build .
+`)
+	err := os.WriteFile(filepath.Join(dir, "Razdfile.yml"), content, 0644)
+	require.NoError(t, err)
+	
+	reader := NewReader(WithDir(dir))
+	rf, err := reader.Read()
+	
+	require.NoError(t, err)
+	assert.True(t, rf.HasDependencies())
+	assert.Equal(t, "devbox", rf.Dependencies.Using)
+	assert.Len(t, rf.Dependencies.Ensure, 2)
+	
+	// Check extra section
+	require.NotNil(t, rf.Dependencies.Extra)
+	require.NotNil(t, rf.Dependencies.Extra.Devbox)
+	
+	// Check shell config is passed through
+	shell, ok := rf.Dependencies.Extra.Devbox["shell"].(map[string]any)
+	require.True(t, ok, "shell should be a map")
+	_, hasInitHook := shell["init_hook"]
+	assert.True(t, hasInitHook, "should have init_hook")
+	
+	// Check env is passed through
+	env, ok := rf.Dependencies.Extra.Devbox["env"].(map[string]any)
+	require.True(t, ok, "env should be a map")
+	assert.Equal(t, "production", env["MY_VAR"])
+	
+	// Test GetProviderExtra
+	extra := rf.Dependencies.GetProviderExtra()
+	require.NotNil(t, extra)
+	_, hasShell := extra["shell"]
+	assert.True(t, hasShell)
+}
+
+func TestReader_Read_DependenciesOnlyIsValid(t *testing.T) {
+	dir := t.TempDir()
+	
+	// Razdfile with only dependencies (no tasks)
+	content := []byte(`
+version: "1"
+
+dependencies:
+  using: "mise"
+  ensure:
+    - "node@22"
+`)
+	err := os.WriteFile(filepath.Join(dir, "Razdfile.yml"), content, 0644)
+	require.NoError(t, err)
+	
+	reader := NewReader(WithDir(dir))
+	rf, err := reader.Read()
+	
+	require.NoError(t, err)
+	assert.True(t, rf.HasDependencies())
+	assert.True(t, rf.HasContent())
+	assert.False(t, rf.HasTasks())
+}
