@@ -11,21 +11,9 @@ dependencies:
 
 tasks:
   default:
-    cmds:
-      - task: install
-      - task: dev
+    deps: [install]
+    cmds: [npm run dev]
   
-  install:
-    desc: "Установка зависимостей"
-    cmds:
-      - npm install
-  
-  dev:
-    desc: "Запуск dev сервера"
-    cmds:
-      - npm run dev
-  
-  build:
-    desc: "Сборка проекта"
-    cmds:
-      - npm run build
+  install: npm install
+  dev: npm run dev
+  build: npm run build

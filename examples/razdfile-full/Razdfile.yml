@@ -50,9 +50,8 @@ tasks:
   # Задача по умолчанию
   default:
     desc: "Запуск полного цикла разработки"
-    cmds:
-      - task: install
-      - task: dev
+    deps: [install]
+    cmds: [npm run dev]
 
   # Установка зависимостей
   install:
@@ -68,19 +67,11 @@ tasks:
     method: checksum
 
   # Режим разработки
-  dev:
-    desc: "Запуск в режиме разработки"
-    deps:
-      - install
-    cmds:
-      - npm run dev
-    interactive: true
+  dev: npm run dev
 
   # Сборка проекта
   build:
     desc: "Сборка проекта для production"
-    deps:
-      - install
     cmds:
       - npm run build
       - go build -o {{.BUILD_DIR}}/{{.PROJECT_NAME}} ./cmd/main.go
@@ -89,31 +80,20 @@ tasks:
 
   # Тестирование
   test:
-    desc: "Запуск тестов"
     cmds:
       - npm test
       - go test ./...
 
   # Линтинг
   lint:
-    desc: "Проверка кода линтерами"
     cmds:
       - npm run lint
       - golangci-lint run
 
   # Очистка
-  clean:
-    desc: "Очистка артефактов сборки"
-    cmds:
-      - rm -rf {{.BUILD_DIR}}
-      - rm -rf node_modules
-      - rm -rf __pycache__
+  clean: rm -rf {{.BUILD_DIR}} node_modules __pycache__
 
   # CI/CD пайплайн
   ci:
     desc: "Полный CI пайплайн"
-    cmds:
-      - task: install
-      - task: lint
-      - task: test
-      - task: build
+    deps: [install, lint, test, build]

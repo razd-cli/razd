@@ -23,32 +23,12 @@ dependencies:
 # =============================================================================
 tasks:
   default:
-    desc: Run install and dev tasks
-    cmds:
-      - task: install
-      - task: dev
+    deps: [install]
+    cmds: [npm run dev]
 
-  install:
-    desc: Install project dependencies
-    cmds:
-      - npm install
+  install: npm install
+  dev: npm run dev
+  build: npm run build
+  test: npm test
+  lint: npm run lint
 
-  dev:
-    desc: Start development server
-    cmds:
-      - npm run dev
-
-  build:
-    desc: Build for production
-    cmds:
-      - npm run build
-
-  test:
-    desc: Run tests
-    cmds:
-      - npm test
-
-  lint:
-    desc: Lint code
-    cmds:
-      - npm run lint

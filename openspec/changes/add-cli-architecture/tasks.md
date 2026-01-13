@@ -71,7 +71,8 @@
   - Support short GitHub syntax: `razd up gh:user/repo`
   - Steps: trust check → mise install / devbox install
   - Check trust before execution
-  - Handle `--yes` for non-interactive mode
+  - Handle `--yes` / `-y` for non-interactive mode
+  - Handle `--run` / `-r` to run default task after install
 
 - [ ] **4.3 Implement `razd list`**
   - Read Razdfile and list all tasks
@@ -147,7 +148,7 @@
   - Test `razd list` output (text and JSON)
   - Test `razd init` creates valid file
   - Test `razd add` modifies Razdfile correctly
-  - Test `razd prepare --dry-run` output
+  - Test `razd up -r` installs and runs default
   - Test `razd trust` commands
   - Test error handling and exit codes
 

@@ -53,29 +53,16 @@ dependencies:
 
 tasks:
   default:
-    desc: Run install and dev tasks
-    cmds:
-      - task: install
-      - task: dev
+    deps: [install]
+    cmds: [pnpm run dev]
 
-  install:
-    desc: Install project dependencies
-    cmds:
-      - pnpm install
-
-  dev:
-    desc: Start development server
-    cmds:
-      - echo "Starting dev server..."
-
+  install: pnpm install
+  dev: echo "Starting dev server..."
   build:
-    desc: Build for production
     cmds:
       - pnpm run build
       - go build -o dist/app ./cmd/main.go
-
   test:
-    desc: Run tests
     cmds:
       - pnpm test
       - go test ./...

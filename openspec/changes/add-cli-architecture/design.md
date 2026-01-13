@@ -213,6 +213,15 @@ func installTools(rf *ast.Razdfile) error {
 
 **Флаги:**
 - `--yes` / `-y` — автоматически доверять проекту
+- `--run` / `-r` — после установки запустить default task
+
+```bash
+razd up           # только install tools
+razd up -r        # install tools + run default
+razd up --run     # то же, явно
+razd up -r <url>  # clone + install + run default
+razd up <url> -r  # то же (флаги в любом порядке)
+```
 
 #### `razd` (без аргументов) — запуск проекта
 

@@ -26,6 +26,7 @@ Razd нуждается в хорошо структурированной CLI �
 |---------|----------|
 | `razd` (без аргументов) | Запустить проект (run default task) |
 | `razd up [url]` | Настроить проект (install tools) или clone + настроить |
+| `razd up -r` | Настроить + запустить (install tools + run default) |
 | `razd run <task>` | Выполнить произвольную задачу |
 | `razd init` | Создать новый Razdfile.yml |
 | `razd add <tool@version>` | Добавить зависимости в dependencies.ensure |
