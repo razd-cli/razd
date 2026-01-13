@@ -2,7 +2,7 @@
 
 ## Phase 1: Lint Workflow
 
-- [ ] **1.1 Create lint workflow**
+- [x] **1.1 Create lint workflow**
   - Create `.github/workflows/lint.yml`
   - Configure trigger on push (main, tags) and pull_request
   - Set up Go with matrix (1.24.x, 1.25.x)
@@ -11,7 +11,7 @@
 
 ## Phase 2: Test Workflow
 
-- [ ] **2.1 Create test workflow**
+- [x] **2.1 Create test workflow**
   - Create `.github/workflows/test.yml`
   - Configure trigger on push (main, tags) and pull_request
   - Set up matrix: go-version × platform
@@ -21,20 +21,20 @@
 
 ## Phase 3: GoReleaser Setup
 
-- [ ] **3.1 Create GoReleaser config**
+- [x] **3.1 Create GoReleaser config**
   - Create `.goreleaser.yml` in root
   - Configure build targets (linux, darwin, windows × amd64, arm64)
   - Set ldflags for version injection
   - Configure archive formats (tar.gz for unix, zip for windows)
   - Configure changelog generation
 
-- [ ] **3.2 Verify version injection**
+- [x] **3.2 Verify version injection**
   - Ensure `internal/version/version.go` supports ldflags
   - Test local build with ldflags
 
 ## Phase 4: Release Workflow
 
-- [ ] **4.1 Create release workflow**
+- [x] **4.1 Create release workflow**
   - Create `.github/workflows/release.yml`
   - Configure trigger on tag `v*`
   - Set up Go environment

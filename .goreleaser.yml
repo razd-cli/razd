@@ -1,0 +1,78 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+version: 2
+
+project_name: razd
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: razd
+    main: ./cmd/razd
+    binary: razd
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/razd-cli/razd/internal/version.Version={{.Version}}
+      - -X github.com/razd-cli/razd/internal/version.Commit={{.Commit}}
+      - -X github.com/razd-cli/razd/internal/version.Date={{.Date}}
+
+archives:
+  - id: default
+    format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: Features
+      regexp: "^.*feat[(\\w)]*:.*$"
+      order: 0
+    - title: Bug Fixes
+      regexp: "^.*fix[(\\w)]*:.*$"
+      order: 1
+    - title: Performance
+      regexp: "^.*perf[(\\w)]*:.*$"
+      order: 2
+    - title: Refactoring
+      regexp: "^.*refactor[(\\w)]*:.*$"
+      order: 3
+    - title: Other
+      order: 999
+
+release:
+  github:
+    owner: razd-cli
+    name: razd
+  draft: false
+  prerelease: auto
+  name_template: "{{.ProjectName}} v{{.Version}}"
