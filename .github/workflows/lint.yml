@@ -11,18 +11,15 @@ on:
 jobs:
   lint:
     name: Lint
-    strategy:
-      matrix:
-        go-version: [1.24.x, 1.25.x]
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
         uses: actions/checkout@v4
 
-      - name: Set up Go ${{ matrix.go-version }}
+      - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: "1.24.x"
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
