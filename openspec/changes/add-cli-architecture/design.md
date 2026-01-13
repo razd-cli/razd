@@ -337,6 +337,73 @@ func runShell(args []string) error {
 
 **Примечание**: Алиас `razd sh` для краткости.
 
+#### `razd trust`
+
+Управляет доверием к проектам. Автоматически запускает `mise trust` если используется mise.
+
+```go
+// internal/cli/trust.go
+func runTrust(args []string) error {
+    rf, err := razdfile.NewReader().Read()
+    if err != nil {
+        return err
+    }
+    
+    path := rf.Location
+    store, _ := trust.Load()
+    
+    if flags.Untrust {
+        store.Remove(path)
+        // Also untrust mise if applicable
+        if rf.Dependencies != nil && rf.Dependencies.Using == "mise" {
+            exec.Command("mise", "trust", "--untrust").Run()
+        }
+        logger.Successf("Untrusted: %s\n", path)
+        return store.Save()
+    }
+    
+    if flags.Show {
+        status := store.GetStatus(path)
+        logger.Infof("Trust status: %s\n", status)
+        return nil
+    }
+    
+    if flags.Ignore {
+        store.AddIgnored(path)
+        logger.Successf("Ignored: %s\n", path)
+        return store.Save()
+    }
+    
+    // Default: trust the project
+    store.AddTrusted(path)
+    
+    // Auto-run mise trust if using mise
+    if rf.Dependencies != nil && rf.Dependencies.Using == "mise" {
+        logger.Infof("Running mise trust...\n")
+        if err := exec.Command("mise", "trust").Run(); err != nil {
+            logger.Warnf("mise trust failed: %v\n", err)
+        }
+    }
+    
+    logger.Successf("Trusted: %s\n", path)
+    return store.Save()
+}
+```
+
+**Флаги:**
+- `--untrust` — удалить доверие (+ `mise trust --untrust`)
+- `--show` — показать текущий статус
+- `--ignore` — добавить в игнор (не спрашивать повторно)
+- `--all` — показать все доверенные проекты
+
+**Использование:**
+```bash
+razd trust              # доверять текущему проекту + mise trust
+razd trust --untrust    # убрать доверие + mise trust --untrust
+razd trust --show       # показать статус
+razd trust --all        # список всех доверенных
+```
+
 ### 4. CLI Orchestrator
 
 ```go

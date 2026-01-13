@@ -54,7 +54,8 @@
 - [ ] **3.3 Implement trust command**
   - Create `internal/cli/trust.go`
   - Support flags: `--untrust`, `--show`, `--all`, `--ignore`
-  - Run `mise trust` if mise config exists
+  - Auto-run `mise trust` when trusting project with mise provisioner
+  - Auto-run `mise trust --untrust` when untrusting
 
 ## Phase 4: Core Commands
 
