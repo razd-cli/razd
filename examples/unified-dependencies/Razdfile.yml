@@ -40,13 +40,6 @@ dependencies:
       packages:
         - "php84Extensions.xdebug@latest"
 
-    # Mise-specific config (ignored when using: devbox)
-    mise:
-      env:
-        NODE_ENV: development
-      settings:
-        experimental: true
-
 # =============================================================================
 # Tasks
 # =============================================================================

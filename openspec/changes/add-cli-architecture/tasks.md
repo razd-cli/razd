@@ -2,20 +2,20 @@
 
 ## Phase 1: Foundation
 
-- [ ] **1.1 Create package structure**
+- [x] **1.1 Create package structure**
   - Create `cmd/razd/main.go` with minimal entry point
   - Create `internal/flags/flags.go` with global flag definitions
   - Create `internal/output/logger.go` with colored logging
   - Create `internal/version/version.go` with version info
 
-- [ ] **1.2 Implement flag parsing**
+- [x] **1.2 Implement flag parsing**
   - Add spf13/pflag dependency
   - Define global flags: `--version`, `--help`, `-v/--verbose`, `-s/--silent`, `-d/--dir`, `--color`, `-y/--yes`
   - Add file path flags: `-t/--taskfile`, `--razdfile`
   - Add control flags: `--list`, `--no-sync`
   - Implement `flags.Validate()` for mutual exclusion checks
 
-- [ ] **1.3 Implement logger**
+- [x] **1.3 Implement logger**
   - Create Logger struct with Stdout/Stderr writers
   - Add methods: Infof, Debugf, Warnf, Errf, Successf
   - Add fatih/color dependency for colored output
@@ -23,30 +23,30 @@
 
 ## Phase 2: Command Infrastructure
 
-- [ ] **2.1 Create CLI orchestrator**
+- [x] **2.1 Create CLI orchestrator**
   - Create `internal/cli/cli.go` with CLI struct
   - Implement `Run()` method with flag parsing and dispatch
   - Handle `--version` and `--help` early exits
   - Handle global `--list` flag
 
-- [ ] **2.2 Create command registry**
+- [x] **2.2 Create command registry**
   - Create `internal/cli/commands.go` with Command struct
   - Define command map with name → handler mapping
   - Support command aliases (e.g., `list` → `ls`)
 
-- [ ] **2.3 Implement error handling**
+- [x] **2.3 Implement error handling**
   - Create `internal/errors/errors.go` with exit codes
   - Define RazdError interface with Code() method
   - Create specific error types: TaskRunError, ConfigError, TrustError
 
 ## Phase 3: Trust System
 
-- [ ] **3.1 Implement trust store**
+- [x] **3.1 Implement trust store**
   - Create `internal/trust/store.go` with TrustStore struct
   - Store trust data in `~/.config/razd/trust.json`
   - Implement `GetStatus()`, `AddTrusted()`, `AddIgnored()`, `Remove()`
 
-- [ ] **3.2 Implement trust verification**
+- [x] **3.2 Implement trust verification**
   - Create `internal/trust/check.go` with EnsureTrusted()
   - Prompt user for trust decision on first run
   - Respect `--yes` flag for auto-approve

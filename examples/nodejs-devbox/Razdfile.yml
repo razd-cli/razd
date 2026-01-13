@@ -1,0 +1,26 @@
+version: "1"
+
+# Use devbox for environment provisioning
+dependencies:
+  using: "devbox"
+  
+  ensure:
+    - "nodejs@22"
+  
+  extra:
+    devbox:
+      shell:
+        init_hook:
+          - echo "Node.js project ready!"
+
+# Tasks
+tasks:
+  default:
+    deps: [install]
+    cmds:
+      - npm run dev
+
+  install: npm install
+  dev: npm run dev
+  build: npm run build
+  test: npm test

@@ -25,7 +25,16 @@
 - [x] Integration тесты с примерами Razdfile
 - [x] Обновить примеры в `examples/`
 
-## 4. Documentation
+## 4. Provisioner Architecture
+
+- [x] Создать `provisioner/provisioner.go` с интерфейсом Provisioner
+- [x] Создать `provisioner/mise.go` с MiseProvisioner
+- [x] Создать `provisioner/devbox.go` с DevboxProvisioner
+- [x] Создать `provisioner/registry.go` с Registry
+- [x] Добавить методы: Name(), GenerateConfig(), Install(), RunCommand(), Shell(), Trust(), Untrust()
+- [x] Unit тесты для Provisioner Registry и implementations
+
+## 5. Documentation
 
 - [ ] Обновить JSON schema если есть
 - [x] Добавить пример использования в examples/

@@ -1,0 +1,14 @@
+{
+  "name": "nodejs-devbox-example",
+  "version": "1.0.0",
+  "description": "Simple Node.js project with devbox",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node index.js",
+    "build": "echo 'Building...' && node index.js",
+    "test": "echo 'Testing...' && node index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT"
+}
