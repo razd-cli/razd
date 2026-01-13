@@ -1,13 +1,19 @@
 # yaml-language-server: $schema=https://golangci-lint.run/jsonschema/golangci.jsonschema.json
-version: "2"
 
 run:
   timeout: 5m
 
 linters:
-  default: standard
   disable:
     - depguard
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - gosimple
+    - ineffassign
+    - typecheck
 
 linters-settings:
   govet:
