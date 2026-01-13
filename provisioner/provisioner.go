@@ -64,14 +64,6 @@ func checkBinary(name string) bool {
 	return err == nil
 }
 
-// runCommand executes a command with the given arguments.
-func runCommand(ctx context.Context, name string, args ...string) error {
-	cmd := exec.CommandContext(ctx, name, args...)
-	cmd.Stdout = nil // Will be set by caller if needed
-	cmd.Stderr = nil
-	return cmd.Run()
-}
-
 // ErrProvisionerNotFound is returned when a provisioner is not in the registry.
 type ErrProvisionerNotFound struct {
 	Name      string
