@@ -122,14 +122,3 @@ func runCommand(cmd []string, dir string, log *output.Logger) error {
 	return c.Run()
 }
 
-// runDefaultTaskFromRun runs the default task from the Razdfile.
-// This is the version used by the "run" command.
-func runDefaultTaskFromRun(ctx *Context, rf *ast.Razdfile, prov provisioner.Provisioner, dir string) error {
-	defaultTask, ok := rf.Tasks.Get("default")
-	if !ok || defaultTask == nil {
-		ctx.Log.Warnf("No 'default' task defined in Razdfile\n")
-		return nil
-	}
-
-	return executeTask(ctx, rf, prov, true, dir, "default")
-}

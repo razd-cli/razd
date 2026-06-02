@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/razd-cli/razd/internal/errors"
@@ -64,10 +65,9 @@ func trustProject(ctx *Context, dir string) error {
 
 	ctx.Log.Successf("Trusted: %s\n", dir)
 
-	// Auto-run mise trust if using mise
 	if provResolved && prov.Name() == "mise" {
 		ctx.Log.Debugf("Running mise trust...\n")
-		if err := prov.Trust(nil); err != nil {
+		if err := prov.Trust(context.Background()); err != nil {
 			ctx.Log.Warnf("mise trust failed: %v\n", err)
 		}
 	}
@@ -99,10 +99,9 @@ func untrustProject(ctx *Context, dir string) error {
 		ctx.Log.Warnf("Failed to save trust store: %v\n", err)
 	}
 
-	// Auto-run mise trust --untrust if using mise
 	if provResolved && prov.Name() == "mise" {
 		ctx.Log.Debugf("Running mise trust --untrust...\n")
-		if err := prov.Untrust(nil); err != nil {
+		if err := prov.Untrust(context.Background()); err != nil {
 			ctx.Log.Warnf("mise trust --untrust failed: %v\n", err)
 		}
 	}
