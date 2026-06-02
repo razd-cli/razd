@@ -10,14 +10,14 @@ version: "1"
 dependencies:
   # Choose your package manager: "mise" or "devbox"
   using: "devbox"
-  
+
   # Simple tool@version format - works with any manager
   ensure:
     - "node@22"
     - "go@1.21"
     - "pnpm@latest"
     - "ripgrep@latest"
-  
+
   # Pass-through native configuration (optional)
   # Structure mirrors the native format of the chosen manager
   extra:
@@ -29,12 +29,12 @@ dependencies:
           export GOPATH=$PWD/.go
         scripts:
           check: "node --version && go version"
-      
+
       # Environment variables
       env:
         NODE_ENV: development
         DEBUG: "true"
-      
+
       # Additional packages not expressible in ensure format
       # (e.g., extensions, flakes)
       packages:
@@ -46,16 +46,4 @@ dependencies:
 
 tasks:
   default:
-    deps: [install]
-    cmds: [pnpm run dev]
-
-  install: pnpm install
-  dev: echo "Starting dev server..."
-  build:
-    cmds:
-      - pnpm run build
-      - go build -o dist/app ./cmd/main.go
-  test:
-    cmds:
-      - pnpm test
-      - go test ./...
+    cmds: [echo "hello world"]

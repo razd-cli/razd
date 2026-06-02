@@ -57,10 +57,7 @@ type RunCommand struct{}
 func (c *RunCommand) Name() string        { return "run" }
 func (c *RunCommand) Description() string { return "Run one or more tasks" }
 func (c *RunCommand) Run(ctx *Context) error {
-	ctx.Log.Debugf("Running tasks: %v", ctx.Args)
-	// TODO: Implement task execution
-	ctx.Log.Infof("Task execution not yet implemented")
-	return nil
+	return runRun(ctx)
 }
 
 // UpCommand installs tools and dependencies.
@@ -78,10 +75,7 @@ type ListCommand struct{}
 func (c *ListCommand) Name() string        { return "list" }
 func (c *ListCommand) Description() string { return "List available tasks" }
 func (c *ListCommand) Run(ctx *Context) error {
-	ctx.Log.Debugf("Listing tasks")
-	// TODO: Implement task listing
-	ctx.Log.Infof("List command not yet implemented")
-	return nil
+	return runList(ctx)
 }
 
 // TrustCommand manages project trust.
@@ -90,10 +84,7 @@ type TrustCommand struct{}
 func (c *TrustCommand) Name() string        { return "trust" }
 func (c *TrustCommand) Description() string { return "Trust the current project" }
 func (c *TrustCommand) Run(ctx *Context) error {
-	ctx.Log.Debugf("Running 'trust' command")
-	// TODO: Implement trust command
-	ctx.Log.Infof("Trust command not yet implemented")
-	return nil
+	return runTrust(ctx)
 }
 
 // InitCommand initializes a new Razdfile.
@@ -102,22 +93,16 @@ type InitCommand struct{}
 func (c *InitCommand) Name() string        { return "init" }
 func (c *InitCommand) Description() string { return "Initialize a new Razdfile" }
 func (c *InitCommand) Run(ctx *Context) error {
-	ctx.Log.Debugf("Running 'init' command")
-	// TODO: Implement init command
-	ctx.Log.Infof("Init command not yet implemented")
-	return nil
+	return runInit(ctx)
 }
 
-// AddCommand adds a new task.
+// AddCommand adds a dependency to Razdfile.
 type AddCommand struct{}
 
 func (c *AddCommand) Name() string        { return "add" }
-func (c *AddCommand) Description() string { return "Add a new task" }
+func (c *AddCommand) Description() string { return "Add a dependency to Razdfile" }
 func (c *AddCommand) Run(ctx *Context) error {
-	ctx.Log.Debugf("Running 'add' command")
-	// TODO: Implement add command
-	ctx.Log.Infof("Add command not yet implemented")
-	return nil
+	return runAdd(ctx)
 }
 
 // ShellCommand starts an interactive shell.
@@ -126,10 +111,7 @@ type ShellCommand struct{}
 func (c *ShellCommand) Name() string        { return "shell" }
 func (c *ShellCommand) Description() string { return "Start an interactive shell with provisioned environment" }
 func (c *ShellCommand) Run(ctx *Context) error {
-	ctx.Log.Debugf("Running 'shell' command")
-	// TODO: Implement shell command
-	ctx.Log.Infof("Shell command not yet implemented")
-	return nil
+	return runShell(ctx)
 }
 
 // DevCommand runs the dev task.
