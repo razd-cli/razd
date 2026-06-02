@@ -102,18 +102,41 @@ func (r *Reader) ReadNode(node Node) (*ast.Razdfile, error) {
 }
 
 // findRazdfile searches for a Razdfile in the configured directory.
+// It uses os.ReadDir to list directory contents first (more reliable on
+// Windows NTFS after git clone), then falls back to os.Stat for each
+// candidate name.
 func (r *Reader) findRazdfile() (string, error) {
 	r.debug("Searching for Razdfile in directory: %s", r.dir)
-	for _, name := range DefaultRazdfiles {
-		path := filepath.Join(r.dir, name)
-		r.debug("Checking: %s", path)
-		if info, err := os.Stat(path); err == nil {
-			r.debug("Found Razdfile: %s (isDir=%v)", path, info.IsDir())
-			return path, nil
-		} else {
-			r.debug("Stat failed for %s: %v", path, err)
+
+	entries, readErr := os.ReadDir(r.dir)
+	if readErr != nil {
+		r.debug("Could not read directory %s: %v", r.dir, readErr)
+		for _, name := range DefaultRazdfiles {
+			path := filepath.Join(r.dir, name)
+			if _, err := os.Stat(path); err == nil {
+				r.debug("Found Razdfile: %s", path)
+				return path, nil
+			}
+		}
+		return "", ErrNotFound
+	}
+
+	fileNames := make(map[string]bool, len(entries))
+	for _, e := range entries {
+		if !e.IsDir() {
+			fileNames[e.Name()] = true
 		}
 	}
+
+	for _, name := range DefaultRazdfiles {
+		if fileNames[name] {
+			path := filepath.Join(r.dir, name)
+			r.debug("Found Razdfile: %s", path)
+			return path, nil
+		}
+		r.debug("Not found: %s (checked %d files in directory)", name, len(entries))
+	}
+
 	return "", ErrNotFound
 }
 
