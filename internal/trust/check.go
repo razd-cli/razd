@@ -5,8 +5,15 @@ import (
 	"fmt"
 
 	"github.com/razd-cli/razd/internal/output"
-	"github.com/razd-cli/razd/provisioner"
 )
+
+// Provisioner is the interface needed by trust operations.
+// It mirrors provisioner.Provisioner but avoids a direct import cycle.
+type Provisioner interface {
+	Name() string
+	Trust(ctx context.Context) error
+	Untrust(ctx context.Context) error
+}
 
 // CheckResult represents the result of a trust check.
 type CheckResult struct {
@@ -34,8 +41,9 @@ func Check(path string) (*CheckResult, error) {
 // If autoTrust is true (--yes flag), the project will be automatically trusted.
 // If stdin is a TTY and autoTrust is false, an interactive prompt is shown.
 // If stdin is not a TTY (CI, pipe), the user must use --yes or razd trust.
-// Returns true if trusted (or auto-trusted), false if not trusted.
-func EnsureTrusted(path string, log *output.Logger, autoTrust bool) (bool, error) {
+// When trust is granted (via prompt or autoTrust), it is persisted to the trust store.
+// Returns true if trusted, false if not trusted.
+func EnsureTrusted(path string, prov Provisioner, log *output.Logger, autoTrust bool) (bool, error) {
 	result, err := Check(path)
 	if err != nil {
 		return false, err
@@ -50,6 +58,9 @@ func EnsureTrusted(path string, log *output.Logger, autoTrust bool) (bool, error
 	case StatusUnknown:
 		if autoTrust {
 			log.Debugf("[FIX] EnsureTrusted: auto-trusting project, path=%s\n", path)
+			if err := Trust(path, prov, log); err != nil {
+				log.Warnf("Failed to persist trust: %v\n", err)
+			}
 			return true, nil
 		}
 		log.Debugf("[FIX] EnsureTrusted: status=unknown, prompting user, path=%s\n", path)
@@ -59,6 +70,9 @@ func EnsureTrusted(path string, log *output.Logger, autoTrust bool) (bool, error
 		}
 		switch promptResult {
 		case PromptTrusted:
+			if err := Trust(path, prov, log); err != nil {
+				log.Warnf("Failed to persist trust: %v\n", err)
+			}
 			return true, nil
 		case PromptDeclined:
 			log.Infof("Project not trusted: %s\n", path)
@@ -75,7 +89,7 @@ func EnsureTrusted(path string, log *output.Logger, autoTrust bool) (bool, error
 }
 
 // Trust adds a project to the trusted list and syncs with provisioner if needed.
-func Trust(path string, prov provisioner.Provisioner, log *output.Logger) error {
+func Trust(path string, prov Provisioner, log *output.Logger) error {
 	store, err := Load()
 	if err != nil {
 		return fmt.Errorf("failed to load trust store: %w", err)
@@ -102,7 +116,7 @@ func Trust(path string, prov provisioner.Provisioner, log *output.Logger) error 
 }
 
 // Untrust removes a project from the trusted list.
-func Untrust(path string, prov provisioner.Provisioner, log *output.Logger) error {
+func Untrust(path string, prov Provisioner, log *output.Logger) error {
 	store, err := Load()
 	if err != nil {
 		return fmt.Errorf("failed to load trust store: %w", err)

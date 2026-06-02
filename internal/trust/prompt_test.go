@@ -57,7 +57,7 @@ func TestEnsureTrusted_StatusTrusted(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	trusted, err := EnsureTrusted(testPath, log, false)
+	trusted, err := EnsureTrusted(testPath, nil, log, false)
 	if err != nil {
 		t.Fatalf("EnsureTrusted() error = %v", err)
 	}
@@ -84,7 +84,7 @@ func TestEnsureTrusted_AutoTrust(t *testing.T) {
 
 	testPath := t.TempDir()
 
-	trusted, err := EnsureTrusted(testPath, log, true)
+	trusted, err := EnsureTrusted(testPath, nil, log, true)
 	if err != nil {
 		t.Fatalf("EnsureTrusted() error = %v", err)
 	}
