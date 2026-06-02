@@ -49,6 +49,12 @@ func runUp(ctx *Context) error {
 		return err
 	}
 
+	if !flags.NoSync {
+		if err := syncConfig(rf, prov, dir, ctx.Log); err != nil {
+			ctx.Log.Warnf("Sync failed: %v\n", err)
+		}
+	}
+
 	if err := generateProvisionerConfig(rf, prov, ctx.Log); err != nil {
 		ctx.Log.Warnf("Failed to generate provisioner config: %v\n", err)
 	}

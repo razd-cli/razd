@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/razd-cli/razd/razdfile/ast"
 )
@@ -63,6 +64,34 @@ func (d *DevboxProvisioner) GenerateConfig(packages []ast.ParsedDependency, extr
 	}
 
 	return os.WriteFile(devboxPath, []byte(contentStr), 0644)
+}
+
+func (d *DevboxProvisioner) ReadConfig() (map[string]string, error) {
+	devboxPath := filepath.Join(d.Config.Dir, "devbox.json")
+
+	data, err := os.ReadFile(devboxPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to read devbox.json: %w", err)
+	}
+
+	var config struct {
+		Packages []string `json:"packages"`
+	}
+	if err := json.Unmarshal(data, &config); err != nil {
+		return nil, fmt.Errorf("failed to parse devbox.json: %w", err)
+	}
+
+	tools := make(map[string]string)
+	for _, pkg := range config.Packages {
+		if idx := strings.Index(pkg, "@"); idx > 0 {
+			tools[pkg[:idx]] = pkg[idx+1:]
+		}
+	}
+
+	return tools, nil
 }
 
 func (d *DevboxProvisioner) Install(ctx context.Context) error {

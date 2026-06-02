@@ -1,6 +1,7 @@
 package provisioner
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"os"
@@ -53,6 +54,44 @@ func (m *MiseProvisioner) GenerateConfig(packages []ast.ParsedDependency, extra 
 	}
 
 	return os.WriteFile(misePath, []byte(content), 0644)
+}
+
+func (m *MiseProvisioner) ReadConfig() (map[string]string, error) {
+	misePath := filepath.Join(m.Config.Dir, "mise.toml")
+
+	data, err := os.ReadFile(misePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to read mise.toml: %w", err)
+	}
+
+	tools := make(map[string]string)
+	inToolsSection := false
+
+	scanner := bufio.NewScanner(strings.NewReader(string(data)))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+
+		if strings.HasPrefix(line, "[") {
+			inToolsSection = line == "[tools]"
+			continue
+		}
+
+		if !inToolsSection {
+			continue
+		}
+
+		if idx := strings.Index(line, "="); idx > 0 {
+			key := strings.TrimSpace(line[:idx])
+			val := strings.TrimSpace(line[idx+1:])
+			val = strings.Trim(val, "\"")
+			tools[key] = val
+		}
+	}
+
+	return tools, scanner.Err()
 }
 
 func writeTomlMap(sb *strings.Builder, m map[string]any, indent int) {

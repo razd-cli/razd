@@ -186,3 +186,59 @@ func TestDevboxProvisioner_GenerateConfig_WithExtra(t *testing.T) {
 	assert.Contains(t, string(content), `"nodejs@22"`)
 	assert.Contains(t, string(content), `"init_hook"`)
 }
+
+func TestMiseProvisioner_ReadConfig(t *testing.T) {
+	dir := t.TempDir()
+	p := NewMiseProvisioner(Config{Dir: dir})
+
+	err := os.WriteFile(filepath.Join(dir, "mise.toml"), []byte("[tools]\nnode = \"22\"\npnpm = \"latest\"\n"), 0644)
+	require.NoError(t, err)
+
+	tools, err := p.ReadConfig()
+	require.NoError(t, err)
+	assert.Equal(t, map[string]string{"node": "22", "pnpm": "latest"}, tools)
+}
+
+func TestMiseProvisioner_ReadConfig_NotExists(t *testing.T) {
+	dir := t.TempDir()
+	p := NewMiseProvisioner(Config{Dir: dir})
+
+	tools, err := p.ReadConfig()
+	require.NoError(t, err)
+	assert.Nil(t, tools)
+}
+
+func TestMiseProvisioner_ReadConfig_IgnoresOtherSections(t *testing.T) {
+	dir := t.TempDir()
+	p := NewMiseProvisioner(Config{Dir: dir})
+
+	content := "[env]\nNODE_ENV = \"development\"\n\n[tools]\nnode = \"22\"\npython = \"3.11\"\n\n[settings]\nexperimental = true\n"
+	err := os.WriteFile(filepath.Join(dir, "mise.toml"), []byte(content), 0644)
+	require.NoError(t, err)
+
+	tools, err := p.ReadConfig()
+	require.NoError(t, err)
+	assert.Equal(t, map[string]string{"node": "22", "python": "3.11"}, tools)
+}
+
+func TestDevboxProvisioner_ReadConfig(t *testing.T) {
+	dir := t.TempDir()
+	p := NewDevboxProvisioner(Config{Dir: dir})
+
+	content := `{"packages": ["nodejs@22", "python@3.11"]}`
+	err := os.WriteFile(filepath.Join(dir, "devbox.json"), []byte(content), 0644)
+	require.NoError(t, err)
+
+	tools, err := p.ReadConfig()
+	require.NoError(t, err)
+	assert.Equal(t, map[string]string{"nodejs": "22", "python": "3.11"}, tools)
+}
+
+func TestDevboxProvisioner_ReadConfig_NotExists(t *testing.T) {
+	dir := t.TempDir()
+	p := NewDevboxProvisioner(Config{Dir: dir})
+
+	tools, err := p.ReadConfig()
+	require.NoError(t, err)
+	assert.Nil(t, tools)
+}

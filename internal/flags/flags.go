@@ -27,6 +27,8 @@ var (
 	List bool
 	// NoSync skips Razdfile <-> mise.toml sync
 	NoSync bool
+	// Backup creates a timestamped backup of native config before overwriting
+	Backup bool
 
 	// File path flags
 	// TaskFile is the path to taskfile/razdfile
@@ -70,6 +72,7 @@ func Init() {
 	pflag.BoolVarP(&Yes, "yes", "y", false, "Assume yes to all prompts")
 	pflag.BoolVar(&List, "list", false, "List all available tasks")
 	pflag.BoolVar(&NoSync, "no-sync", false, "Skip Razdfile <-> mise.toml sync")
+	pflag.BoolVar(&Backup, "backup", false, "Create timestamped backup of native config before overwriting")
 
 	// File path flags
 	pflag.StringVarP(&TaskFile, "taskfile", "t", "", "Path to taskfile/razdfile")

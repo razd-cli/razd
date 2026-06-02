@@ -22,6 +22,10 @@ type Provisioner interface {
 	// extra: pass-through config from dependencies.extra section
 	GenerateConfig(packages []ast.ParsedDependency, extra map[string]any) error
 
+	// ReadConfig reads the native config file and returns tool→version mapping.
+	// Returns nil map if config file doesn't exist.
+	ReadConfig() (map[string]string, error)
+
 	// Install runs the package installation command.
 	// This executes the native install command (e.g., "mise install", "devbox install")
 	Install(ctx context.Context) error
