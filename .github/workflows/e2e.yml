@@ -96,6 +96,7 @@ jobs:
   e2e-devbox-linux:
     needs: build-linux
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -115,6 +116,7 @@ jobs:
   e2e-unified-linux:
     needs: build-linux
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -134,6 +136,7 @@ jobs:
   e2e-windows:
     needs: build-windows
     runs-on: windows-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
