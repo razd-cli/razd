@@ -39,6 +39,17 @@ func readRazdfile(dir string, log *output.Logger) (*ast.Razdfile, error) {
 
 	rf, err := reader.Read()
 	if err != nil {
+		entries, readErr := os.ReadDir(dir)
+		if readErr == nil && len(entries) > 0 {
+			log.Debugf("Directory %s contains %d entries:\n", dir, len(entries))
+			for _, e := range entries {
+				log.Debugf("  - %s (isDir=%v)\n", e.Name(), e.IsDir())
+			}
+		} else if readErr != nil {
+			log.Debugf("Could not read directory %s: %v\n", dir, readErr)
+		} else {
+			log.Debugf("Directory %s is empty\n", dir)
+		}
 		return nil, &errors.NoRazdfileError{Dir: dir}
 	}
 

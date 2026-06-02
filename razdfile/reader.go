@@ -103,11 +103,15 @@ func (r *Reader) ReadNode(node Node) (*ast.Razdfile, error) {
 
 // findRazdfile searches for a Razdfile in the configured directory.
 func (r *Reader) findRazdfile() (string, error) {
+	r.debug("Searching for Razdfile in directory: %s", r.dir)
 	for _, name := range DefaultRazdfiles {
 		path := filepath.Join(r.dir, name)
-		if _, err := os.Stat(path); err == nil {
-			r.debug("Found Razdfile: %s", path)
+		r.debug("Checking: %s", path)
+		if info, err := os.Stat(path); err == nil {
+			r.debug("Found Razdfile: %s (isDir=%v)", path, info.IsDir())
 			return path, nil
+		} else {
+			r.debug("Stat failed for %s: %v", path, err)
 		}
 	}
 	return "", ErrNotFound

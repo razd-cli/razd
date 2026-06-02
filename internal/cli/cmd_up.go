@@ -24,6 +24,7 @@ func runUp(ctx *Context) error {
 
 	rf, err := readRazdfile(dir, ctx.Log)
 	if err != nil {
+		ctx.Log.Debugf("[up] resolveUpDir returned dir=%s, err=%v\n", dir, err)
 		return err
 	}
 
