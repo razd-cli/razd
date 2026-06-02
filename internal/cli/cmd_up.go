@@ -78,7 +78,7 @@ func resolveUpDir(ctx *Context) (string, error) {
 		return "", &errors.GitNotInstalledError{}
 	}
 
-	cloneDir := "."
+	var cloneDir string
 	if ctx.Dir != "" {
 		cloneDir = ctx.Dir
 	} else {
