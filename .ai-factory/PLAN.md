@@ -1,4 +1,4 @@
-# Plan: Interactive Trust Prompt with Arrow-Key Selection
+# Plan: `razd up <url>` — Clone and Provision from Git URL
 
 **Branch:** 1.x (current)
 **Created:** 2026-06-02
@@ -6,98 +6,100 @@
 
 ## Problem
 
-When a user runs `razd up` or `razd run` on an untrusted project, razd prints a message asking them to run `razd trust` separately and exits with error code 300. No interactive prompt is shown — the user must manually re-run a different command. The UX should let the user trust a project inline with arrow-key selection (No default, Y switches to Yes).
+`razd up` currently only works in the current directory. Users want `razd up <url>` to clone a remote repository and provision it in one command, similar to `git clone <url>` followed by `cd <repo> && razd up`.
+
+Behavior must mirror `git clone`:
+- Clone into the current directory
+- If target directory already exists → error from git
+- Git errors (auth, network, etc.) are surfaced to the user as-is
 
 ## Architecture Decision
 
-Use `charmbracelet/huh` for the interactive prompt. It provides:
-- Arrow-key selectable options with visual highlighting
-- Y/N keybindings (press Y to jump to "Yes")
--TTY detection (auto-fallback when stdin is not a terminal)
-- Consistent look with `fatih/color` (already in go.mod)
+Add a `internal/git` package for git-related utilities (URL detection, git availability check, clone logic). Modify `runUp()` to check `ctx.Args` for a URL-like argument before proceeding with the normal flow.
 
-Alternative considered: raw `fmt.Scan` + `bufio.Scanner` — rejected because it cannot do arrow-key selection.
+URL detection patterns:
+- `https://github.com/owner/repo`
+- `https://github.com/owner/repo.git`
+- `git@github.com:owner/repo.git`
+- `ssh://git@github.com/owner/repo.git`
+- `git://github.com/owner/repo.git`
 
 ## Tasks
 
-- [x] T1: Add `charmbracelet/huh` dependency
-  - Run `go get github.com/charmbracelet/huh`
-  - Run `go mod tidy`
-  - File: `go.mod`, `go.sum`
+- [x] T1: Create `internal/git/git.go` — git utility package
+  - New file: `internal/git/git.go`
+  - `IsGitAvailable() bool` — check if `git` binary is in PATH using `exec.LookPath("git")`
+  - `IsURL(arg string) bool` — detect if arg looks like a git URL (https://, git@, ssh://, git://, or ends with .git)
+  - `ExtractRepoName(url string) (string, error)` — extract repository directory name from URL (strip trailing `.git`, take last path segment)
+  - `Clone(url string, dir string) error` — run `git clone <url>` in the given directory, streaming stdout/stderr to the caller
+  - Logging: `DEBUG [git] IsGitAvailable: result=<true|false>`, `DEBUG [git] Clone: url=<url>, dir=<dir>`
 
-- [x] T2: Create `internal/trust/prompt.go` — interactive trust prompt
-  - New file: `internal/trust/prompt.go`
-  - Implement `PromptTrust(path string, stdin io.Reader) (bool, error)`:
-    - Detect if stdin is a terminal (`os.Stdin.Stat()` or `term.IsTerminal()`)
-    - If not a terminal (CI, pipe): return `false, nil` with a warning
-    - If `--yes` flag is set: return `true, nil` (auto-trust, no prompt)
-    - Otherwise: show `huh.NewSelect` with options "No" (default) and "Yes", press Y to select Yes
-    - On "Yes": return `true, nil`
-    - On "No": return `false, nil`
-  - Use `huh.NewSelect[string]` with `huh.WithTheme(huh.ThemeCatppuccin())` or a custom theme matching razd's output style
-  - Display project path in the prompt title
-  - Logging: `[FIX] PromptTrust: path=<path>, result=<trusted|declined|non-interactive>`
+- [x] T2: Add error types to `internal/errors/errors.go`
+  - Add `CodeGitNotInstalled = 110` exit code constant
+  - Add `CodeCloneFailed = 111` exit code constant
+  - Add `GitNotInstalledError` struct implementing `RazdError` interface with `Code() int` returning `CodeGitNotInstalled`
+  - Add `CloneError` struct with `URL string`, `Err error`, `Code() int` returning `CodeCloneFailed`
+  - Add cases in `handleError()` in `internal/cli/cli.go` for both new error types with appropriate log messages
 
-- [x] T3: Wire prompt into `EnsureTrusted()` in `internal/trust/check.go`
-  - Modify `EnsureTrusted(path string, log *output.Logger, autoTrust bool) (bool, error)`:
-    - Keep existing behavior for `StatusTrusted` and `StatusIgnored`
-    - For `StatusUnknown` without `autoTrust`:
-      - Call `PromptTrust(path, os.Stdin)` instead of just logging and returning `false`
-      - If user chose Yes: call `Trust()` inline and return `true, nil`
-      - If user chose No or non-interactive: return `false, nil`
-  - Add `os` import if not present
-  - Logging: `[FIX] EnsureTrusted: status=unknown, prompting user`
+- [x] T3: Modify `internal/cli/cmd_up.go` — add URL argument handling
+  - At the start of `runUp(ctx)`, check `ctx.Args` for a URL-like argument
+  - If `len(ctx.Args) > 0` and `git.IsURL(ctx.Args[0])`:
+    1. Check `git.IsGitAvailable()` — if not, return `&errors.GitNotInstalledError{}`
+    2. Determine clone directory: `flags.Dir` if set, otherwise `os.Getwd()`
+    3. Call `git.Clone(ctx.Args[0], cloneDir)` — if error, return `&errors.CloneError{URL: ctx.Args[0], Err: err}`
+    4. Derive repo directory name: `git.ExtractRepoName(ctx.Args[0])`
+    5. Set `dir = filepath.Join(cloneDir, repoName)` for the rest of the flow
+    6. Log: `INFO Cloning <url>...`, `SUCCESS Cloned to <dir>`
+    7. Continue with normal `runUp` flow using the cloned directory
+  - If no URL argument, proceed with existing behavior (resolve dir, read Razdfile, etc.)
+  - If `len(ctx.Args) > 1`, return error: "too many arguments for 'up' command"
+  - If `len(ctx.Args) == 1` but it's not a URL, return error: "unexpected argument %q for 'up' command"
+  - Logging: `DEBUG [up] args=%v, url_detected=<true|false>`
 
-- [x] T4: Simplify `ensureTrusted()` in `internal/cli/helpers.go`
-  - Current code has complex branching for `!trusted && !flags.Yes` and `!trusted && flags.Yes`
-  - After T3, `EnsureTrusted()` handles both interactive and auto-trust cases directly
-  - Simplify `ensureTrusted()`:
-    ```go
-    func ensureTrusted(dir string, prov provisioner.Provisioner, log *output.Logger) error {
-        trusted, err := trust.EnsureTrusted(dir, log, flags.Yes)
-        if err != nil {
-            return err
-        }
-        if !trusted {
-            return &errors.TrustError{Path: dir, Message: "project not trusted"}
-        }
-        return nil
-    }
-    ```
-  - Remove the separate `trust.Trust()` call that was in `ensureTrusted` — it's now handled inside `PromptTrust`/`EnsureTrusted`
+- [x] T4: Write tests for `internal/git/git.go`
+  - New file: `internal/git/git_test.go`
+  - `TestIsURL` — table-driven tests for all URL patterns:
+    - `https://github.com/razd-cli/razd-nodejs-example` → true
+    - `https://github.com/razd-cli/razd-nodejs-example.git` → true
+    - `git@github.com:razd-cli/razd-nodejs-example.git` → true
+    - `ssh://git@github.com/razd-cli/razd-nodejs-example.git` → true
+    - `git://github.com/razd-cli/razd-nodejs-example.git` → true
+    - `dev` → false (task name)
+    - `build` → false
+    - `./local/path` → false
+    - empty string → false
+  - `TestExtractRepoName` — table-driven tests:
+    - `https://github.com/razd-cli/razd-nodejs-example` → `razd-nodejs-example`
+    - `https://github.com/razd-cli/razd-nodejs-example.git` → `razd-nodejs-example`
+    - `git@github.com:razd-cli/razd-nodejs-example.git` → `razd-nodejs-example`
+  - `TestIsGitAvailable` — basic test (will pass on systems with git installed)
 
-- [x] T5: Add terminal detection utility
-  - New file: `internal/trust/tty.go`
-  - Implement `IsTerminal() bool` using `golang.org/x/term.IsTerminal(int(os.Stdin.Fd()))`
-  - `golang.org/x/term` is already an indirect dependency in go.mod
-  - This cleanly separates TTY detection from prompt logic
+- [x] T5: Write tests for `internal/cli/cmd_up.go` URL handling
+  - New file or extend: `internal/cli/cmd_up_test.go`
+  - Test `runUp` with a URL argument when git is not available — should return `GitNotInstalledError`
+  - Test `runUp` with too many arguments — should return error
+  - Test `runUp` with a non-URL argument — should return error
+  - Test `runUp` with no arguments — should follow existing behavior
+  - Mock `git.Clone` and `git.IsGitAvailable` for unit testing without actual git
 
-- [x] T6: Write tests for trust prompt
-  - New file: `internal/trust/prompt_test.go`
-  - Test cases:
-    - `TestPromptTrust_NonTerminal`: mock non-TTY stdin, verify it returns `false, nil` without prompting
-    - `TestPromptTrust_AutoTrust`: with `autoTrust=true`, verify it returns `true, nil` without prompting
-    - `TestPromptTrust_TTY_SelectYes`: simulate user selecting "Yes"
-    - `TestPromptTrust_TTY_SelectNo`: simulate user selecting "No"
-  - New file: `internal/trust/tty_test.go`
-    - `TestIsTerminal`: basic coverage
-
-- [x] T7: Build, test, bump version, tag, and push
+- [x] T6: Build and test
   - `go build ./...`
   - `go test ./...`
-  - Bump tag to v1.1.0 (minor bump — new feature)
-  - Push and verify GitHub Actions
+  - Verify all existing tests still pass
 
 ## Commit Plan
 
-- Commit 1 (T1+T2+T5): `feat(trust): add interactive prompt with arrow-key selection`
-- Commit 2 (T3+T4): `feat(trust): wire interactive prompt into ensureTrusted flow`
-- Commit 3 (T6): `test(trust): add tests for prompt and TTY detection`
-- Commit 4 (T7): version bump + tag
+- Commit 1 (T1+T2): `feat(git): add git utility package and error types`
+- Commit 2 (T3): `feat(up): support URL argument for cloning and provisioning`
+- Commit 3 (T4+T5): `test(git,cli): add tests for URL detection and clone flow`
+- Commit 4 (T6): build and verification
 
 ## Edge Cases
 
-- **Non-interactive shell (CI/pipe):** Must not hang. `IsTerminal()` returns false, `PromptTrust` returns false, and trust error propagates normally. User must use `--yes` or `razd trust`.
-- **WSL2:** `golang.org/x/term` works on WSL2. `huh` uses the same TTY detection.
-- **Windows Terminal:** `huh` supports Windows via virtual terminal sequences.
-- **Signal interruption:** `huh` handles SIGINT gracefully (returns ErrUserAborted).
+- **Git not installed:** Clear error message: "git is not installed. Please install git to clone repositories."
+- **Private repository without access:** Git clone fails with auth error — surface git's error message directly to user
+- **Target directory already exists:** Git clone will fail with `fatal: destination path already exists` — surface this as-is
+- **Network errors:** Git clone will fail — surface the error from git
+- **URL with trailing `.git`:** Handled by `ExtractRepoName` stripping `.git` suffix
+- **SSH URL format (`git@host:user/repo.git`):** Recognized by `IsURL`
+- **No Razdfile in cloned repo:** Normal error flow — `NoRazdfileError` after cloning succeeds

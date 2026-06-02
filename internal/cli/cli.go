@@ -121,6 +121,12 @@ func handleError(err error, log *output.Logger) int {
 	case *errors.TrustError:
 		log.Errf("Trust error: %s", e.Message)
 		return errors.CodeTrustError
+	case *errors.GitNotInstalledError:
+		log.Errf("git is not installed. Please install git to clone repositories.")
+		return errors.CodeGitNotInstalled
+	case *errors.CloneError:
+		log.Errf("Clone error: %v", e)
+		return errors.CodeCloneFailed
 	default:
 		log.Errf("Error: %v", err)
 		return errors.CodeUnknown

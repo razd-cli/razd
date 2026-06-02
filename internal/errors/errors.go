@@ -9,6 +9,8 @@ const (
 	CodeUnknown       = 1
 	CodeNoRazdfile    = 100
 	CodeInvalidConfig = 101
+	CodeGitNotInstalled = 110
+	CodeCloneFailed   = 111
 	CodeTaskNotFound  = 200
 	CodeTaskFailed    = 201
 	CodeTrustError    = 300
@@ -90,4 +92,29 @@ func (e *TrustError) Error() string {
 
 func (e *TrustError) Code() int {
 	return CodeTrustError
+}
+
+// GitNotInstalledError is returned when git is not available on the system.
+type GitNotInstalledError struct{}
+
+func (e *GitNotInstalledError) Error() string {
+	return "git is not installed. Please install git to clone repositories."
+}
+
+func (e *GitNotInstalledError) Code() int {
+	return CodeGitNotInstalled
+}
+
+// CloneError is returned when git clone fails.
+type CloneError struct {
+	URL string
+	Err error
+}
+
+func (e *CloneError) Error() string {
+	return fmt.Sprintf("failed to clone %q: %v", e.URL, e.Err)
+}
+
+func (e *CloneError) Code() int {
+	return CodeCloneFailed
 }

@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 
+	"github.com/razd-cli/razd/internal/errors"
 	"github.com/razd-cli/razd/internal/flags"
+	"github.com/razd-cli/razd/internal/git"
 	"github.com/razd-cli/razd/internal/output"
 	"github.com/razd-cli/razd/provisioner"
 	"github.com/razd-cli/razd/razdfile/ast"
@@ -14,7 +17,7 @@ import (
 
 // runUp executes the up command logic.
 func runUp(ctx *Context) error {
-	dir, err := resolveDir(ctx)
+	dir, err := resolveUpDir(ctx)
 	if err != nil {
 		return err
 	}
@@ -51,6 +54,56 @@ func runUp(ctx *Context) error {
 	}
 
 	return nil
+}
+
+// resolveUpDir determines the working directory for the up command.
+// If a URL argument is provided, it clones the repository and returns
+// the path to the cloned directory. Otherwise, falls back to resolveDir.
+func resolveUpDir(ctx *Context) (string, error) {
+	if len(ctx.Args) == 0 {
+		return resolveDir(ctx)
+	}
+
+	if len(ctx.Args) > 1 {
+		return "", fmt.Errorf("too many arguments for 'up' command")
+	}
+
+	arg := ctx.Args[0]
+
+	if !git.IsURL(arg) {
+		return "", fmt.Errorf("unexpected argument %q for 'up' command", arg)
+	}
+
+	if !git.IsGitAvailable() {
+		return "", &errors.GitNotInstalledError{}
+	}
+
+	cloneDir := "."
+	if ctx.Dir != "" {
+		cloneDir = ctx.Dir
+	} else {
+		wd, err := os.Getwd()
+		if err != nil {
+			return "", fmt.Errorf("failed to get working directory: %w", err)
+		}
+		cloneDir = wd
+	}
+
+	ctx.Log.Infof("Cloning %s...\n", arg)
+
+	if err := git.Clone(arg, cloneDir); err != nil {
+		return "", &errors.CloneError{URL: arg, Err: err}
+	}
+
+	repoName, err := git.ExtractRepoName(arg)
+	if err != nil {
+		return "", fmt.Errorf("failed to determine repository name from %q: %w", arg, err)
+	}
+
+	dir := filepath.Join(cloneDir, repoName)
+	ctx.Log.Successf("Cloned to %s\n", dir)
+
+	return dir, nil
 }
 
 // shouldRunAfterInstall returns true if the --run flag was set (razd up --run).
