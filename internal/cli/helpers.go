@@ -132,25 +132,26 @@ func getProvisioner(rf *ast.Razdfile, dir string, log *output.Logger) (provision
 }
 
 // ensureTrusted checks the trust status of the project directory and prompts
-// the user to trust it if needed. Returns nil if the project is trusted.
+// the user to trust it interactively if needed. Returns nil if the project is trusted.
+// When --yes is passed, auto-trusts. When stdin is not a TTY and --yes is not set,
+// returns a TrustError requiring manual trust.
 func ensureTrusted(dir string, prov provisioner.Provisioner, log *output.Logger) error {
 	trusted, err := trust.EnsureTrusted(dir, log, flags.Yes)
 	if err != nil {
 		return err
 	}
 
-	if !trusted && !flags.Yes {
-		log.Infof("Run 'razd trust' to trust this project, or use --yes flag\n")
+	if !trusted {
+		if flags.Yes {
+			log.Debugf("[FIX] Auto-trusting project with --yes flag\n")
+			if err := trust.Trust(dir, prov, log); err != nil {
+				log.Warnf("Failed to trust project: %v\n", err)
+			}
+			return nil
+		}
 		return &errors.TrustError{
 			Path:    dir,
 			Message: "project not trusted",
-		}
-	}
-
-	if !trusted && flags.Yes {
-		log.Debugf("Auto-trusting project with --yes flag\n")
-		if err := trust.Trust(dir, prov, log); err != nil {
-			log.Warnf("Failed to trust project: %v\n", err)
 		}
 	}
 

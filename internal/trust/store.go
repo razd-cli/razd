@@ -150,7 +150,10 @@ func (s *Store) ListIgnored() []string {
 }
 
 // getStorePath returns the path to the trust store file.
-func getStorePath() (string, error) {
+// This is a variable for testability — tests can override it.
+var getStorePath = defaultStorePath
+
+func defaultStorePath() (string, error) {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		// Fallback to home directory

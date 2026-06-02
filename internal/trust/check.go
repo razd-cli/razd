@@ -30,8 +30,10 @@ func Check(path string) (*CheckResult, error) {
 	}, nil
 }
 
-// EnsureTrusted ensures a project is trusted, prompting if necessary.
-// If autoTrust is true, the project will be automatically trusted.
+// EnsureTrusted ensures a project is trusted, prompting interactively if necessary.
+// If autoTrust is true (--yes flag), the project will be automatically trusted.
+// If stdin is a TTY and autoTrust is false, an interactive prompt is shown.
+// If stdin is not a TTY (CI, pipe), the user must use --yes or razd trust.
 // Returns true if trusted (or auto-trusted), false if not trusted.
 func EnsureTrusted(path string, log *output.Logger, autoTrust bool) (bool, error) {
 	result, err := Check(path)
@@ -47,16 +49,29 @@ func EnsureTrusted(path string, log *output.Logger, autoTrust bool) (bool, error
 		return false, nil
 	case StatusUnknown:
 		if autoTrust {
-			// Auto-trust when --yes flag is passed
+			log.Debugf("[FIX] EnsureTrusted: auto-trusting project, path=%s\n", path)
 			return true, nil
 		}
-		// Prompt user (or just inform them)
-		log.Warnf("Project not trusted: %s\n", path)
-		log.Infof("Run 'razd trust' to trust this project\n")
-		return false, nil
+		log.Debugf("[FIX] EnsureTrusted: status=unknown, prompting user, path=%s\n", path)
+		promptResult, err := PromptTrust(path, log)
+		if err != nil {
+			return false, fmt.Errorf("trust prompt failed: %w", err)
+		}
+		switch promptResult {
+		case PromptTrusted:
+			return true, nil
+		case PromptDeclined:
+			log.Infof("Project not trusted: %s\n", path)
+			return false, nil
+		case PromptNonInteractive:
+			log.Warnf("Project not trusted: %s\n", path)
+			log.Infof("Run 'razd trust' to trust this project, or use --yes flag\n")
+			return false, nil
+		}
 	default:
 		return false, fmt.Errorf("unknown trust status: %s", result.Status)
 	}
+	return false, nil
 }
 
 // Trust adds a project to the trusted list and syncs with provisioner if needed.
