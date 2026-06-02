@@ -39,7 +39,7 @@ func TestEnsureTrusted_StatusTrusted(t *testing.T) {
 	log := output.NewLogger(io.Discard, io.Discard)
 
 	store := &Store{
-		Trusted: []string{"/tmp/test-trusted-project"},
+		Trusted: []string{},
 		Ignored: []string{},
 		path:    t.TempDir() + "/trust.json",
 	}
@@ -47,12 +47,17 @@ func TestEnsureTrusted_StatusTrusted(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Override store path for test
 	origGetStorePath := getStorePath
 	getStorePath = func() (string, error) { return store.path, nil }
 	defer func() { getStorePath = origGetStorePath }()
 
-	trusted, err := EnsureTrusted("/tmp/test-trusted-project", log, false)
+	testPath := t.TempDir()
+	store.AddTrusted(testPath)
+	if err := store.Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	trusted, err := EnsureTrusted(testPath, log, false)
 	if err != nil {
 		t.Fatalf("EnsureTrusted() error = %v", err)
 	}
@@ -64,7 +69,6 @@ func TestEnsureTrusted_StatusTrusted(t *testing.T) {
 func TestEnsureTrusted_AutoTrust(t *testing.T) {
 	log := output.NewLogger(io.Discard, io.Discard)
 
-	// Create empty trust store (project is unknown)
 	store := &Store{
 		Trusted: []string{},
 		Ignored: []string{},
@@ -78,7 +82,9 @@ func TestEnsureTrusted_AutoTrust(t *testing.T) {
 	getStorePath = func() (string, error) { return store.path, nil }
 	defer func() { getStorePath = origGetStorePath }()
 
-	trusted, err := EnsureTrusted("/tmp/test-autotrust-project", log, true)
+	testPath := t.TempDir()
+
+	trusted, err := EnsureTrusted(testPath, log, true)
 	if err != nil {
 		t.Fatalf("EnsureTrusted() error = %v", err)
 	}
