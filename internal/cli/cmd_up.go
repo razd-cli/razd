@@ -22,9 +22,16 @@ func runUp(ctx *Context) error {
 		return err
 	}
 
-	rf, err := readRazdfile(dir, ctx.Log)
+	cloned := len(ctx.Args) > 0 && git.IsURL(ctx.Args[0])
+
+	var rf *ast.Razdfile
+
+	if cloned {
+		rf, err = readRazdfileWithRetry(dir, ctx.Log)
+	} else {
+		rf, err = readRazdfile(dir, ctx.Log)
+	}
 	if err != nil {
-		ctx.Log.Debugf("[up] resolveUpDir returned dir=%s, err=%v\n", dir, err)
 		return err
 	}
 

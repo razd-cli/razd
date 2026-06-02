@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/razd-cli/razd/internal/errors"
 	"github.com/razd-cli/razd/internal/flags"
@@ -39,22 +40,50 @@ func readRazdfile(dir string, log *output.Logger) (*ast.Razdfile, error) {
 
 	rf, err := reader.Read()
 	if err != nil {
-		entries, readErr := os.ReadDir(dir)
-		if readErr == nil && len(entries) > 0 {
-			log.Debugf("Directory %s contains %d entries:\n", dir, len(entries))
-			for _, e := range entries {
-				log.Debugf("  - %s (isDir=%v)\n", e.Name(), e.IsDir())
-			}
-		} else if readErr != nil {
-			log.Debugf("Could not read directory %s: %v\n", dir, readErr)
-		} else {
-			log.Debugf("Directory %s is empty\n", dir)
-		}
+		logRazdfileDirContents(dir, log)
 		return nil, &errors.NoRazdfileError{Dir: dir}
 	}
 
 	log.Debugf("Found Razdfile: %s\n", rf.Location)
 	return rf, nil
+}
+
+// readRazdfileWithRetry tries to read a Razdfile with retries after cloning.
+// On some OS/filesystem combinations (especially Windows NTFS), newly created
+// files from git clone may not be immediately visible. This function retries
+// up to 3 times with a short delay.
+func readRazdfileWithRetry(dir string, log *output.Logger) (*ast.Razdfile, error) {
+	const maxAttempts = 3
+	const retryDelay = 200 * time.Millisecond
+
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		rf, err := readRazdfile(dir, log)
+		if err == nil {
+			return rf, nil
+		}
+
+		if attempt < maxAttempts {
+			log.Debugf("[FIX] Razdfile not found in %s (attempt %d/%d), retrying...\n", dir, attempt, maxAttempts)
+			time.Sleep(retryDelay)
+		}
+	}
+
+	return nil, &errors.NoRazdfileError{Dir: dir}
+}
+
+// logRazdfileDirContents logs directory contents when Razdfile is not found.
+func logRazdfileDirContents(dir string, log *output.Logger) {
+	entries, readErr := os.ReadDir(dir)
+	if readErr == nil && len(entries) > 0 {
+		log.Debugf("Directory %s contains %d entries:\n", dir, len(entries))
+		for _, e := range entries {
+			log.Debugf("  - %s (isDir=%v)\n", e.Name(), e.IsDir())
+		}
+	} else if readErr != nil {
+		log.Debugf("Could not read directory %s: %v\n", dir, readErr)
+	} else {
+		log.Debugf("Directory %s is empty\n", dir)
+	}
 }
 
 // needsProvisioner returns true if the Razdfile declares a provisioner

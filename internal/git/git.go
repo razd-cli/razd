@@ -2,6 +2,7 @@ package git
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -13,15 +14,14 @@ var (
 		return err == nil
 	}
 	CloneFunc = func(url string, dir string) error {
-		cmd := exec.Command("git", "clone", url)
+		cmd := exec.Command("git", "clone", "--progress", url)
 		cmd.Dir = dir
-		cmd.Stdout = nil
-		cmd.Stderr = nil
-		cmd.Stdin = nil
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
 
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("git clone failed: %s", string(output))
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("git clone failed: %w", err)
 		}
 
 		return nil
