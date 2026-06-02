@@ -48,9 +48,9 @@ func trustProject(ctx *Context, dir string) error {
 	provResolved := false
 
 	rf, err := readRazdfile(dir, ctx.Log)
-	if err == nil {
-		p, err := getProvisioner(rf, dir, ctx.Log)
-		if err == nil {
+	if err == nil && needsProvisioner(rf) {
+		p, ok := tryGetProvisioner(rf, dir, ctx.Log)
+		if ok {
 			prov = p
 			provResolved = true
 		}
@@ -81,9 +81,9 @@ func untrustProject(ctx *Context, dir string) error {
 	provResolved := false
 
 	rf, err := readRazdfile(dir, ctx.Log)
-	if err == nil {
-		p, err := getProvisioner(rf, dir, ctx.Log)
-		if err == nil {
+	if err == nil && needsProvisioner(rf) {
+		p, ok := tryGetProvisioner(rf, dir, ctx.Log)
+		if ok {
 			prov = p
 			provResolved = true
 		}

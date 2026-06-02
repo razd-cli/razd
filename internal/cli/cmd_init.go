@@ -55,12 +55,19 @@ func runInit(ctx *Context) error {
 
 // detectProvider detects the appropriate provider based on existing config files.
 func detectProvider(dir string) string {
-	miseToml := filepath.Join(dir, "mise.toml")
-	devboxJSON := filepath.Join(dir, "devbox.json")
-
-	if _, err := os.Stat(miseToml); err == nil {
-		return "mise"
+	miseConfigs := []string{
+		"mise.toml",
+		".mise.toml",
+		".mise.local.toml",
+		".tool-versions",
 	}
+	for _, f := range miseConfigs {
+		if _, err := os.Stat(filepath.Join(dir, f)); err == nil {
+			return "mise"
+		}
+	}
+
+	devboxJSON := filepath.Join(dir, "devbox.json")
 	if _, err := os.Stat(devboxJSON); err == nil {
 		return "devbox"
 	}

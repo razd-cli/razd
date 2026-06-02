@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 
@@ -23,7 +24,12 @@ func runShell(ctx *Context) error {
 
 	prov, err := getProvisioner(rf, dir, ctx.Log)
 	if err != nil {
-		return err
+		if !needsProvisioner(rf) {
+			ctx.Log.Infof("No provisioner configured, starting system shell\n")
+			return runFallbackShell(ctx)
+		}
+		provName := provisionerName(rf)
+		return fmt.Errorf("provisioner %q is not installed — install it to use 'razd shell', or use 'razd run' to execute tasks without provisioning", provName)
 	}
 
 	if err := ensureTrusted(dir, prov, ctx.Log); err != nil {

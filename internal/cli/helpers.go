@@ -46,22 +46,69 @@ func readRazdfile(dir string, log *output.Logger) (*ast.Razdfile, error) {
 	return rf, nil
 }
 
+// needsProvisioner returns true if the Razdfile declares a provisioner
+// (dependencies, mise, or devbox section).
+func needsProvisioner(rf *ast.Razdfile) bool {
+	return rf.HasDependencies() || rf.HasMise() || rf.HasDevbox()
+}
+
+// provisionerName returns the provisioner name declared in the Razdfile,
+// or an empty string if none is configured.
+func provisionerName(rf *ast.Razdfile) string {
+	switch {
+	case rf.HasDependencies():
+		return rf.Dependencies.Using
+	case rf.HasMise():
+		return "mise"
+	case rf.HasDevbox():
+		return "devbox"
+	default:
+		return ""
+	}
+}
+
+// tryGetProvisioner attempts to resolve and return a provisioner from the
+// Razdfile. Returns (provisioner, true) on success, or (nil, false) if the
+// provisioner is not configured or not available on the system.
+// This is the lazy approach: missing provisioner binaries are not fatal.
+func tryGetProvisioner(rf *ast.Razdfile, dir string, log *output.Logger) (provisioner.Provisioner, bool) {
+	provName := provisionerName(rf)
+	if provName == "" {
+		log.Debugf("No provisioner configured in Razdfile\n")
+		return nil, false
+	}
+
+	log.Debugf("[FIX] Resolving provisioner: %s\n", provName)
+
+	provConfig := provisioner.Config{
+		Dir:     dir,
+		Verbose: flags.Verbose,
+		Silent:  flags.Silent,
+	}
+
+	prov, err := provisioner.Get(provName, provConfig)
+	if err != nil {
+		log.Debugf("[FIX] Provisioner %q not registered: %v\n", provName, err)
+		return nil, false
+	}
+
+	if !prov.IsAvailable() {
+		log.Warnf("[FIX] Provisioner %q is not installed, skipping provisioner setup\n", provName)
+		log.Infof("Install %s to enable environment provisioning, or remove the %s section from Razdfile\n", provName, provName)
+		return nil, false
+	}
+
+	log.Debugf("[FIX] Provisioner %q is available\n", provName)
+	return prov, true
+}
+
 // getProvisioner determines the provisioner from the Razdfile and returns it.
 // Returns an error if the Razdfile has no provisioner configured,
 // or if the provisioner binary is not installed.
+// This is the strict variant used by commands that require a provisioner (up, shell).
 func getProvisioner(rf *ast.Razdfile, dir string, log *output.Logger) (provisioner.Provisioner, error) {
-	var provName string
-	switch {
-	case rf.HasDependencies():
-		provName = rf.Dependencies.Using
-		log.Debugf("Using provisioner from dependencies: %s\n", provName)
-	case rf.HasMise():
-		provName = "mise"
-		log.Debugf("Using mise provisioner from razdfile.mise section\n")
-	case rf.HasDevbox():
-		provName = "devbox"
-		log.Debugf("Using devbox provisioner from razdfile.devbox section\n")
-	default:
+	provName := provisionerName(rf)
+	if provName == "" {
 		return nil, fmt.Errorf("no dependencies or provisioner configured in Razdfile")
 	}
 

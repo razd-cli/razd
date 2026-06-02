@@ -43,11 +43,9 @@ func runRun(ctx *Context) error {
 	var prov provisioner.Provisioner
 	provResolved := false
 
-	if rf.HasDependencies() || rf.HasMise() || rf.HasDevbox() {
-		p, err := getProvisioner(rf, dir, ctx.Log)
-		if err != nil {
-			ctx.Log.Debugf("Provisioner resolution failed: %v, continuing without provisioner\n", err)
-		} else {
+	if needsProvisioner(rf) {
+		p, ok := tryGetProvisioner(rf, dir, ctx.Log)
+		if ok {
 			prov = p
 			provResolved = true
 

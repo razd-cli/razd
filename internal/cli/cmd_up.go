@@ -24,9 +24,14 @@ func runUp(ctx *Context) error {
 		return err
 	}
 
-	prov, err := getProvisioner(rf, dir, ctx.Log)
-	if err != nil {
-		return err
+	if !needsProvisioner(rf) {
+		return fmt.Errorf("no provisioner configured in Razdfile — add a dependencies, mise, or devbox section")
+	}
+
+	prov, ok := tryGetProvisioner(rf, dir, ctx.Log)
+	if !ok {
+		provName := provisionerName(rf)
+		return fmt.Errorf("provisioner %q is not installed — install it or run 'razd run' to execute tasks without provisioning", provName)
 	}
 
 	if err := ensureTrusted(dir, prov, ctx.Log); err != nil {
