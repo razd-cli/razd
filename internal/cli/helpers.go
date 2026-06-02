@@ -30,6 +30,7 @@ func resolveDir(ctx *Context) (string, error) {
 }
 
 // readRazdfile finds and parses the Razdfile in the given directory.
+// Returns distinct errors for "not found" vs "found but invalid".
 func readRazdfile(dir string, log *output.Logger) (*ast.Razdfile, error) {
 	log.Debugf("Searching for Razdfile in: %s\n", dir)
 
@@ -40,8 +41,14 @@ func readRazdfile(dir string, log *output.Logger) (*ast.Razdfile, error) {
 
 	rf, err := reader.Read()
 	if err != nil {
+		log.Debugf("readRazdfile: error for dir=%s: %v\n", dir, err)
 		logRazdfileDirContents(dir, log)
-		return nil, &errors.NoRazdfileError{Dir: dir}
+
+		if err == razdfile.ErrNotFound {
+			return nil, &errors.NoRazdfileError{Dir: dir}
+		}
+
+		return nil, fmt.Errorf("Razdfile error in %s: %w", dir, err)
 	}
 
 	log.Debugf("Found Razdfile: %s\n", rf.Location)
