@@ -106,7 +106,7 @@ jobs:
           name: razd-linux-amd64
           path: .
       - run: chmod +x razd
-      - uses: jetify-com/devbox-install-action@v0.1.0
+      - uses: jetify-com/devbox-install-action@v0.12.0
       - name: razd list
         run: ./razd list -d examples/nodejs-devbox
       - name: razd run default
@@ -125,7 +125,7 @@ jobs:
           name: razd-linux-amd64
           path: .
       - run: chmod +x razd
-      - uses: jetify-com/devbox-install-action@v0.1.0
+      - uses: jetify-com/devbox-install-action@v0.12.0
       - name: razd list
         run: ./razd list -d examples/unified-dependencies
       - name: razd run default
