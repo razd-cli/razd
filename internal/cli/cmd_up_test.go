@@ -2,6 +2,7 @@ package cli
 
 import (
 	"errors"
+	"path/filepath"
 	"testing"
 
 	apperrors "github.com/razd-cli/razd/internal/errors"
@@ -162,8 +163,9 @@ func TestResolveUpDir_CloneSuccessWithDir(t *testing.T) {
 		t.Fatalf("resolveUpDir should not error, got: %v", err)
 	}
 
-	if dir != "/tmp/testdir/my-repo" {
-		t.Errorf("resolveUpDir = %q, want /tmp/testdir/my-repo", dir)
+	expected := filepath.Join("/tmp/testdir", "my-repo")
+	if dir != expected {
+		t.Errorf("resolveUpDir = %q, want %q", dir, expected)
 	}
 }
 
