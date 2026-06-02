@@ -49,6 +49,8 @@ jobs:
           name: razd-windows-amd64
           path: razd.exe
 
+  # ── mise examples: nodejs-project ──────────────────────────────
+
   e2e-mise-linux:
     needs: build-linux
     runs-on: ubuntu-latest
@@ -59,18 +61,17 @@ jobs:
           name: razd-linux-amd64
           path: .
       - run: chmod +x razd
-      - name: Install mise
-        run: |
-          curl -fsSL https://mise.run | sh
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - uses: jdx/mise-action@v2
+        with:
+          install_args: "--yes"
       - name: Trust mise config
         run: mise trust examples/nodejs-project/mise.toml || true
-      - name: razd list (mise)
+      - name: razd list
         run: ./razd list -d examples/nodejs-project
-      - name: razd list --json (mise)
+      - name: razd list --json
         run: ./razd list --json -d examples/nodejs-project
-      - name: razd run dev (mise, --no-install)
-        run: ./razd run dev -d examples/nodejs-project -y --no-install
+      - name: razd run dev
+        run: ./razd run dev -d examples/nodejs-project -y
 
   e2e-mise-macos:
     needs: build-macos
@@ -82,16 +83,17 @@ jobs:
           name: razd-macos-amd64
           path: .
       - run: chmod +x razd
-      - name: Install mise
-        run: |
-          curl -fsSL https://mise.run | sh
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - uses: jdx/mise-action@v2
+        with:
+          install_args: "--yes"
       - name: Trust mise config
         run: mise trust examples/nodejs-project/mise.toml || true
-      - name: razd list (mise)
+      - name: razd list
         run: ./razd list -d examples/nodejs-project
-      - name: razd run dev (mise, --no-install)
-        run: ./razd run dev -d examples/nodejs-project -y --no-install
+      - name: razd run dev
+        run: ./razd run dev -d examples/nodejs-project -y
+
+  # ── devbox examples: nodejs-devbox ─────────────────────────────
 
   e2e-devbox-linux:
     needs: build-linux
@@ -104,14 +106,13 @@ jobs:
           name: razd-linux-amd64
           path: .
       - run: chmod +x razd
-      - name: Install devbox
-        run: |
-          curl -fsSL https://get.jetify.com/devbox | bash
-          echo "$HOME/.devbox/bin" >> $GITHUB_PATH
-      - name: razd list (devbox)
+      - uses: jetify-com/devbox-install-action@v0.1.0
+      - name: razd list
         run: ./razd list -d examples/nodejs-devbox
-      - name: razd run default (devbox)
+      - name: razd run default
         run: ./razd run default -d examples/nodejs-devbox -y
+
+  # ── devbox examples: unified-dependencies ───────────────────────
 
   e2e-unified-linux:
     needs: build-linux
@@ -124,14 +125,13 @@ jobs:
           name: razd-linux-amd64
           path: .
       - run: chmod +x razd
-      - name: Install devbox
-        run: |
-          curl -fsSL https://get.jetify.com/devbox | bash
-          echo "$HOME/.devbox/bin" >> $GITHUB_PATH
-      - name: razd list (unified-dependencies)
+      - uses: jetify-com/devbox-install-action@v0.1.0
+      - name: razd list
         run: ./razd list -d examples/unified-dependencies
-      - name: razd run default (unified-dependencies)
+      - name: razd run default
         run: ./razd run default -d examples/unified-dependencies -y
+
+  # ── Windows (mise only, experimental) ──────────────────────────
 
   e2e-windows:
     needs: build-windows
@@ -143,11 +143,9 @@ jobs:
         with:
           name: razd-windows-amd64
           path: .
-      - name: Install mise
-        run: |
-          irm https://mise.run | iex
-          echo "$env:USERPROFILE\.local\bin" | Out-File -Append $env:GITHUB_PATH
-        shell: pwsh
+      - uses: jdx/mise-action@v2
+        with:
+          install_args: "--yes"
       - name: razd list (mise)
         run: .\razd.exe list -d examples\nodejs-project
         shell: pwsh
