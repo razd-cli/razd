@@ -49,6 +49,58 @@ jobs:
           name: razd-windows-amd64
           path: razd.exe
 
+  # ── CLI smoke tests ───────────────────────────────────────────────
+
+  e2e-cli-linux:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: razd-linux-amd64
+          path: .
+      - run: chmod +x razd
+      - name: razd --version
+        run: ./razd --version
+      - name: razd -V
+        run: ./razd -V
+      - name: razd --help
+        run: ./razd --help
+
+  e2e-cli-macos:
+    needs: build-macos
+    runs-on: macos-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: razd-macos-amd64
+          path: .
+      - run: chmod +x razd
+      - name: razd --version
+        run: ./razd --version
+      - name: razd -V
+        run: ./razd -V
+      - name: razd --help
+        run: ./razd --help
+
+  e2e-cli-windows:
+    needs: build-windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: razd-windows-amd64
+          path: .
+      - name: razd --version
+        run: .\razd.exe --version
+        shell: pwsh
+      - name: razd -V
+        run: .\razd.exe -V
+        shell: pwsh
+      - name: razd --help
+        run: .\razd.exe --help
+        shell: pwsh
+
   # ── mise examples: nodejs-project ──────────────────────────────
 
   e2e-mise-linux:

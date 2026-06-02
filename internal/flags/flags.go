@@ -61,6 +61,7 @@ var (
 func Init() {
 	// Global flags
 	pflag.BoolVar(&Version, "version", false, "Show razd version")
+	pflag.BoolVarP(&Version, "V", "V", false, "Show razd version")
 	pflag.BoolVarP(&Help, "help", "h", false, "Show help")
 	pflag.BoolVarP(&Verbose, "verbose", "v", false, "Enable verbose output")
 	pflag.BoolVarP(&Silent, "silent", "s", false, "Disable output")
