@@ -49,6 +49,10 @@ func runUp(ctx *Context) error {
 		return err
 	}
 
+	if err := generateProvisionerConfig(rf, prov, ctx.Log); err != nil {
+		ctx.Log.Warnf("Failed to generate provisioner config: %v\n", err)
+	}
+
 	ctx.Log.Infof("Installing tools via %s...\n", prov.Name())
 	bgCtx := context.Background()
 	if err := prov.Install(bgCtx); err != nil {

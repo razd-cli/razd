@@ -2,8 +2,12 @@ package provisioner
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"sort"
 
 	"github.com/razd-cli/razd/razdfile/ast"
 )
@@ -25,13 +29,42 @@ func (d *DevboxProvisioner) Name() string {
 }
 
 func (d *DevboxProvisioner) GenerateConfig(packages []ast.ParsedDependency, extra map[string]any) error {
-	// For devbox, we rely on the existing devbox.json or generate one.
-	// In the current implementation, devbox reads packages from devbox.json
-	// which can be synced from Razdfile.
-	//
-	// TODO: Implement config generation when sync feature is needed.
-	// For now, devbox.json is expected to exist or be created manually.
-	return nil
+	devboxPath := filepath.Join(d.Config.Dir, "devbox.json")
+
+	config := make(map[string]any)
+
+	pkgList := make([]string, 0, len(packages))
+	for _, pkg := range packages {
+		pkgList = append(pkgList, pkg.Raw)
+	}
+	sort.Strings(pkgList)
+
+	if len(pkgList) > 0 {
+		config["packages"] = pkgList
+	}
+
+	if extra != nil {
+		for k, v := range extra {
+			config[k] = v
+		}
+	}
+
+	content, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal devbox.json: %w", err)
+	}
+
+	contentStr := string(content) + "\n"
+
+	if existing, err := os.ReadFile(devboxPath); err == nil && string(existing) == contentStr {
+		return nil
+	}
+
+	if d.Config.Verbose {
+		fmt.Fprintf(os.Stderr, "[FIX] Writing devbox.json to %s\n", devboxPath)
+	}
+
+	return os.WriteFile(devboxPath, []byte(contentStr), 0644)
 }
 
 func (d *DevboxProvisioner) Install(ctx context.Context) error {
@@ -57,13 +90,10 @@ func (d *DevboxProvisioner) Shell(ctx context.Context) error {
 }
 
 func (d *DevboxProvisioner) Trust(ctx context.Context) error {
-	// devbox doesn't have a trust command like mise
-	// Trust is handled at the razd level only
 	return nil
 }
 
 func (d *DevboxProvisioner) Untrust(ctx context.Context) error {
-	// devbox doesn't have an untrust command
 	return nil
 }
 

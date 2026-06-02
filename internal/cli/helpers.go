@@ -178,7 +178,30 @@ func getProvisioner(rf *ast.Razdfile, dir string, log *output.Logger) (provision
 	return prov, nil
 }
 
-// ensureTrusted checks the trust status of the project directory and prompts
+// generateProvisionerConfig generates the native config file (mise.toml or devbox.json)
+// from the dependencies section of the Razdfile. Skips if using top-level mise/devbox sections
+// since those already define their own config.
+func generateProvisionerConfig(rf *ast.Razdfile, prov provisioner.Provisioner, log *output.Logger) error {
+	if !rf.HasDependencies() {
+		log.Debugf("[FIX] No dependencies section, skipping config generation\n")
+		return nil
+	}
+
+	packages, err := rf.Dependencies.ParseEnsure()
+	if err != nil {
+		return fmt.Errorf("failed to parse dependencies: %w", err)
+	}
+
+	extra := rf.Dependencies.GetProviderExtra()
+
+	log.Debugf("[FIX] Generating %s config with %d packages\n", prov.Name(), len(packages))
+	if err := prov.GenerateConfig(packages, extra); err != nil {
+		return fmt.Errorf("failed to generate %s config: %w", prov.Name(), err)
+	}
+
+	log.Debugf("[FIX] Config generated for %s\n", prov.Name())
+	return nil
+}
 // the user to trust it interactively if needed. Returns nil if the project is trusted.
 // Trust decisions are persisted — the user is only prompted once per project.
 func ensureTrusted(dir string, prov provisioner.Provisioner, log *output.Logger) error {
