@@ -1,19 +1,18 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 
 	"github.com/razd-cli/razd/internal/errors"
+	"github.com/razd-cli/razd/internal/flags"
 	"github.com/razd-cli/razd/internal/output"
 	"github.com/razd-cli/razd/provisioner"
 	"github.com/razd-cli/razd/razdfile/ast"
 )
 
-// runRun implements the "razd run" and "razd <task>" commands.
-// It reads a Razdfile, resolves the provisioner, checks trust,
-// and executes the specified task(s).
 func runRun(ctx *Context) error {
 	dir, err := resolveDir(ctx)
 	if err != nil {
@@ -45,10 +44,20 @@ func runRun(ctx *Context) error {
 			if err := ensureTrusted(dir, prov, ctx.Log); err != nil {
 				return err
 			}
+
+			if !flags.NoInstall {
+				ctx.Log.Infof("Installing dependencies via %s...\n", prov.Name())
+				installCtx := context.Background()
+				if err := prov.Install(installCtx); err != nil {
+					ctx.Log.Warnf("Dependency installation failed: %v\n", err)
+					ctx.Log.Infof("Continuing anyway — tasks may fail if dependencies are missing\n")
+				} else {
+					ctx.Log.Successf("Dependencies installed\n")
+				}
+			}
 		}
 	}
 
-	// Determine which task(s) to run
 	taskNames := ctx.Args
 	if len(taskNames) == 0 {
 		taskNames = []string{"default"}

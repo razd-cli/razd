@@ -50,6 +50,9 @@ var (
 	All     bool
 	Ignore  bool
 
+	// NoInstall skips automatic dependency installation before running tasks
+	NoInstall bool
+
 	// Output format
 	JSON bool
 )
@@ -85,6 +88,9 @@ func Init() {
 
 	// Output format
 	pflag.BoolVar(&JSON, "json", false, "Output in JSON format")
+
+	// Install control
+	pflag.BoolVar(&NoInstall, "no-install", false, "Skip automatic dependency installation before running tasks")
 }
 
 // Validate checks for mutually exclusive flags.
