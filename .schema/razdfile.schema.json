@@ -796,6 +796,39 @@
       },
       "additionalProperties": false
     },
+    "dependencies": {
+      "type": "object",
+      "description": "Unified dependency management block",
+      "properties": {
+        "using": {
+          "type": "string",
+          "description": "Which tool manager to use (mise, devbox, etc.)",
+          "enum": ["mise", "devbox"]
+        },
+        "ensure": {
+          "type": "array",
+          "description": "List of tool version specifications to install",
+          "items": {
+            "type": "string"
+          }
+        },
+        "extra": {
+          "type": "object",
+          "description": "Extra configuration for the tool manager",
+          "patternProperties": {
+            ".*": {
+              "oneOf": [
+                { "$ref": "#/definitions/mise_config" },
+                { "$ref": "#/definitions/devbox_config" },
+                { "type": "object" }
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": ["using"]
+    },
     "requires_obj": {
       "type": "object",
       "properties": {
@@ -834,14 +867,6 @@
           "enum": [1]
         }
       ]
-    },
-    "mise": {
-      "$ref": "#/definitions/mise_config",
-      "description": "Mise configuration for tool management (YAML format equivalent of mise.toml)"
-    },
-    "devbox": {
-      "$ref": "#/definitions/devbox_config",
-      "description": "Devbox configuration for Nix-based development environments (YAML format equivalent of devbox.json)"
     },
     "output": {
       "description": "Defines how the STDOUT and STDERR are printed when running tasks in parallel.",
@@ -920,13 +945,17 @@
       "description": "Sets a different watch interval when using `--watch`.",
       "type": "string",
       "pattern": "^[0-9]+(?:m|s|ms)$"
+    },
+    "dependencies": {
+      "$ref": "#/definitions/dependencies",
+      "description": "Unified dependency management — ensure tools are installed and configure tool manager."
     }
   },
   "required": ["version"],
   "anyOf": [
     { "required": ["tasks"] },
     { "required": ["includes"] },
-    { "required": ["mise"] }
+    { "required": ["dependencies"] }
   ],
   "additionalProperties": false
 }
