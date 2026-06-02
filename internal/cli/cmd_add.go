@@ -2,10 +2,8 @@ package cli
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
-	"go.yaml.in/yaml/v4"
 	"github.com/razd-cli/razd/razdfile"
 	"github.com/razd-cli/razd/razdfile/ast"
 )
@@ -60,16 +58,10 @@ func runAdd(ctx *Context) error {
 		return nil
 	}
 
-	// Write back the updated Razdfile
-	data, err := yaml.Marshal(rf)
-	if err != nil {
-		return fmt.Errorf("failed to marshal Razdfile: %w", err)
-	}
-
-	// Write back the updated Razdfile using the same path it was read from
 	targetPath := filepath.Join(dir, "Razdfile.yml")
-	if err := os.WriteFile(targetPath, data, 0644); err != nil {
-		return fmt.Errorf("failed to write Razdfile: %w", err)
+	_, err = razdfile.UpdateEnsureInFile(targetPath, rf.Dependencies.Ensure)
+	if err != nil {
+		return fmt.Errorf("failed to update Razdfile: %w", err)
 	}
 
 	ctx.Log.Successf("Added %d dependencies to %s\n", len(added), targetPath)

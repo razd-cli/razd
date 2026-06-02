@@ -13,8 +13,6 @@ import (
 	"github.com/razd-cli/razd/provisioner"
 	"github.com/razd-cli/razd/razdfile"
 	"github.com/razd-cli/razd/razdfile/ast"
-
-	"go.yaml.in/yaml/v4"
 )
 
 // resolveDir returns the working directory from the context or falls back to
@@ -264,14 +262,23 @@ func syncConfig(rf *ast.Razdfile, prov provisioner.Provisioner, dir string, log 
 		}
 
 		targetPath := filepath.Join(dir, "Razdfile.yml")
-		data, mErr := yaml.Marshal(rf)
-		if mErr != nil {
-			return fmt.Errorf("failed to marshal updated Razdfile: %w", mErr)
+		if _, existsErr := os.Stat(targetPath); existsErr != nil {
+			for _, name := range razdfile.DefaultRazdfiles {
+				candidate := filepath.Join(dir, name)
+				if _, statErr := os.Stat(candidate); statErr == nil {
+					targetPath = candidate
+					break
+				}
+			}
 		}
-		if wErr := os.WriteFile(targetPath, data, 0644); wErr != nil {
-			return fmt.Errorf("failed to write updated Razdfile: %w", wErr)
+
+		didWrite, writeErr := razdfile.UpdateEnsureInFile(targetPath, rf.Dependencies.Ensure)
+		if writeErr != nil {
+			return fmt.Errorf("failed to update Razdfile: %w", writeErr)
 		}
-		log.Successf("Razdfile synchronized with %s config\n", prov.Name())
+		if didWrite {
+			log.Successf("Razdfile synchronized with %s config\n", prov.Name())
+		}
 	}
 
 	return nil
