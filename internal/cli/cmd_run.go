@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 
 	"github.com/razd-cli/razd/internal/errors"
 	"github.com/razd-cli/razd/internal/flags"
@@ -12,6 +13,15 @@ import (
 	"github.com/razd-cli/razd/provisioner"
 	"github.com/razd-cli/razd/razdfile/ast"
 )
+
+// shellCmd returns the appropriate shell command prefix for the current OS.
+// On Windows it returns ["cmd", "/c"], on Unix ["sh", "-c"].
+func shellCmd() []string {
+	if runtime.GOOS == "windows" {
+		return []string{"cmd", "/c"}
+	}
+	return []string{"sh", "-c"}
+}
 
 func runRun(ctx *Context) error {
 	dir, err := resolveDir(ctx)
@@ -94,10 +104,11 @@ func executeTask(ctx *Context, rf *ast.Razdfile, prov provisioner.Provisioner, p
 	for _, cmd := range task.Cmds {
 		if cmd.Cmd != "" {
 			var cmdArgs []string
+			shellPrefix := shellCmd()
 			if provResolved {
-				cmdArgs = prov.RunCommand([]string{"sh", "-c", cmd.Cmd})
+				cmdArgs = prov.RunCommand(append(shellPrefix, cmd.Cmd))
 			} else {
-				cmdArgs = []string{"sh", "-c", cmd.Cmd}
+				cmdArgs = append(shellPrefix, cmd.Cmd)
 			}
 			ctx.Log.Debugf("Running: %v\n", cmdArgs)
 			if err := runCommand(cmdArgs, dir, ctx.Log); err != nil {

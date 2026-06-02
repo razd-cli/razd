@@ -70,7 +70,7 @@ func runDefaultTask(ctx *Context, rf *ast.Razdfile, prov provisioner.Provisioner
 
 	for _, cmd := range defaultTask.Cmds {
 		if cmd.Cmd != "" {
-			wrappedCmd := prov.RunCommand([]string{"sh", "-c", cmd.Cmd})
+			wrappedCmd := prov.RunCommand(append(shellCmd(), cmd.Cmd))
 			ctx.Log.Debugf("Running: %v\n", wrappedCmd)
 			if err := executeCommand(wrappedCmd, dir, ctx.Log); err != nil {
 				return err
@@ -104,7 +104,7 @@ func runTask(ctx *Context, rf *ast.Razdfile, prov provisioner.Provisioner, dir s
 
 	for _, cmd := range task.Cmds {
 		if cmd.Cmd != "" {
-			wrappedCmd := prov.RunCommand([]string{"sh", "-c", cmd.Cmd})
+			wrappedCmd := prov.RunCommand(append(shellCmd(), cmd.Cmd))
 			ctx.Log.Debugf("Running: %v\n", wrappedCmd)
 			if err := executeCommand(wrappedCmd, dir, ctx.Log); err != nil {
 				return err
