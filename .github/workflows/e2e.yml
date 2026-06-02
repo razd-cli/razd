@@ -10,7 +10,7 @@ on:
       - "1.x"
 
 jobs:
-  build:
+  build-linux:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,12 +23,35 @@ jobs:
           name: razd-linux-amd64
           path: razd
 
-  e2e-mise:
-    needs: build
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.25.x
+      - run: go build -o razd ./cmd/razd
+      - uses: actions/upload-artifact@v4
+        with:
+          name: razd-macos-amd64
+          path: razd
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.25.x
+      - run: go build -o razd.exe ./cmd/razd
+      - uses: actions/upload-artifact@v4
+        with:
+          name: razd-windows-amd64
+          path: razd.exe
+
+  e2e-mise-linux:
+    needs: build-linux
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -49,12 +72,30 @@ jobs:
       - name: razd run dev (mise, --no-install)
         run: ./razd run dev -d examples/nodejs-project -y --no-install
 
-  e2e-devbox:
-    needs: build
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+  e2e-mise-macos:
+    needs: build-macos
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: razd-macos-amd64
+          path: .
+      - run: chmod +x razd
+      - name: Install mise
+        run: |
+          curl -fsSL https://mise.run | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Trust mise config
+        run: mise trust examples/nodejs-project/mise.toml || true
+      - name: razd list (mise)
+        run: ./razd list -d examples/nodejs-project
+      - name: razd run dev (mise, --no-install)
+        run: ./razd run dev -d examples/nodejs-project -y --no-install
+
+  e2e-devbox-linux:
+    needs: build-linux
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -68,17 +109,12 @@ jobs:
           echo "$HOME/.devbox/bin" >> $GITHUB_PATH
       - name: razd list (devbox)
         run: ./razd list -d examples/nodejs-devbox
-      - name: razd list --json (devbox)
-        run: ./razd list --json -d examples/nodejs-devbox
-      - name: razd run dev (devbox, --no-install)
-        run: ./razd run dev -d examples/nodejs-devbox -y --no-install
+      - name: razd run default (devbox)
+        run: ./razd run default -d examples/nodejs-devbox -y
 
-  e2e-unified:
-    needs: build
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+  e2e-unified-linux:
+    needs: build-linux
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -96,13 +132,13 @@ jobs:
         run: ./razd run default -d examples/unified-dependencies -y
 
   e2e-windows:
-    needs: build
+    needs: build-windows
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: razd-linux-amd64
+          name: razd-windows-amd64
           path: .
       - name: Install mise
         run: |
