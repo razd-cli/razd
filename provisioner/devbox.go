@@ -43,10 +43,8 @@ func (d *DevboxProvisioner) GenerateConfig(packages []ast.ParsedDependency, extr
 		config["packages"] = pkgList
 	}
 
-	if extra != nil {
-		for k, v := range extra {
-			config[k] = v
-		}
+	for k, v := range extra {
+		config[k] = v
 	}
 
 	content, err := json.MarshalIndent(config, "", "  ")
