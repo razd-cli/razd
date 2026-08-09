@@ -53,6 +53,15 @@ func runRun(ctx *Context) error {
 				return err
 			}
 
+			// Synchronize the Razdfile with the native config before installing,
+			// so tools added/edited in either file are reflected (mise.toml /
+			// devbox.json) for run/dev/build too.
+			if !flags.NoSync {
+				if err := syncRazdfile(rf, prov, dir, ctx.Log); err != nil {
+					ctx.Log.Warnf("Sync failed: %v\n", err)
+				}
+			}
+
 			if !flags.NoInstall {
 				ctx.Log.Infof("Installing dependencies via %s...\n", prov.Name())
 				installCtx := context.Background()
