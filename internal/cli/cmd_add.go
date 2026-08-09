@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/razd-cli/razd/internal/flags"
 	"github.com/razd-cli/razd/razdfile"
 	"github.com/razd-cli/razd/razdfile/ast"
 )
@@ -67,6 +68,16 @@ func runAdd(ctx *Context) error {
 	ctx.Log.Successf("Added %d dependencies to %s\n", len(added), targetPath)
 	for _, dep := range added {
 		ctx.Log.Infof("  + %s\n", dep)
+	}
+
+	// Synchronize the native config (mise.toml / devbox.json) with the updated
+	// Razdfile, preserving any sections not managed by razd.
+	if !flags.NoSync {
+		if prov, ok := tryGetProvisioner(rf, dir, ctx.Log); ok {
+			if err := syncRazdfile(rf, prov, dir, ctx.Log); err != nil {
+				ctx.Log.Warnf("Failed to sync %s config: %v\n", prov.Name(), err)
+			}
+		}
 	}
 
 	return nil

@@ -1,15 +1,13 @@
 package provisioner
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sort"
-	"strings"
 
+	toml "github.com/pelletier/go-toml/v2"
 	"github.com/razd-cli/razd/razdfile/ast"
 )
 
@@ -30,22 +28,56 @@ func (m *MiseProvisioner) Name() string {
 }
 
 func (m *MiseProvisioner) GenerateConfig(packages []ast.ParsedDependency, extra map[string]any) error {
+	tools := make(map[string]any, len(packages))
+	for _, pkg := range packages {
+		tools[pkg.Tool] = pkg.Version
+	}
+	return m.writeConfig(tools, extra)
+}
+
+func (m *MiseProvisioner) WriteTools(tools map[string]string) error {
+	// Merge into existing native tools; extra (env/settings/etc.) is untouched.
+	return m.writeConfig(toStringAny(tools), nil)
+}
+
+// writeConfig merges the given tools and extra sections into the existing
+// mise.toml, preserving any section or tool not declared in the inputs.
+func (m *MiseProvisioner) writeConfig(tools map[string]any, extra map[string]any) error {
 	misePath := filepath.Join(m.Config.Dir, "mise.toml")
 
-	var sb strings.Builder
-	sb.WriteString("[tools]\n")
-	for _, pkg := range packages {
-		sb.WriteString(fmt.Sprintf("%s = \"%s\"\n", pkg.Tool, pkg.Version))
+	// Parse the existing file so unknown sections survive the merge.
+	existing := make(map[string]any)
+	if data, err := os.ReadFile(misePath); err == nil {
+		if err := toml.Unmarshal(data, &existing); err != nil {
+			return fmt.Errorf("failed to parse mise.toml: %w", err)
+		}
 	}
 
-	if extra != nil {
-		sb.WriteString("\n")
-		writeTomlMap(&sb, extra, 0)
+	// Merge extra sections (e.g. env, settings) into the root if provided.
+	if len(extra) > 0 {
+		for k, v := range extra {
+			existing[k] = v
+		}
 	}
 
-	content := sb.String()
+	// Merge tools into the [tools] table without dropping existing tools.
+	if len(tools) > 0 {
+		toolsTable, _ := existing["tools"].(map[string]any)
+		if toolsTable == nil {
+			toolsTable = make(map[string]any)
+		}
+		for k, v := range tools {
+			toolsTable[k] = v
+		}
+		existing["tools"] = toolsTable
+	}
 
-	if existing, err := os.ReadFile(misePath); err == nil && string(existing) == content {
+	content, err := toml.Marshal(existing)
+	if err != nil {
+		return fmt.Errorf("failed to encode mise.toml: %w", err)
+	}
+
+	if existingFile, err := os.ReadFile(misePath); err == nil && string(existingFile) == string(content) {
 		return nil
 	}
 
@@ -53,7 +85,7 @@ func (m *MiseProvisioner) GenerateConfig(packages []ast.ParsedDependency, extra 
 		fmt.Fprintf(os.Stderr, "[FIX] Writing mise.toml to %s\n", misePath)
 	}
 
-	return os.WriteFile(misePath, []byte(content), 0644)
+	return os.WriteFile(misePath, content, 0644)
 }
 
 func (m *MiseProvisioner) ReadConfig() (map[string]string, error) {
@@ -67,87 +99,53 @@ func (m *MiseProvisioner) ReadConfig() (map[string]string, error) {
 		return nil, fmt.Errorf("failed to read mise.toml: %w", err)
 	}
 
-	tools := make(map[string]string)
-	inToolsSection := false
-
-	scanner := bufio.NewScanner(strings.NewReader(string(data)))
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-
-		if strings.HasPrefix(line, "[") {
-			inToolsSection = line == "[tools]"
-			continue
-		}
-
-		if !inToolsSection {
-			continue
-		}
-
-		if idx := strings.Index(line, "="); idx > 0 {
-			key := strings.TrimSpace(line[:idx])
-			val := strings.TrimSpace(line[idx+1:])
-			val = strings.Trim(val, "\"")
-			tools[key] = val
-		}
+	var root map[string]any
+	if err := toml.Unmarshal(data, &root); err != nil {
+		return nil, fmt.Errorf("failed to parse mise.toml: %w", err)
 	}
 
-	return tools, scanner.Err()
+	toolsTable, _ := root["tools"].(map[string]any)
+	if toolsTable == nil {
+		return nil, nil
+	}
+
+	tools := make(map[string]string, len(toolsTable))
+	for key, val := range toolsTable {
+		tools[key] = versionOf(val)
+	}
+
+	return tools, nil
 }
 
-func writeTomlMap(sb *strings.Builder, m map[string]any, indent int) {
-	prefix := strings.Repeat("  ", indent)
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	for _, k := range keys {
-		v := m[k]
-		switch val := v.(type) {
-		case string:
-			sb.WriteString(fmt.Sprintf("%s%s = \"%s\"\n", prefix, k, val))
-		case bool:
-			sb.WriteString(fmt.Sprintf("%s%s = %v\n", prefix, k, val))
-		case int, int64, float64:
-			sb.WriteString(fmt.Sprintf("%s%s = %v\n", prefix, k, val))
-		case map[string]any:
-			sb.WriteString(fmt.Sprintf("%s%s:\n", prefix, k))
-			writeTomlMap(sb, val, indent+1)
-		case []any:
-			if len(val) > 0 {
-				if isAllStrings(val) {
-					sb.WriteString(fmt.Sprintf("%s%s = [", prefix, k))
-					for i, item := range val {
-						if i > 0 {
-							sb.WriteString(", ")
-						}
-						sb.WriteString(fmt.Sprintf("\"%s\"", item.(string)))
-					}
-					sb.WriteString("]\n")
-				} else {
-					sb.WriteString(fmt.Sprintf("%s%s:\n", prefix, k))
-					for _, item := range val {
-						if m2, ok := item.(map[string]any); ok {
-							writeTomlMap(sb, m2, indent+1)
-						} else if s, ok := item.(string); ok {
-							sb.WriteString(fmt.Sprintf("%s- \"%s\"\n", prefix+"  ", s))
-						}
-					}
-				}
-			}
-		default:
-			sb.WriteString(fmt.Sprintf("%s%s = %v\n", prefix, k, val))
+// versionOf extracts a scalar version string from a tool value, which may be
+// a plain string, a nested table (complex tool), or an array (sequence tool).
+// For complex/sequence forms it returns the primary version only.
+func versionOf(val any) string {
+	switch v := val.(type) {
+	case string:
+		return v
+	case map[string]any:
+		if ver, ok := v["version"].(string); ok {
+			return ver
 		}
+		return ""
+	case []any:
+		if len(v) > 0 {
+			return versionOf(v[0])
+		}
+		return ""
+	default:
+		return ""
 	}
 }
 
-func isAllStrings(arr []any) bool {
-	for _, v := range arr {
-		if _, ok := v.(string); !ok {
-			return false
-		}
+// toStringAny converts a string map to an any map.
+func toStringAny(m map[string]string) map[string]any {
+	out := make(map[string]any, len(m))
+	for k, v := range m {
+		out[k] = v
 	}
-	return true
+	return out
 }
 
 func (m *MiseProvisioner) Install(ctx context.Context) error {

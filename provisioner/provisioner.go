@@ -26,6 +26,10 @@ type Provisioner interface {
 	// Returns nil map if config file doesn't exist.
 	ReadConfig() (map[string]string, error)
 
+	// WriteTools merges the given tool→version map into the native config file,
+	// preserving all sections and tools not present in the input.
+	WriteTools(tools map[string]string) error
+
 	// Install runs the package installation command.
 	// This executes the native install command (e.g., "mise install", "devbox install")
 	Install(ctx context.Context) error

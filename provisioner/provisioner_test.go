@@ -100,7 +100,8 @@ func TestMiseProvisioner_GenerateConfig(t *testing.T) {
 
 	content, err := os.ReadFile(filepath.Join(dir, "mise.toml"))
 	require.NoError(t, err)
-	assert.Equal(t, "[tools]\nnode = \"22\"\npnpm = \"latest\"\n", string(content))
+	// go-toml emits single quotes and sorted keys.
+	assert.Equal(t, "[tools]\nnode = '22'\npnpm = 'latest'\n", string(content))
 }
 
 func TestMiseProvisioner_GenerateConfig_WithExtra(t *testing.T) {
@@ -121,9 +122,9 @@ func TestMiseProvisioner_GenerateConfig_WithExtra(t *testing.T) {
 
 	content, err := os.ReadFile(filepath.Join(dir, "mise.toml"))
 	require.NoError(t, err)
-	assert.Contains(t, string(content), "[tools]\nnode = \"22\"")
-	assert.Contains(t, string(content), "env:")
-	assert.Contains(t, string(content), "NODE_ENV = \"development\"")
+	assert.Contains(t, string(content), "[tools]\nnode = '22'")
+	assert.Contains(t, string(content), "[env]")
+	assert.Contains(t, string(content), "NODE_ENV = 'development'")
 }
 
 func TestMiseProvisioner_GenerateConfig_Idempotent(t *testing.T) {
@@ -241,4 +242,63 @@ func TestDevboxProvisioner_ReadConfig_NotExists(t *testing.T) {
 	tools, err := p.ReadConfig()
 	require.NoError(t, err)
 	assert.Nil(t, tools)
+}
+
+func TestMiseProvisioner_WriteTools_PreservesOtherSections(t *testing.T) {
+	dir := t.TempDir()
+	p := NewMiseProvisioner(Config{Dir: dir})
+
+	// Pre-existing mise.toml with env/settings that must survive the merge.
+	existing := "[env]\nNODE_ENV = \"production\"\n\n[tools]\npython = \"3.11\"\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "mise.toml"), []byte(existing), 0644))
+
+	err := p.WriteTools(map[string]string{"node": "22"})
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(filepath.Join(dir, "mise.toml"))
+	require.NoError(t, err)
+	// Other sections preserved.
+	assert.Contains(t, string(content), "NODE_ENV")
+	assert.Contains(t, string(content), "production")
+	// Existing tool preserved, new tool added.
+	assert.Contains(t, string(content), "python = '3.11'")
+	assert.Contains(t, string(content), "node = '22'")
+}
+
+func TestMiseProvisioner_WriteTools_ComplexToolsPreserved(t *testing.T) {
+	dir := t.TempDir()
+	p := NewMiseProvisioner(Config{Dir: dir})
+
+	// Complex tool object must survive the round-trip.
+	existing := "[tools]\nnode = { version = \"22\", os = [\"linux\"] }\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "mise.toml"), []byte(existing), 0644))
+
+	err := p.WriteTools(map[string]string{"go": "1.21"})
+	require.NoError(t, err)
+
+	// Complex node preserved.
+	tools, err := p.ReadConfig()
+	require.NoError(t, err)
+	assert.Equal(t, "22", tools["node"])
+	assert.Equal(t, "1.21", tools["go"])
+}
+
+func TestDevboxProvisioner_WriteTools_PreservesUnknownKeys(t *testing.T) {
+	dir := t.TempDir()
+	p := NewDevboxProvisioner(Config{Dir: dir})
+
+	existing := `{"packages": ["nodejs@22"], "env": {"NODE_ENV": "production"}, "shell": {"init_hook": "echo hi"}}`
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "devbox.json"), []byte(existing), 0644))
+
+	err := p.WriteTools(map[string]string{"go": "1.21"})
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(filepath.Join(dir, "devbox.json"))
+	require.NoError(t, err)
+	// Unknown keys preserved.
+	assert.Contains(t, string(content), "NODE_ENV")
+	assert.Contains(t, string(content), "init_hook")
+	// Existing package preserved, new added.
+	assert.Contains(t, string(content), "nodejs@22")
+	assert.Contains(t, string(content), "go@1.21")
 }

@@ -50,6 +50,17 @@ func runInit(ctx *Context) error {
 	}
 
 	ctx.Log.Successf("Created %s\n", targetPath)
+
+	// Synchronize with an existing native config (e.g. a pre-existing mise.toml)
+	// so its tools are imported into the new Razdfile's dependencies.
+	if !flags.NoSync {
+		if prov, ok := tryGetProvisioner(rf, dir, ctx.Log); ok {
+			if err := syncRazdfile(rf, prov, dir, ctx.Log); err != nil {
+				ctx.Log.Warnf("Failed to sync %s config: %v\n", prov.Name(), err)
+			}
+		}
+	}
+
 	return nil
 }
 

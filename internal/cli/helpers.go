@@ -3,12 +3,12 @@ package cli
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/razd-cli/razd/internal/errors"
 	"github.com/razd-cli/razd/internal/flags"
 	"github.com/razd-cli/razd/internal/output"
+	"github.com/razd-cli/razd/internal/sync"
 	"github.com/razd-cli/razd/internal/trust"
 	"github.com/razd-cli/razd/provisioner"
 	"github.com/razd-cli/razd/razdfile"
@@ -179,145 +179,11 @@ func getProvisioner(rf *ast.Razdfile, dir string, log *output.Logger) (provision
 	return prov, nil
 }
 
-// generateProvisionerConfig generates the native config file (mise.toml or devbox.json)
-// from the dependencies section of the Razdfile. Skips if using top-level mise/devbox sections
-// since those already define their own config.
-func generateProvisionerConfig(rf *ast.Razdfile, prov provisioner.Provisioner, log *output.Logger) error {
-	if !rf.HasDependencies() {
-		log.Debugf("[FIX] No dependencies section, skipping config generation\n")
-		return nil
-	}
-
-	packages, err := rf.Dependencies.ParseEnsure()
-	if err != nil {
-		return fmt.Errorf("failed to parse dependencies: %w", err)
-	}
-
-	extra := rf.Dependencies.GetProviderExtra()
-
-	log.Debugf("[FIX] Generating %s config with %d packages\n", prov.Name(), len(packages))
-	if err := prov.GenerateConfig(packages, extra); err != nil {
-		return fmt.Errorf("failed to generate %s config: %w", prov.Name(), err)
-	}
-
-	log.Debugf("[FIX] Config generated for %s\n", prov.Name())
-	return nil
-}
-
-// syncConfig reads the native config file (mise.toml or devbox.json),
-// compares tool versions with the Razdfile dependencies, and updates
-// the Razdfile if the native config has different versions.
-// If --backup is set, backs up the native config before GenerateConfig overwrites it.
-func syncConfig(rf *ast.Razdfile, prov provisioner.Provisioner, dir string, log *output.Logger) error {
-	if !rf.HasDependencies() {
-		return nil
-	}
-
-	nativeTools, err := prov.ReadConfig()
-	if err != nil {
-		log.Debugf("[FIX] Could not read native config: %v\n", err)
-		return nil
-	}
-	if len(nativeTools) == 0 {
-		log.Debugf("[FIX] No native config found or empty, skipping sync\n")
-		return nil
-	}
-
-	razdfileTools := make(map[string]string)
-	for _, dep := range rf.Dependencies.Ensure {
-		parsed, pErr := ast.ParseDependencyString(dep)
-		if pErr != nil {
-			continue
-		}
-		razdfileTools[parsed.Tool] = parsed.Version
-	}
-
-	changed := false
-	for tool, nativeVersion := range nativeTools {
-		razdVersion, exists := razdfileTools[tool]
-		if !exists {
-			continue
-		}
-		if nativeVersion != razdVersion {
-			log.Infof("[SYNC] %s: Razdfile has %s, native config has %s → updating Razdfile\n", tool, razdVersion, nativeVersion)
-			for i, dep := range rf.Dependencies.Ensure {
-				parsed, pErr := ast.ParseDependencyString(dep)
-				if pErr != nil {
-					continue
-				}
-				if parsed.Tool == tool {
-					rf.Dependencies.Ensure[i] = tool + "@" + nativeVersion
-					changed = true
-					break
-				}
-			}
-		}
-	}
-
-	if changed {
-		if flags.Backup {
-			if err := backupNativeConfig(prov, dir, log); err != nil {
-				log.Warnf("[FIX] Failed to backup native config: %v\n", err)
-			}
-		}
-
-		targetPath := filepath.Join(dir, "Razdfile.yml")
-		if _, existsErr := os.Stat(targetPath); existsErr != nil {
-			for _, name := range razdfile.DefaultRazdfiles {
-				candidate := filepath.Join(dir, name)
-				if _, statErr := os.Stat(candidate); statErr == nil {
-					targetPath = candidate
-					break
-				}
-			}
-		}
-
-		didWrite, writeErr := razdfile.UpdateEnsureInFile(targetPath, rf.Dependencies.Ensure)
-		if writeErr != nil {
-			return fmt.Errorf("failed to update Razdfile: %w", writeErr)
-		}
-		if didWrite {
-			log.Successf("Razdfile synchronized with %s config\n", prov.Name())
-		}
-	}
-
-	return nil
-}
-
-// backupNativeConfig creates a timestamped backup of the native config file.
-func backupNativeConfig(prov provisioner.Provisioner, dir string, log *output.Logger) error {
-	var srcPath string
-	switch prov.Name() {
-	case "mise":
-		srcPath = filepath.Join(dir, "mise.toml")
-	case "devbox":
-		srcPath = filepath.Join(dir, "devbox.json")
-	default:
-		return nil
-	}
-
-	data, err := os.ReadFile(srcPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return fmt.Errorf("failed to read config for backup: %w", err)
-	}
-
-	timestamp := time.Now().Format("20060102-150405")
-	var backupPath string
-	if prov.Name() == "mise" {
-		backupPath = filepath.Join(dir, fmt.Sprintf("mise.toml.bak.%s", timestamp))
-	} else {
-		backupPath = filepath.Join(dir, fmt.Sprintf("devbox.json.bak.%s", timestamp))
-	}
-
-	if err := os.WriteFile(backupPath, data, 0644); err != nil {
-		return fmt.Errorf("failed to write backup: %w", err)
-	}
-
-	log.Infof("[FIX] Backed up %s config to %s\n", prov.Name(), backupPath)
-	return nil
+// syncRazdfile performs a bidirectional, non-destructive merge between the
+// Razdfile dependencies and the native provisioner config (mise.toml /
+// devbox.json). It is the single sync entry point used by up/add/init.
+func syncRazdfile(rf *ast.Razdfile, prov provisioner.Provisioner, dir string, log *output.Logger) error {
+	return sync.Sync(rf, prov, dir, log, flags.Backup)
 }
 
 // the user to trust it interactively if needed. Returns nil if the project is trusted.

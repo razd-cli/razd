@@ -50,13 +50,9 @@ func runUp(ctx *Context) error {
 	}
 
 	if !flags.NoSync {
-		if err := syncConfig(rf, prov, dir, ctx.Log); err != nil {
+		if err := syncRazdfile(rf, prov, dir, ctx.Log); err != nil {
 			ctx.Log.Warnf("Sync failed: %v\n", err)
 		}
-	}
-
-	if err := generateProvisionerConfig(rf, prov, ctx.Log); err != nil {
-		ctx.Log.Warnf("Failed to generate provisioner config: %v\n", err)
 	}
 
 	ctx.Log.Infof("Installing tools via %s...\n", prov.Name())

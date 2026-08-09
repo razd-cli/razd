@@ -30,32 +30,67 @@ func (d *DevboxProvisioner) Name() string {
 }
 
 func (d *DevboxProvisioner) GenerateConfig(packages []ast.ParsedDependency, extra map[string]any) error {
+	pkgMap := make(map[string]string, len(packages))
+	for _, pkg := range packages {
+		pkgMap[pkg.Tool] = pkg.Version
+	}
+	return d.writeConfig(pkgMap, extra)
+}
+
+func (d *DevboxProvisioner) WriteTools(tools map[string]string) error {
+	return d.writeConfig(tools, nil)
+}
+
+// writeConfig merges the given packages and extra keys into the existing
+// devbox.json, preserving any key not declared in the inputs.
+func (d *DevboxProvisioner) writeConfig(pkgMap map[string]string, extra map[string]any) error {
 	devboxPath := filepath.Join(d.Config.Dir, "devbox.json")
 
-	config := make(map[string]any)
-
-	pkgList := make([]string, 0, len(packages))
-	for _, pkg := range packages {
-		pkgList = append(pkgList, pkg.Raw)
-	}
-	sort.Strings(pkgList)
-
-	if len(pkgList) > 0 {
-		config["packages"] = pkgList
+	// Parse the existing file so unknown keys survive the merge.
+	existing := make(map[string]any)
+	if data, err := os.ReadFile(devboxPath); err == nil {
+		if err := json.Unmarshal(data, &existing); err != nil {
+			return fmt.Errorf("failed to parse devbox.json: %w", err)
+		}
 	}
 
-	for k, v := range extra {
-		config[k] = v
+	// Merge extra keys into the root if provided.
+	if len(extra) > 0 {
+		for k, v := range extra {
+			existing[k] = v
+		}
 	}
 
-	content, err := json.MarshalIndent(config, "", "  ")
+	// Merge packages into the packages array without dropping existing entries.
+	if len(pkgMap) > 0 {
+		existingPackages, _ := existing["packages"].([]any)
+		if existingPackages == nil {
+			existingPackages = []any{}
+		}
+		seen := make(map[string]bool, len(existingPackages))
+		for _, p := range existingPackages {
+			seen[p.(string)] = true
+		}
+		for tool, version := range pkgMap {
+			entry := tool + "@" + version
+			if !seen[entry] {
+				existingPackages = append(existingPackages, entry)
+				seen[entry] = true
+			}
+		}
+		sort.Slice(existingPackages, func(i, j int) bool {
+			return existingPackages[i].(string) < existingPackages[j].(string)
+		})
+		existing["packages"] = existingPackages
+	}
+
+	content, err := json.MarshalIndent(existing, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal devbox.json: %w", err)
 	}
-
 	contentStr := string(content) + "\n"
 
-	if existing, err := os.ReadFile(devboxPath); err == nil && string(existing) == contentStr {
+	if existingFile, err := os.ReadFile(devboxPath); err == nil && string(existingFile) == contentStr {
 		return nil
 	}
 
