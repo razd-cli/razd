@@ -35,7 +35,10 @@ func NativeConfig(provName, dir string) string {
 //        interactive backup prompt before overwriting (unless --backup is set).
 //
 // forceBackup true makes the backup unconditional (skips the prompt).
-func Sync(rf *ast.Razdfile, prov provisioner.Provisioner, dir string, log Logger, forceBackup bool) error {
+// confirmSync true makes the sync prompt the user before applying any changes
+// (unless --sync-auto or non-interactive). If confirmSync is false, changes
+// are applied as before.
+func Sync(rf *ast.Razdfile, prov provisioner.Provisioner, dir string, log Logger, forceBackup bool, confirmSync bool) error {
 	if !rf.HasDependencies() {
 		log.Debugf("[SYNC] no dependencies section, skipping sync\n")
 		return nil
@@ -69,6 +72,19 @@ func Sync(rf *ast.Razdfile, prov provisioner.Provisioner, dir string, log Logger
 	if !changes.HasChanges() {
 		log.Debugf("[SYNC] configs already in sync\n")
 		return nil
+	}
+
+	// Confirm before applying any changes when interactive confirmation is
+	// enabled. Non-interactive (CI) or --sync-auto applies as before.
+	if confirmSync {
+		decision, err := PromptConfirmSync(prov.Name(), len(changes.ToRazdfile), len(changes.ToNative), log)
+		if err != nil {
+			return err
+		}
+		if decision == ApplyNo {
+			log.Infof("[SYNC] no changes applied\n")
+			return nil
+		}
 	}
 
 	// Apply native -> Razdfile.

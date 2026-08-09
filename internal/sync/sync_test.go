@@ -38,7 +38,7 @@ func TestSync_NativeOnlyToolAddedToRazdfile(t *testing.T) {
 	rf := writeRazdfile(t, dir, []string{"go@1.21"})
 	prov := provisioner.NewMiseProvisioner(provisioner.Config{Dir: dir})
 
-	err := Sync(rf, prov, dir, noopLogger{}, false)
+	err := Sync(rf, prov, dir, noopLogger{}, false, false)
 	require.NoError(t, err)
 
 	// node pulled into Razdfile.
@@ -56,7 +56,7 @@ func TestSync_RazdfileOnlyToolAddedToNative(t *testing.T) {
 	rf := writeRazdfile(t, dir, []string{"node@22"})
 	prov := provisioner.NewMiseProvisioner(provisioner.Config{Dir: dir})
 
-	err := Sync(rf, prov, dir, noopLogger{}, false)
+	err := Sync(rf, prov, dir, noopLogger{}, false, false)
 	require.NoError(t, err)
 
 	mise, err := os.ReadFile(filepath.Join(dir, "mise.toml"))
@@ -73,7 +73,7 @@ func TestSync_PreservesNativeSections(t *testing.T) {
 	rf := writeRazdfile(t, dir, []string{"node@22"})
 	prov := provisioner.NewMiseProvisioner(provisioner.Config{Dir: dir})
 
-	err := Sync(rf, prov, dir, noopLogger{}, false)
+	err := Sync(rf, prov, dir, noopLogger{}, false, false)
 	require.NoError(t, err)
 
 	mise, err := os.ReadFile(filepath.Join(dir, "mise.toml"))
@@ -91,7 +91,7 @@ func TestSync_NoDependenciesSkips(t *testing.T) {
 	rf := &ast.Razdfile{Version: "1"} // no dependencies
 	prov := provisioner.NewMiseProvisioner(provisioner.Config{Dir: dir})
 
-	err := Sync(rf, prov, dir, noopLogger{}, false)
+	err := Sync(rf, prov, dir, noopLogger{}, false, false)
 	require.NoError(t, err)
 	// No mise.toml should be created.
 	_, statErr := os.Stat(filepath.Join(dir, "mise.toml"))
@@ -138,7 +138,7 @@ func TestSync_DevboxVersionlessAddedToRazdfile(t *testing.T) {
 	rf := writeRazdfile(t, dir, []string{"php@8.4.15"})
 	prov := provisioner.NewDevboxProvisioner(provisioner.Config{Dir: dir})
 
-	err := Sync(rf, prov, dir, noopLogger{}, false)
+	err := Sync(rf, prov, dir, noopLogger{}, false, false)
 	require.NoError(t, err)
 
 	// The versionless package must be mirrored into Razdfile.ensure as a bare entry.
@@ -157,7 +157,7 @@ func TestSync_ConflictNonInteractiveSkips(t *testing.T) {
 	rf := writeRazdfile(t, dir, []string{"node@22"})
 	prov := provisioner.NewMiseProvisioner(provisioner.Config{Dir: dir})
 
-	err := Sync(rf, prov, dir, noopLogger{}, false)
+	err := Sync(rf, prov, dir, noopLogger{}, false, false)
 	require.NoError(t, err)
 
 	// Non-TTY -> Skip: neither side changes.
@@ -168,3 +168,44 @@ func TestSync_ConflictNonInteractiveSkips(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(razd), "node@22")
 }
+
+func TestSync_ConfirmNonInteractiveApplies(t *testing.T) {
+	dir := t.TempDir()
+	// Native has node@22, Razdfile has go@1.21 (no node). With confirmation
+	// enabled but a non-interactive stdin (CI), the confirm prompt returns
+	// ApplyNonInteractive and the change is still applied (no data loss).
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "mise.toml"),
+		[]byte("[tools]\nnode = \"22\"\ngo = \"1.21\"\n"), 0644))
+	rf := writeRazdfile(t, dir, []string{"go@1.21"})
+	prov := provisioner.NewMiseProvisioner(provisioner.Config{Dir: dir})
+
+	err := Sync(rf, prov, dir, noopLogger{}, false, true)
+	require.NoError(t, err)
+
+	// node@22 was mirrored into the Razdfile despite the confirm flag, because
+	// stdin is not a TTY under go test.
+	razd, err := os.ReadFile(filepath.Join(dir, "Razdfile.yml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(razd), "node@22")
+}
+
+func TestSync_NoChangesNoConfirm(t *testing.T) {
+	dir := t.TempDir()
+	// Both sides identical -> no changes, confirm prompt must not be reached.
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "mise.toml"),
+		[]byte("[tools]\nnode = \"22\"\n"), 0644))
+	rf := writeRazdfile(t, dir, []string{"node@22"})
+	prov := provisioner.NewMiseProvisioner(provisioner.Config{Dir: dir})
+
+	err := Sync(rf, prov, dir, noopLogger{}, false, true)
+	require.NoError(t, err)
+
+	// Neither side changed.
+	mise, err := os.ReadFile(filepath.Join(dir, "mise.toml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(mise), "node = \"22\"")
+	razd, err := os.ReadFile(filepath.Join(dir, "Razdfile.yml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(razd), "node@22")
+}
+

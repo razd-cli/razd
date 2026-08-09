@@ -183,7 +183,9 @@ func getProvisioner(rf *ast.Razdfile, dir string, log *output.Logger) (provision
 // Razdfile dependencies and the native provisioner config (mise.toml /
 // devbox.json). It is the single sync entry point used by up/add/init.
 func syncRazdfile(rf *ast.Razdfile, prov provisioner.Provisioner, dir string, log *output.Logger) error {
-	return sync.Sync(rf, prov, dir, log, flags.Backup)
+	// Confirm sync changes interactively unless the user opted out with
+	// --sync-auto (or a non-interactive stdin, handled inside Sync).
+	return sync.Sync(rf, prov, dir, log, flags.Backup, !flags.SyncAuto)
 }
 
 // the user to trust it interactively if needed. Returns nil if the project is trusted.
