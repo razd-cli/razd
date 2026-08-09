@@ -189,7 +189,6 @@ func (t *testwriterSimple) Write(p []byte) (n int, err error) {
 type fakeProvisioner struct {
 	name       string
 	installCtx *context.Context
-	runCmds    [][]string
 	trusted    bool
 }
 

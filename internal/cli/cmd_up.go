@@ -120,14 +120,6 @@ func resolveUpDir(ctx *Context) (string, error) {
 	return dir, nil
 }
 
-// shouldRunAfterInstall is retained for backward compatibility with the
-// `--run`/`-r` flag. The default task now always runs after install in runUp,
-// so this helper is no longer consulted by the up flow; it exists only so the
-// flag remains accepted without error.
-func shouldRunAfterInstall() bool {
-	return flags.Run
-}
-
 // runDefaultTask runs the default task from the Razdfile.
 func runDefaultTask(ctx *Context, rf *ast.Razdfile, prov provisioner.Provisioner, dir string) error {
 	if !rf.HasTasks() {
