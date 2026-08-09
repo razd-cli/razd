@@ -74,16 +74,24 @@ func Sync(rf *ast.Razdfile, prov provisioner.Provisioner, dir string, log Logger
 		return nil
 	}
 
-	// Confirm before applying any changes when interactive confirmation is
-	// enabled. Non-interactive (CI) or --sync-auto applies as before.
+	// Confirm the direction before applying any changes when interactive
+	// confirmation is enabled. Non-interactive (CI) or --sync-auto applies both
+	// directions as before.
 	if confirmSync {
 		decision, err := PromptConfirmSync(prov.Name(), len(changes.ToRazdfile), len(changes.ToNative), log)
 		if err != nil {
 			return err
 		}
-		if decision == ApplyNo {
+		switch decision {
+		case ApplySkip:
 			log.Infof("[SYNC] no changes applied\n")
 			return nil
+		case ApplyFromRazdfile:
+			// Only apply Razdfile -> native; ignore changes.ToRazdfile.
+			changes.ToRazdfile = nil
+		case ApplyFromNative:
+			// Only apply native -> Razdfile; ignore changes.ToNative.
+			changes.ToNative = nil
 		}
 	}
 

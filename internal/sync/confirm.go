@@ -6,56 +6,74 @@ import (
 	"github.com/charmbracelet/huh"
 )
 
-// ApplyDecision is the outcome of the "confirm sync" prompt.
+// ApplyDecision is the direction of sync chosen in the confirm prompt.
 type ApplyDecision int
 
 const (
-	// ApplyYes means the user chose to apply the sync changes.
-	ApplyYes ApplyDecision = iota
-	// ApplyNo means the user declined; nothing is written.
-	ApplyNo
+	// ApplyFromNative means sync native config -> Razdfile (mirror native
+	// packages into dependencies.ensure).
+	ApplyFromNative ApplyDecision = iota
+	// ApplyFromRazdfile means sync Razdfile -> native config (write
+	// dependencies.ensure into mise.toml / devbox.json).
+	ApplyFromRazdfile
+	// ApplySkip means leave both files unchanged.
+	ApplySkip
 	// ApplyNonInteractive means stdin is not a TTY; the caller decides the default.
 	ApplyNonInteractive
 )
 
-// PromptConfirmSync asks the user whether to apply pending sync changes between
-// the Razdfile and the native config. It is only shown when there are actual
-// changes to apply. In non-interactive mode it returns ApplyNonInteractive
-// without blocking, so callers can apply changes as before (CI-safe default).
+// PromptConfirmSync asks the user which direction to sync pending changes
+// between the Razdfile and the native config. It is only shown when there are
+// actual changes to apply. In non-interactive mode it returns
+// ApplyNonInteractive without blocking, so callers can apply changes as before
+// (CI-safe default).
 func PromptConfirmSync(provName string, addedToRazdfile, addedToNative int, log Logger) (ApplyDecision, error) {
 	if !isTerminal() {
 		log.Debugf("[SYNC] confirm prompt skipped (non-interactive)\n")
 		return ApplyNonInteractive, nil
 	}
 
-	var apply bool
-	desc := fmt.Sprintf("Razdfile <-> %s: %d package(s) to Razdfile, %d package(s) to %s config",
-		provName, addedToRazdfile, addedToNative, provName)
+	desc := fmt.Sprintf("Razdfile <-> %s: %d package(s) from native, %d package(s) from Razdfile",
+		provName, addedToRazdfile, addedToNative)
+
+	var choice int
+	options := []string{
+		fmt.Sprintf("Sync from %s config (native -> Razdfile)", provName),
+		"Sync from Razdfile (Razdfile -> native config)",
+		"Skip (keep both unchanged)",
+	}
 
 	prompt := huh.NewForm(
 		huh.NewGroup(
-			huh.NewConfirm().
-				Title("Apply config sync changes?").
+			huh.NewSelect[int]().
+				Title("How to synchronize config?").
 				Description(desc).
-				Affirmative("Apply").
-				Negative("Skip").
-				Value(&apply),
+				Options(
+					huh.NewOption(options[0], int(ApplyFromNative)),
+					huh.NewOption(options[1], int(ApplyFromRazdfile)),
+					huh.NewOption(options[2], int(ApplySkip)),
+				).
+				Value(&choice),
 		),
 	).WithTheme(huh.ThemeCatppuccin())
 
 	if err := prompt.Run(); err != nil {
 		if err == huh.ErrUserAborted {
 			log.Debugf("[SYNC] confirm prompt aborted\n")
-			return ApplyNo, nil
+			return ApplySkip, nil
 		}
-		return ApplyNo, fmt.Errorf("confirm prompt failed: %w", err)
+		return ApplySkip, fmt.Errorf("confirm prompt failed: %w", err)
 	}
 
-	if apply {
-		log.Infof("[SYNC] applying config sync changes\n")
-		return ApplyYes, nil
+	switch ApplyDecision(choice) {
+	case ApplyFromNative:
+		log.Infof("[SYNC] syncing from %s config (native -> Razdfile)\n", provName)
+		return ApplyFromNative, nil
+	case ApplyFromRazdfile:
+		log.Infof("[SYNC] syncing from Razdfile (Razdfile -> %s config)\n", provName)
+		return ApplyFromRazdfile, nil
+	default:
+		log.Infof("[SYNC] skipping config sync\n")
+		return ApplySkip, nil
 	}
-
-	log.Infof("[SYNC] skipping config sync changes\n")
-	return ApplyNo, nil
 }
