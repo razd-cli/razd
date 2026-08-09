@@ -62,9 +62,9 @@ func TestParseDependencyString(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "missing version",
-			input:   "node",
-			wantErr: true,
+			name:  "missing version (bare tool)",
+			input: "node",
+			want:  ParsedDependency{Tool: "node", Version: "", Raw: "node"},
 		},
 		{
 			name:    "missing tool",
@@ -134,7 +134,7 @@ func TestDependenciesConfig_ParseEnsure(t *testing.T) {
 			name: "invalid ensure string",
 			config: &DependenciesConfig{
 				Using:  "mise",
-				Ensure: []string{"node@22", "invalid"},
+				Ensure: []string{"node@22", "@22"},
 			},
 			wantErr: true,
 		},

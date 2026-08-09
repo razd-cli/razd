@@ -302,3 +302,37 @@ func TestDevboxProvisioner_WriteTools_PreservesUnknownKeys(t *testing.T) {
 	assert.Contains(t, string(content), "nodejs@22")
 	assert.Contains(t, string(content), "go@1.21")
 }
+
+func TestDevboxProvisioner_ReadConfig_VersionlessPackages(t *testing.T) {
+	dir := t.TempDir()
+	p := NewDevboxProvisioner(Config{Dir: dir})
+
+	// Versionless devbox packages (php84Extensions.*, php84Packages.composer)
+	// must be kept, with an empty version, so they participate in sync.
+	content := `{"packages": ["php84Extensions.xdebug", "php84Packages.composer", "php@8.4.15", "nodejs@22"]}`
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "devbox.json"), []byte(content), 0644))
+
+	tools, err := p.ReadConfig()
+	require.NoError(t, err)
+	assert.Equal(t, map[string]string{
+		"php84Extensions.xdebug": "",
+		"php84Packages.composer": "",
+		"php":                   "8.4.15",
+		"nodejs":                "22",
+	}, tools)
+}
+
+func TestDevboxProvisioner_WriteTools_VersionlessNoTrailingAt(t *testing.T) {
+	dir := t.TempDir()
+	p := NewDevboxProvisioner(Config{Dir: dir})
+
+	// WriteTools with an empty version must produce a bare name, never "x@" .
+	err := p.WriteTools(map[string]string{"php84Extensions.xdebug": ""})
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(filepath.Join(dir, "devbox.json"))
+	require.NoError(t, err)
+	assert.Contains(t, string(content), "php84Extensions.xdebug")
+	assert.NotContains(t, string(content), "php84Extensions.xdebug@")
+}
+

@@ -72,7 +72,13 @@ func (d *DevboxProvisioner) writeConfig(pkgMap map[string]string, extra map[stri
 			seen[p.(string)] = true
 		}
 		for tool, version := range pkgMap {
-			entry := tool + "@" + version
+			// Emit "name@version" when a version is present, otherwise the bare
+			// name (devbox treats a bare name as "latest"). Never emit a
+			// trailing "@".
+			entry := tool
+			if version != "" {
+				entry = tool + "@" + version
+			}
 			if !seen[entry] {
 				existingPackages = append(existingPackages, entry)
 				seen[entry] = true
@@ -121,8 +127,13 @@ func (d *DevboxProvisioner) ReadConfig() (map[string]string, error) {
 
 	tools := make(map[string]string)
 	for _, pkg := range config.Packages {
-		if idx := strings.Index(pkg, "@"); idx > 0 {
+		// A package may be "name@version" or a bare "name" (devbox defaults
+		// the version to "latest" when omitted). Keep both: bare names get an
+		// empty version so they participate in sync instead of being dropped.
+		if idx := strings.LastIndex(pkg, "@"); idx > 0 && idx < len(pkg)-1 {
 			tools[pkg[:idx]] = pkg[idx+1:]
+		} else {
+			tools[pkg] = ""
 		}
 	}
 

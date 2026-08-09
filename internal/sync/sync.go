@@ -132,13 +132,20 @@ func applyToRazdfile(rf *ast.Razdfile, tools []Tool, dir string, log Logger) err
 	indexByName := make(map[string]int, len(rf.Dependencies.Ensure))
 	for i, dep := range rf.Dependencies.Ensure {
 		name, _, ok := splitDep(dep)
-		if ok {
-			indexByName[name] = i
+		if !ok {
+			// A bare entry without "@" (versionless) is indexed by its name.
+			name = dep
 		}
+		indexByName[name] = i
 	}
 
 	for _, t := range tools {
-		entry := t.Name + "@" + t.Version
+		// Emit "name@version" when a version is present, otherwise the bare
+		// name. Never emit a trailing "@".
+		entry := t.Name
+		if t.Version != "" {
+			entry = t.Name + "@" + t.Version
+		}
 		if idx, ok := indexByName[t.Name]; ok {
 			// Replace the existing entry for this tool name.
 			rf.Dependencies.Ensure[idx] = entry

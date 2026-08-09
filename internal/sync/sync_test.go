@@ -113,6 +113,42 @@ func TestApplyToRazdfile_ReplacesNotDuplicates(t *testing.T) {
 	assert.NotContains(t, string(razd), "bun@latest")
 }
 
+func TestApplyToRazdfile_VersionlessWritesBareEntry(t *testing.T) {
+	dir := t.TempDir()
+	// A versionless native devbox tool must be written as a bare name,
+	// never with a trailing "@".
+	rf := writeRazdfile(t, dir, []string{"nodejs@22"})
+
+	err := applyToRazdfile(rf, []Tool{{Name: "php84Extensions.xdebug", Version: ""}}, dir, noopLogger{})
+	require.NoError(t, err)
+
+	razd, err := os.ReadFile(filepath.Join(dir, "Razdfile.yml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(razd), "php84Extensions.xdebug")
+	assert.NotContains(t, string(razd), "php84Extensions.xdebug@")
+	assert.Contains(t, string(razd), "nodejs@22")
+}
+
+func TestSync_DevboxVersionlessAddedToRazdfile(t *testing.T) {
+	dir := t.TempDir()
+	// Native devbox.json has a versionless php84 package and a versioned one.
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "devbox.json"),
+		[]byte(`{"packages": ["php84Extensions.xdebug", "php@8.4.15"]}`), 0644))
+	// Razdfile has only the versioned tool.
+	rf := writeRazdfile(t, dir, []string{"php@8.4.15"})
+	prov := provisioner.NewDevboxProvisioner(provisioner.Config{Dir: dir})
+
+	err := Sync(rf, prov, dir, noopLogger{}, false)
+	require.NoError(t, err)
+
+	// The versionless package must be mirrored into Razdfile.ensure as a bare entry.
+	razd, err := os.ReadFile(filepath.Join(dir, "Razdfile.yml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(razd), "php84Extensions.xdebug")
+	assert.NotContains(t, string(razd), "php84Extensions.xdebug@")
+}
+
+
 func TestSync_ConflictNonInteractiveSkips(t *testing.T) {
 	dir := t.TempDir()
 	// Native has node@23, Razdfile has node@22 -> conflict.

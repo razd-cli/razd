@@ -49,7 +49,7 @@ func TestRunAdd_InvalidFormatErrors(t *testing.T) {
 	writeAddRazdfile(t, dir)
 
 	ctx := &Context{
-		Args: []string{"invalid-no-version"},
+		Args: []string{"@22"},
 		Log:  output.NewLogger(os.Stderr, os.Stderr),
 		Dir:  dir,
 	}

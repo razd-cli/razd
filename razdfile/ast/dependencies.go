@@ -52,7 +52,8 @@ var ValidUsing = map[string]bool{
 //   (starts with letter). Colons/slashes support registry/plugin names such as
 //   "vfox:dealenx/vfox-plugin-lux" or "cargo:ripgrep".
 // - version: alphanumeric, dots, underscores, hyphens
-var ensureRegex = regexp.MustCompile(`^[a-z][a-z0-9._:/_-]*@[a-zA-Z0-9._-]+$`)
+// A bare name without a version is also valid (devbox/mise default to "latest").
+var ensureRegex = regexp.MustCompile(`^[a-z][a-z0-9._:/_-]*@[a-zA-Z0-9._-]+$|^[a-z][a-z0-9._:/_-]*$`)
 
 // ParseEnsure parses all ensure strings into structured ParsedDependency objects.
 // Returns an error if any string has an invalid format.
@@ -80,6 +81,15 @@ func ParseDependencyString(s string) (ParsedDependency, error) {
 
 	if !ensureRegex.MatchString(s) {
 		return ParsedDependency{}, &InvalidDependencyFormatError{Value: s}
+	}
+
+	// A bare name (no "@") is valid and has an empty version.
+	if !strings.Contains(s, "@") {
+		return ParsedDependency{
+			Tool:    s,
+			Version: "",
+			Raw:     s,
+		}, nil
 	}
 
 	parts := strings.SplitN(s, "@", 2)

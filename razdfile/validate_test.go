@@ -94,7 +94,7 @@ func TestValidate_Dependencies(t *testing.T) {
 				Version: "1",
 				Dependencies: &ast.DependenciesConfig{
 					Using:  "mise",
-					Ensure: []string{"node"},
+					Ensure: []string{"@22"},
 				},
 			},
 			wantErr:    true,
