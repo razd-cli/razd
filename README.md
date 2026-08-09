@@ -20,7 +20,48 @@ razd trust --show     # Show trust status
 razd trust --untrust  # Remove trust
 ```
 
-## Flags
+## Config Synchronization
+
+`razd` keeps the `Razdfile.yml` and the native provisioner config in sync. When
+you use the unified `dependencies` section, razd performs a **bidirectional,
+non-destructive merge** between the two files on `razd up`, `razd add`, and
+`razd init`:
+
+- A tool added to `Razdfile.yml` (`dependencies.ensure`) is merged into the
+  native config (`mise.toml` / `devbox.json`).
+- A tool present in the native config is merged back into `Razdfile.yml`.
+- Sections outside the managed tool list are **preserved as-is** — `[env]`,
+  `[settings]`, `[hooks]`, `[plugins]` (mise) and `env`, `shell`, `nixpkgs`
+  (devbox) are never dropped.
+
+### Version conflicts
+
+If a tool exists in both files with **different versions**, razd asks which one
+to use:
+
+```
+Version conflict for node
+  [1] Use Razdfile (22)
+  [2] Use mise.toml (23)
+  [3] Skip (keep both unchanged)
+```
+
+In non-interactive mode (CI, pipes) the conflict is **skipped** — neither file
+is modified, and a warning is printed.
+
+### Backups
+
+Before the native config is overwritten, razd prompts:
+
+```
+Make backup of mise.toml before overwrite? [y/N]
+```
+
+The default is **No**. Choose Yes to write a timestamped backup
+(`mise.toml.bak.<timestamp>`). Pass `--backup` to force a backup without the
+prompt.
+
+### Flags
 
 ```
 -d, --dir <path>      # Working directory (default: current)
@@ -28,6 +69,8 @@ razd trust --untrust  # Remove trust
 -v, --verbose         # Verbose output
 --json                # JSON output (list command)
 --all                 # Show all tasks including internals
+--no-sync             # Skip Razdfile <-> native config sync
+--backup              # Force backup of native config before overwrite
 ```
 
 
