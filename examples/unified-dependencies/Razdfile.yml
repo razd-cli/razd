@@ -13,7 +13,7 @@ dependencies:
 
   # Simple tool@version format - works with any manager
   ensure:
-    - "node@22"
+    - "nodejs@22"
     - "go@1.21"
     - "pnpm@latest"
     - "ripgrep@latest"
