@@ -30,3 +30,8 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Pin the released version to the pushed tag. Without this,
+          # goreleaser uses `git describe`, which can pick a higher semver
+          # tag (e.g. v1.6.2-dev.7) when both a stable and a dev tag point at
+          # the same commit, releasing to the wrong (existing) release.
+          GORELEASER_CURRENT_TAG: ${{ github.ref_name }}
