@@ -67,10 +67,22 @@ func (d *DevboxProvisioner) writeConfig(pkgMap map[string]string, extra map[stri
 		if existingPackages == nil {
 			existingPackages = []any{}
 		}
-		seen := make(map[string]bool, len(existingPackages))
-		for _, p := range existingPackages {
-			seen[p.(string)] = true
+
+		// Index existing packages by bare tool name so we can replace an
+		// entry in place instead of duplicating (e.g. nodejs@22 -> nodejs@24).
+		indexByName := make(map[string]int, len(existingPackages))
+		for i, p := range existingPackages {
+			str, ok := p.(string)
+			if !ok {
+				continue
+			}
+			if idx := strings.LastIndex(str, "@"); idx > 0 && idx < len(str)-1 {
+				indexByName[str[:idx]] = i
+			} else {
+				indexByName[str] = i
+			}
 		}
+
 		for tool, version := range pkgMap {
 			// Emit "name@version" when a version is present, otherwise the bare
 			// name (devbox treats a bare name as "latest"). Never emit a
@@ -79,10 +91,13 @@ func (d *DevboxProvisioner) writeConfig(pkgMap map[string]string, extra map[stri
 			if version != "" {
 				entry = tool + "@" + version
 			}
-			if !seen[entry] {
+			if idx, ok := indexByName[tool]; ok {
+				// Replace the existing entry for this tool name.
+				existingPackages[idx] = entry
+			} else {
 				existingPackages = append(existingPackages, entry)
-				seen[entry] = true
 			}
+			indexByName[tool] = len(existingPackages) - 1
 		}
 		sort.Slice(existingPackages, func(i, j int) bool {
 			return existingPackages[i].(string) < existingPackages[j].(string)

@@ -336,3 +336,22 @@ func TestDevboxProvisioner_WriteTools_VersionlessNoTrailingAt(t *testing.T) {
 	assert.NotContains(t, string(content), "php84Extensions.xdebug@")
 }
 
+func TestDevboxProvisioner_WriteTools_ReplacesByName(t *testing.T) {
+	dir := t.TempDir()
+	p := NewDevboxProvisioner(Config{Dir: dir})
+
+	// Existing nodejs@22; syncing nodejs@24 must replace it, not duplicate.
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "devbox.json"),
+		[]byte(`{"packages": ["nodejs@22", "php@8.4.15"]}`), 0644))
+
+	err := p.WriteTools(map[string]string{"nodejs": "24"})
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(filepath.Join(dir, "devbox.json"))
+	require.NoError(t, err)
+	assert.Contains(t, string(content), "nodejs@24")
+	assert.NotContains(t, string(content), "nodejs@22")
+	// The versioned php entry must be preserved.
+	assert.Contains(t, string(content), "php@8.4.15")
+}
+
