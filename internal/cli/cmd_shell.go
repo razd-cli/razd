@@ -7,6 +7,7 @@ import (
 	"os/exec"
 
 	"github.com/razd-cli/razd/internal/errors"
+	"github.com/razd-cli/razd/internal/flags"
 )
 
 // runShell implements the "razd shell" command.
@@ -34,6 +35,14 @@ func runShell(ctx *Context) error {
 
 	if err := ensureTrusted(dir, prov, ctx.Log); err != nil {
 		return err
+	}
+
+	// Synchronize the Razdfile with the native config so tools added/edited in
+	// either file are available in the provisioned shell, honoring --no-sync.
+	if !flags.NoSync {
+		if err := syncRazdfile(rf, prov, dir, ctx.Log); err != nil {
+			ctx.Log.Warnf("Sync failed: %v\n", err)
+		}
 	}
 
 	ctx.Log.Debugf("Starting shell with provisioner: %s\n", prov.Name())
