@@ -53,7 +53,9 @@ var ValidUsing = map[string]bool{
 //   "vfox:dealenx/vfox-plugin-lux" or "cargo:ripgrep".
 // - version: alphanumeric, dots, underscores, hyphens
 // A bare name without a version is also valid (devbox/mise default to "latest").
-var ensureRegex = regexp.MustCompile(`^[a-z][a-z0-9._:/_-]*@[a-zA-Z0-9._-]+$|^[a-z][a-z0-9._:/_-]*$`)
+// Names may contain uppercase letters (e.g. devbox packages like
+// php84Extensions.xml, php84Packages.composer).
+var ensureRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9._:/_-]*@[a-zA-Z0-9._-]+$|^[a-zA-Z][a-zA-Z0-9._:/_-]*$`)
 
 // ParseEnsure parses all ensure strings into structured ParsedDependency objects.
 // Returns an error if any string has an invalid format.

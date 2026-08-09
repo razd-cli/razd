@@ -82,9 +82,14 @@ func TestParseDependencyString(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "uppercase tool",
-			input:   "Node@22",
-			wantErr: true,
+			name:  "uppercase tool",
+			input: "Node@22",
+			want:  ParsedDependency{Tool: "Node", Version: "22", Raw: "Node@22"},
+		},
+		{
+			name:  "uppercase versionless devbox package",
+			input: "php84Extensions.xml",
+			want:  ParsedDependency{Tool: "php84Extensions.xml", Version: "", Raw: "php84Extensions.xml"},
 		},
 	}
 
