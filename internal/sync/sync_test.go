@@ -98,6 +98,21 @@ func TestSync_NoDependenciesSkips(t *testing.T) {
 	assert.True(t, os.IsNotExist(statErr))
 }
 
+func TestApplyToRazdfile_ReplacesNotDuplicates(t *testing.T) {
+	dir := t.TempDir()
+	// Existing bun@latest entry; apply bun@1 (from native, "use native").
+	rf := writeRazdfile(t, dir, []string{"bun@latest"})
+
+	err := applyToRazdfile(rf, []Tool{{Name: "bun", Version: "1"}}, dir, noopLogger{})
+	require.NoError(t, err)
+
+	razd, err := os.ReadFile(filepath.Join(dir, "Razdfile.yml"))
+	require.NoError(t, err)
+	// The bun entry must have been replaced, not duplicated.
+	assert.Contains(t, string(razd), "bun@1")
+	assert.NotContains(t, string(razd), "bun@latest")
+}
+
 func TestSync_ConflictNonInteractiveSkips(t *testing.T) {
 	dir := t.TempDir()
 	// Native has node@23, Razdfile has node@22 -> conflict.

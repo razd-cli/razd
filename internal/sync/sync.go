@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/razd-cli/razd/provisioner"
 	"github.com/razd-cli/razd/razdfile"
@@ -123,21 +124,29 @@ func ensureTools(rf *ast.Razdfile) ([]Tool, error) {
 	return out, nil
 }
 
-// applyToRazdfile appends new tools to dependencies.ensure and persists via the
-// AST-preserving writer.
+// applyToRazdfile merges tools into dependencies.ensure, keyed by tool name,
+// and persists via the AST-preserving writer. A tool is added if absent; an
+// existing entry for the same name is replaced with the new version rather
+// than duplicated.
 func applyToRazdfile(rf *ast.Razdfile, tools []Tool, dir string, log Logger) error {
-	existing := make(map[string]bool, len(rf.Dependencies.Ensure))
-	for _, dep := range rf.Dependencies.Ensure {
-		existing[dep] = true
+	indexByName := make(map[string]int, len(rf.Dependencies.Ensure))
+	for i, dep := range rf.Dependencies.Ensure {
+		name, _, ok := splitDep(dep)
+		if ok {
+			indexByName[name] = i
+		}
 	}
 
 	for _, t := range tools {
 		entry := t.Name + "@" + t.Version
-		if existing[entry] {
+		if idx, ok := indexByName[t.Name]; ok {
+			// Replace the existing entry for this tool name.
+			rf.Dependencies.Ensure[idx] = entry
+			log.Infof("[SYNC] Updated %s to %s in Razdfile dependencies\n", t.Name, entry)
 			continue
 		}
 		rf.Dependencies.Ensure = append(rf.Dependencies.Ensure, entry)
-		existing[entry] = true
+		indexByName[t.Name] = len(rf.Dependencies.Ensure) - 1
 		log.Infof("[SYNC] Added %s to Razdfile dependencies\n", entry)
 	}
 
@@ -160,6 +169,15 @@ func applyToRazdfile(rf *ast.Razdfile, tools []Tool, dir string, log Logger) err
 		log.Successf("Razdfile synchronized with %s config\n", "native")
 	}
 	return nil
+}
+
+// splitDep splits a "name@version" string into its name and version parts.
+func splitDep(s string) (name, version string, ok bool) {
+	i := strings.LastIndex(s, "@")
+	if i <= 0 || i == len(s)-1 {
+		return "", "", false
+	}
+	return s[:i], s[i+1:], true
 }
 
 // toolsFromMap converts a name->version map to a Tool slice.
