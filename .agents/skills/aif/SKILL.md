@@ -264,6 +264,7 @@ After language resolution and config write, analyze the codebase to detect:
 - Naming conventions (camelCase, snake_case, PascalCase)
 - Module boundaries (src/core/, src/cli/, src/utils/)
 - Error handling patterns (try/catch, error codes)
+- Control flow patterns (guard clauses, early returns/continues, nested conditionals)
 - Logging patterns (console.log, winston, pino)
 - Test patterns (jest, mocha, vitest)
 
@@ -288,6 +289,10 @@ Create `.ai-factory/rules/base.md` with detected conventions. Use resolved `lang
 ## [Localized heading: Error Handling]
 
 - [detected error handling pattern]
+
+## Control Flow
+
+- Prefer flat, readable control flow over deeply nested conditionals. Use guard clauses, early `return`/`continue`, small named helper methods, or explicit classification logic when they make the code easier to follow. Handle edge cases and irrelevant branches early so the main path stays visible.
 
 ## [Localized heading: Logging]
 
@@ -386,7 +391,7 @@ Proceed? [Y/n]
    - Exit 2 (WARNINGS) → show to user, ask confirmation
    - Exit 0 (CLEAN) → read files yourself (Level 2), verify intent, proceed
 8. Generate custom skills via `/aif-skill-generator` (pass URLs for Learn Mode when docs are available)
-9. Configure MCP in ``
+9. Configure MCP in `.mcp.json`
 10. Generate `AGENTS.md` in project root in resolved `language.artifacts` (see [AGENTS.md Generation](#agentsmd-generation))
 11. Generate architecture document via `/aif-architecture` only after config exists with resolved language settings (see [Architecture Generation](#architecture-generation))
 
@@ -511,13 +516,13 @@ Install skills, configure MCP, generate `AGENTS.md` in resolved `language.artifa
 
 ## MCP Configuration
 
-AI Factory writes MCP config to ``, but the outer settings shape depends on the runtime.
+AI Factory writes MCP config to `.mcp.json`, but the outer settings shape depends on the runtime.
 
 ### Runtime Format Matrix
 
 | Runtime | Write under | Entry shape |
 |---------|-------------|-------------|
-| Standard MCP runtimes (Claude Code, Cursor, Roo Code, Kilo Code, Qwen Code) | `mcpServers.<server>` | `{ "command": "...", "args": [...], "env": {...} }` |
+| Standard MCP runtimes (Claude Code, Cursor, Roo Code, Kilo Code, Qwen Code, Universal / Other) | `mcpServers.<server>` | `{ "command": "...", "args": [...], "env": {...} }` |
 | OpenCode | `mcp.<server>` | `{ "type": "local", "command": ["...", "..."], "environment": {...} }` |
 | GitHub Copilot | `servers.<server>` | `{ "type": "stdio", "command": "...", "args": [...], "env": {...} }` |
 | Codex app | `[mcp_servers.<server>]` in `.codex/config.toml` | `command = "..."`, optional `args = [...]`, credential placeholders as `env_vars = ["VAR"]`, literal values under `[mcp_servers.<server>.env]` |
@@ -709,7 +714,7 @@ Use resolved `language.artifacts` for all headings, notes, table descriptions, a
 1. **Search before generating** — Don't reinvent existing skills
 2. **Ask confirmation** — Before installing or generating
 3. **Check duplicates** — Don't install what's already there
-4. **MCP in ``** — Project-level MCP configuration
+4. **MCP in `.mcp.json`** — Project-level MCP configuration
 5. **Remind about env vars** — For MCP that need credentials
 
 ## Artifact Ownership

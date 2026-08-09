@@ -2,7 +2,7 @@
 name: aif-improve
 description: Refine an existing implementation plan with a second iteration. Re-analyzes the codebase for gaps, missing tasks, and wrong dependencies. Use after /aif-plan or to improve an /aif-fix plan. Optional +check flag validates refinements via a fresh-context subagent.
 argument-hint: "[--list] [+check] [@plan-file] [improvement prompt or empty for auto-review]"
-allowed-tools: Read Write Edit Glob Grep Bash(git *) Task Agent TaskCreate TaskUpdate TaskList TaskGet AskUserQuestion Questions
+allowed-tools: Read Write Edit Glob Grep Bash(git *) Bash(shasum -a 256 *) Bash(sha256sum *) Task Agent TaskCreate TaskUpdate TaskList TaskGet AskUserQuestion Questions
 disable-model-invocation: false
 ---
 
@@ -57,6 +57,8 @@ If `technical_terms_policy` is not one of `keep`, `translate`, or `mixed`, treat
 All AskUserQuestion prompts, progress updates, refinement reports, summaries, and next-step guidance MUST be written in `ui_language`.
 
 Any generated or updated plan artifact content under `paths.plan`, `paths.plans`, or `paths.fix_plan` MUST be written in `artifact_language`.
+
+Exception: an existing `## Original Request` section is raw source input, not generated artifact prose. Preserve its heading and body exactly as read from the plan file on every edit or regeneration, even when `artifact_language` differs. Do not translate, summarize, normalize, trim, or rewrite it.
 
 Templates and examples define structure, not fixed English output. If `artifact_language` is not `en`, translate human-readable headings, labels, task prose, roadmap rationale, research summaries, improvement notes, and dependency notes before saving. Preserve markdown structure, checkbox syntax, task IDs, numeric prefixes, branch names, commit messages, commands, file paths, config keys, package names, API names, `WARN`/`INFO` labels, and raw errors unchanged. Apply `technical_terms_policy` to other human-readable terminology.
 
@@ -132,6 +134,7 @@ To create a plan first, use:
 
 Read the found plan file completely. Understand:
 - Feature scope and goals
+- `## Original Request`, when present: the original user intent and immutable scope anchor for the plan. Treat this section as raw source input and preserve it exactly on any plan edit or regeneration.
 - Current tasks (subjects, descriptions, dependencies)
 - Settings (testing, logging preferences)
 - Commit checkpoints
@@ -145,7 +148,11 @@ Read `.ai-factory/DESCRIPTION.md` (use path from config) if it exists:
 - Conventions
 - Non-functional requirements
 
-Read `.ai-factory/RESEARCH.md` (use path from config) if it exists and is relevant to the plan being refined.
+If the plan contains `## Research Context`, a `Source:` / `Reference:` line pointing to `RESEARCH.md`, or any path/link to the resolved `paths.research` artifact, treat the Research Context embedded in the plan as the committed requirements snapshot. Read the resolved research artifact before proposing refinements only to verify the committed revision marker (`Updated:` and/or `SHA256:` in the plan source line) and to consult `## Sessions` for rationale when needed. If the source line lacks a revision marker or the current `Active Summary` revision differs, emit `WARN [research-drift]` and refine against the plan's embedded Research Context; do not apply requirements from the newer Active Summary unless the user explicitly asks to rebase the plan.
+
+When adding `## Research Context` to an unlinked plan, normalize the copied Active Summary before hashing: include exactly the text that will be pasted under `## Research Context` after the `Source:` line, exclude markdown comments and the `Source:` line itself, preserve line order, trim trailing spaces, use LF line endings, and end with exactly one final newline. Calculate the digest without writing any temporary file or repository artifact: feed the normalized text through stdin / inline shell input to `shasum -a 256`; if `shasum` is unavailable, feed the same normalized text to `sha256sum`. Use the first output field as the `SHA256:` value.
+
+Otherwise, read `.ai-factory/RESEARCH.md` (use path from config) if it exists and is relevant to the plan being refined.
 
 **2.3: Read patches (limited fallback)**
 
@@ -226,7 +233,7 @@ Based on the tech stack and codebase:
 
 ### Step 4: Identify Improvements
 
-Compare the plan against what you found. Categorize issues:
+Compare the plan against what you found. Use `## Original Request` as the original intent / scope anchor when it exists, together with the current task list and any committed `## Research Context`. A proposed refinement is in scope only when it supports that original request or an explicitly approved user refinement prompt; otherwise route it to 4.6 (`out_of_scope`) instead of adding it to the active plan. Categorize issues:
 
 **4.1: Missing tasks**
 - Tasks that should exist but don't (e.g., migration, config update, index creation)
@@ -280,6 +287,8 @@ Show the user what you found in a clear format. The emoji-grouped sections are k
 4. **Suggested edit** — concrete change: what to add / how to reword / what to remove.
 
 The "🔗 Dependency Fixes" group is **not** restated in this shape — it is always computed after the four other groups (and after `+check` filtering when the flag is set, see `references/CHECK-MODE.md`) and uses the short legacy form: `Task #X should depend on Task #Y. Reason: …`. The dependency entries reference only tasks that survived filtering.
+
+The Step 5 report template below defines structure only. Render all human-readable text in this user-facing response in `ui_language`. Preserve command names, paths, task IDs, section structure, option structure, task counts, numeric counts, `WARN`/`INFO` labels, and raw errors unchanged.
 
 ```
 ## Plan Refinement Report
@@ -388,10 +397,15 @@ The difference between the two is the report only. `removals` are dead-weight du
 - Remove deleted tasks
 - Update commit checkpoints if task count changed significantly
 - Preserve any `- [x]` checkboxes for already completed tasks
+- Preserve existing `## Original Request` exactly, including heading, body text, whitespace, and line breaks. Do not translate, summarize, normalize, trim, or rewrite it; this section is raw source input and is exempt from `artifact_language` rewriting.
+- Preserve existing `## Research Context` and its `Source:` / revision marker exactly on any rewrite, unless the user explicitly asks to rebase the plan to current research
+- If an unlinked plan is refined using current research, add `## Research Context` by copying the relevant Active Summary and write `Source: <resolved research path> (Active Summary, Updated: <research Updated timestamp>, SHA256: <sha256 of copied Active Summary>)`
+- Compute that hash from the normalized copied Active Summary: exclude the `Source:` line and comments, preserve line order, trim trailing spaces, use LF line endings, and end with exactly one final newline. Feed the normalized text to `shasum -a 256` or `sha256sum` through stdin / inline shell input, never through a temp file, and copy the first output field.
+- If a linked plan has research drift, keep the committed Research Context and source revision in the plan and include `WARN [research-drift]` in the refinement report
 
 Use `Edit` to make surgical changes to the plan file, or `Write` to regenerate it if changes are extensive.
 
-When editing or regenerating the plan file, keep all human-readable artifact content in `artifact_language`; the examples above are structural only. Preserve completed `- [x]` checkboxes exactly.
+When editing or regenerating the plan file, keep all human-readable artifact content in `artifact_language`; the examples above are structural only. Preserve completed `- [x]` checkboxes exactly. The `## Original Request` section is the explicit language-policy exception: keep it verbatim because it is the user's raw request, not generated artifact prose.
 
 **Filename invariant:** when the existing plan filename matches the sequential
 pattern `^[0-9]{4}_.*\.md$` (e.g. `0042_feature-user-auth.md`), preserve the
@@ -400,6 +414,8 @@ the prefix is permanent and must survive any regeneration. Write back to the
 same absolute path you read from.
 
 **6.6: Confirm completion**
+
+The Step 6.6 completion template below defines structure only. Render all human-readable text in this user-facing response in `ui_language`. Preserve command names, paths, task counts, and numeric counts unchanged.
 
 ```
 ## Plan Refined
@@ -437,6 +453,7 @@ Suggest the user to free up context space if needed: `/clear` (full reset) or `/
 6. **Minimal viable improvements** — suggest only what matters, not every possible enhancement
 7. **User approves first** — never apply changes without user confirmation
 8. **Keep plan file in sync** — the plan file MUST match the task list after improvements
+9. **Original Request is immutable** — when present, use `## Original Request` to judge scope and preserve it verbatim on every plan edit or regeneration
 
 ## Examples
 

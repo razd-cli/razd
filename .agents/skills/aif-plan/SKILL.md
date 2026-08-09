@@ -2,7 +2,7 @@
 name: aif-plan
 description: Plan implementation for a feature or task. Two modes — fast (single quick plan) or full (richer plan with optional git branch/worktree flow). Use when user says "plan", "new feature", "start feature", "create tasks".
 argument-hint: "[fast | full] [--parallel | --list | --cleanup <branch>] <description>"
-allowed-tools: Read Write Glob Grep Bash(git *) Bash(cd *) Bash(cp *) Bash(mkdir *) Bash(basename *) TaskCreate TaskUpdate TaskList AskUserQuestion Questions Task mcp__handoff__handoff_sync_status mcp__handoff__handoff_push_plan mcp__handoff__handoff_get_task mcp__handoff__handoff_list_tasks mcp__handoff__handoff_update_task
+allowed-tools: Read Write Glob Grep Bash(git *) Bash(cd *) Bash(cp *) Bash(mkdir *) Bash(basename *) Bash(shasum -a 256 *) Bash(sha256sum *) TaskCreate TaskUpdate TaskList AskUserQuestion Questions Task mcp__handoff__handoff_sync_status mcp__handoff__handoff_push_plan mcp__handoff__handoff_get_task mcp__handoff__handoff_list_tasks mcp__handoff__handoff_update_task
 disable-model-invocation: false
 version: 1.0.0
 ---
@@ -113,6 +113,8 @@ Generated plan artifacts under `paths.plan` or `paths.plans` MUST be written in 
 
 Templates and examples define structure, not fixed English output. If `artifact_language` is not `en`, translate human-readable headings, labels, task prose, roadmap rationale, research summaries, settings explanations, and dependency notes before saving. Preserve markdown structure, checkbox syntax, task IDs, branch names, commit messages, commands, file paths, config keys, package names, API names, `WARN`/`INFO` labels, and raw errors unchanged. Apply `technical_terms_policy` to other human-readable terminology.
 
+Exception: the section heading and body of `## Original Request` are fixed raw-source structure and must not be translated, summarized, normalized, or rewritten.
+
 **THEN:** Read `.ai-factory/DESCRIPTION.md` (use path from config) if it exists to understand:
 
 - Tech stack (language, framework, database, ORM)
@@ -166,6 +168,9 @@ If any rule is violated — fix the output before presenting it to the user.
 - Carry over constraints/decisions into tasks and plan settings
 - Prefer the summary over raw notes; use `## Sessions` only when you need deeper rationale
 - If the user omitted the feature description, use `Active Summary -> Topic:` as the default description
+- Track whether research content influenced this plan. Set `research_influenced_plan = true` only when the Active Summary supplies the default description or when constraints, decisions, goals, open questions, or session rationale from the research artifact shape the plan scope, tasks, settings, or tradeoffs. If the research artifact exists but is stale or unrelated to the user's requested task, leave `research_influenced_plan = false`, ignore it for plan requirements, and do not add `## Research Context`.
+- If any research content influences the plan, the generated plan MUST include `## Research Context` with a `Source:` line pointing to the resolved research artifact and a stable revision marker (`Updated:` timestamp from the research file plus `SHA256:` of the copied Active Summary). Omitting this plan-owned research copy is a bug because downstream skills treat the embedded Research Context as the plan's authoritative requirements and use the live research file only for drift checks.
+- Normalize the copied Active Summary before hashing: include exactly the text that will be pasted under `## Research Context` after the `Source:` line, exclude markdown comments and the `Source:` line itself, preserve line order, trim trailing spaces, use LF line endings, and end with exactly one final newline. Calculate the digest without writing any temporary file or repository artifact: feed the normalized text through stdin / inline shell input to `shasum -a 256`; if `shasum` is unavailable, feed the same normalized text to `sha256sum`. Use the first output field as the `SHA256:` value.
 
 ### Step 0.1: Resolve Git State
 
@@ -204,16 +209,27 @@ full        → Full mode (first word)
 
 **Parsing rules:**
 
-- Strip `--parallel`, `--list`, `--cleanup <branch>`, `fast`, `full` from `$ARGUMENTS`
+- Strip only recognized command tokens in command positions from `$ARGUMENTS`:
+  - `fast` or `full` only when used as the leading mode token
+  - recognized control flags `--parallel`, `--list`, and `--cleanup <branch>`
+  - do not remove matching words inside the user's actual request text
 - Remaining text becomes the description
+- Preserve the remaining text as `original_user_request` when it is non-empty: trim only outer whitespace introduced by command parsing, but keep internal whitespace, line breaks, wording, casing, and punctuation exactly. This is the user's original planning request and MUST be saved into the plan file later.
 - `--list` and `--cleanup` execute immediately and **STOP** (do NOT continue to Step 1+)
 - If `git.enabled = false`, reject `--parallel`, `--list`, and `--cleanup` with a short explanation instead of trying git commands
 - If `--parallel` is set while `git.create_branches = false`, reject it with a short explanation because parallel mode requires branch creation
 
 **If the description is empty:**
 
-- If the resolved research path exists and its `Active Summary` has a non-empty `Topic:`, default the description to that topic (no extra user input required)
-- Otherwise, ask the user for a short feature description
+- If the resolved research path exists and its `Active Summary` has a non-empty `Topic:`, default the description to that topic (no extra user input required) and leave `original_user_request` empty. Plans created from `RESEARCH.md` without an explicit user request MUST NOT include an `Original Request` section.
+- Otherwise, ask the user for a short feature description. Preserve the user's answer verbatim as `original_user_request` and save it into the plan file later.
+
+**Original request contract:**
+
+- If the user explicitly supplied a planning request (for example `/aif-plan ТУТ ЗАПРОС НА ПЛАН`, `/aif-plan full ТУТ ЗАПРОС НА ПЛАН`, or an answer to the description prompt), the generated plan MUST include `## Original Request`.
+- `## Original Request` contains the exact user-provided request text after only recognized command tokens are removed and only outer whitespace is trimmed. Do not rewrite, summarize, translate, or normalize its wording, even when `artifact_language` differs.
+- If the description was derived only from `RESEARCH.md` because the user did not provide a request, omit `## Original Request`; the committed source is `## Research Context` instead.
+- If the user supplied a request and `RESEARCH.md` also influenced the plan, include both `## Original Request` and `## Research Context`.
 
 **If `--list` is present**, jump to [--list Subcommand](#--list-subcommand).
 **If `--cleanup` is present**, jump to [--cleanup Subcommand](#--cleanup-subcommand).
@@ -609,21 +625,33 @@ mkdir -p <configured plans dir>
 
 - Title with feature name
 - Branch and creation date
+- `Original Request` section (required when the user explicitly supplied a planning request; omitted when the plan is created solely from `RESEARCH.md`)
 - `Settings` section (Testing, Logging, Docs)
 - `Roadmap Linkage` section (optional, only if the resolved roadmap artifact exists)
-- `Research Context` section (optional, if the resolved research path exists)
+- `Research Context` section (optional, only if research content influenced this plan)
 - `Tasks` section grouped by phases
 - `Commit Plan` section when there are 5+ tasks
+
+If `original_user_request` is non-empty:
+
+- Write `## Original Request` before `## Settings`
+- Preserve the exact user-provided request text after only recognized command tokens are removed and only outer whitespace is trimmed
+- Do not translate the saved request; it is raw source input, not generated artifact prose
 
 If the resolved roadmap artifact exists:
 
 - If the user linked a milestone, write `## Roadmap Linkage` with `Milestone: "..."` and `Rationale: ...`
 - If the user skipped linkage, write `## Roadmap Linkage` with `Milestone: "none"` and `Rationale: "Skipped by user"`
 
-If the resolved research path exists:
+If research content influenced this plan:
 
 - Include `## Research Context` by copying only the `Active Summary` (do not paste full `Sessions`)
+- Include `Source: <resolved research path> (Active Summary, Updated: <research Updated timestamp>, SHA256: <sha256 of copied Active Summary>)` so `/aif-implement`, `/aif-verify`, `/aif-improve`, and related consumers know the exact committed research revision
+- Compute the hash from the normalized copied Active Summary exactly as described in Step 0: exclude the `Source:` line and comments, preserve line order, trim trailing spaces, use LF line endings, and end with exactly one final newline. Feed the normalized text to `shasum -a 256` or `sha256sum` through stdin / inline shell input, never through a temp file, and copy the first output field.
+- Treat the copied `Research Context` as the plan-owned authoritative requirements copy. A later change to `RESEARCH.md` must not override these requirements without an explicit drift warning and user-requested rebase/refinement.
 - Keep it compact; it should be readable as a one-screen requirements snapshot
+
+If the resolved research path exists but did not influence this plan, do not include `## Research Context`. An existing `RESEARCH.md` for topic A plus an explicit `/aif-plan` request for unrelated topic B must produce an unlinked plan for topic B.
 
 Use the canonical template in `references/TASK-FORMAT.md` (Plan File Template).
 
