@@ -142,7 +142,7 @@ Usage:
   razd <command> [flags] [args]    Run a command
 
 Commands:
-  up          Install tools and dependencies via mise/devbox
+  up          Install tools and run the default task
   trust       Trust the current project
   list        List available tasks
   init        Initialize a new Razdfile
@@ -163,12 +163,13 @@ Global Flags:
 
 Task Flags:
   -t, --taskfile    Path to Taskfile.yml
-  -r, --razdfile    Path to Razdfile.yml
+      --razdfile    Path to Razdfile.yml
+  -r, --run         Run the default task after setup (razd up)
 
 Examples:
   razd                  Run the default task
-  razd up               Install tools and dependencies
-  razd up -r            Install tools and run default task
+  razd up               Install tools and run the default task
+  razd up -r            Install tools and run the default task (same as above)
   razd install test     Run 'install' and 'test' tasks
   razd trust            Trust the current project
   razd list             List all available tasks

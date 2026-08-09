@@ -62,12 +62,12 @@ func runUp(ctx *Context) error {
 	}
 	ctx.Log.Successf("Tools installed successfully\n")
 
-	if shouldRunAfterInstall() {
-		ctx.Log.Infof("Running default task...\n")
-		return runDefaultTask(ctx, rf, prov, dir)
-	}
-
-	return nil
+	// Run the default task unconditionally so `razd up` sets up the whole
+	// project (install + start), not just its toolchain. If the Razdfile has
+	// no default task, runDefaultTask warns and returns nil — the ensure
+	// packages were already installed above.
+	ctx.Log.Infof("Running default task...\n")
+	return runDefaultTask(ctx, rf, prov, dir)
 }
 
 // resolveUpDir determines the working directory for the up command.
@@ -120,7 +120,10 @@ func resolveUpDir(ctx *Context) (string, error) {
 	return dir, nil
 }
 
-// shouldRunAfterInstall returns true if the --run flag was set (razd up --run).
+// shouldRunAfterInstall is retained for backward compatibility with the
+// `--run`/`-r` flag. The default task now always runs after install in runUp,
+// so this helper is no longer consulted by the up flow; it exists only so the
+// flag remains accepted without error.
 func shouldRunAfterInstall() bool {
 	return flags.Run
 }

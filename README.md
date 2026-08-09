@@ -8,8 +8,8 @@ A project setup tool powered by mise or devbox.
 razd run <task>       # Run a task (default task if none specified)
 razd list             # List tasks
 razd list --json      # List tasks in JSON
-razd up               # Install dependencies
-razd up --run         # Install dependencies and run default task
+razd up               # Install dependencies and run the default task
+razd up --run         # Same as above (flag kept for compatibility)
 razd init             # Create Razdfile.yml in current directory
 
 razd init --using devbox   # Create with devbox provider
