@@ -3,6 +3,7 @@ package provisioner
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/razd-cli/razd/razdfile/ast"
@@ -352,6 +353,28 @@ func TestDevboxProvisioner_WriteTools_ReplacesByName(t *testing.T) {
 	assert.Contains(t, string(content), "nodejs@24")
 	assert.NotContains(t, string(content), "nodejs@22")
 	// The versioned php entry must be preserved.
+	assert.Contains(t, string(content), "php@8.4.15")
+}
+
+func TestDevboxProvisioner_WriteTools_CollapsesPreExistingDuplicates(t *testing.T) {
+	dir := t.TempDir()
+	p := NewDevboxProvisioner(Config{Dir: dir})
+
+	// devbox.json already has two nodejs entries (from a previous buggy sync).
+	// Writing a new version must collapse them into a single entry.
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "devbox.json"),
+		[]byte(`{"packages": ["nodejs@22", "nodejs@26", "php@8.4.15"]}`), 0644))
+
+	err := p.WriteTools(map[string]string{"nodejs": "26"})
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(filepath.Join(dir, "devbox.json"))
+	require.NoError(t, err)
+	assert.Contains(t, string(content), "nodejs@26")
+	assert.NotContains(t, string(content), "nodejs@22")
+	// Exactly one nodejs entry remains.
+	count := strings.Count(string(content), "nodejs@26")
+	assert.Equal(t, 1, count, "expected exactly one nodejs@26, got %d", count)
 	assert.Contains(t, string(content), "php@8.4.15")
 }
 

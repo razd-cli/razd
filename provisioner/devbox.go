@@ -68,19 +68,31 @@ func (d *DevboxProvisioner) writeConfig(pkgMap map[string]string, extra map[stri
 			existingPackages = []any{}
 		}
 
-		// Index existing packages by bare tool name so we can replace an
-		// entry in place instead of duplicating (e.g. nodejs@22 -> nodejs@24).
-		indexByName := make(map[string]int, len(existingPackages))
-		for i, p := range existingPackages {
+		// Build the final list: keep existing entries whose bare name is NOT in
+		// pkgMap, then append exactly one entry per pkgMap tool. This removes
+		// any pre-existing duplicate (e.g. nodejs@22 + nodejs@26) and replaces
+		// it with a single entry for the new version.
+		replaced := make(map[string]bool, len(pkgMap))
+		for tool := range pkgMap {
+			replaced[tool] = true
+		}
+
+		kept := make([]any, 0, len(existingPackages)+len(pkgMap))
+		for _, p := range existingPackages {
 			str, ok := p.(string)
 			if !ok {
+				kept = append(kept, p)
 				continue
 			}
+			name := str
 			if idx := strings.LastIndex(str, "@"); idx > 0 && idx < len(str)-1 {
-				indexByName[str[:idx]] = i
-			} else {
-				indexByName[str] = i
+				name = str[:idx]
 			}
+			if replaced[name] {
+				// Dropped: this tool will be written once below.
+				continue
+			}
+			kept = append(kept, str)
 		}
 
 		for tool, version := range pkgMap {
@@ -91,18 +103,13 @@ func (d *DevboxProvisioner) writeConfig(pkgMap map[string]string, extra map[stri
 			if version != "" {
 				entry = tool + "@" + version
 			}
-			if idx, ok := indexByName[tool]; ok {
-				// Replace the existing entry for this tool name.
-				existingPackages[idx] = entry
-			} else {
-				existingPackages = append(existingPackages, entry)
-			}
-			indexByName[tool] = len(existingPackages) - 1
+			kept = append(kept, entry)
 		}
-		sort.Slice(existingPackages, func(i, j int) bool {
-			return existingPackages[i].(string) < existingPackages[j].(string)
+
+		sort.Slice(kept, func(i, j int) bool {
+			return kept[i].(string) < kept[j].(string)
 		})
-		existing["packages"] = existingPackages
+		existing["packages"] = kept
 	}
 
 	content, err := json.MarshalIndent(existing, "", "  ")
