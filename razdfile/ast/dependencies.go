@@ -48,9 +48,11 @@ var ValidUsing = map[string]bool{
 
 // ensureRegex validates the format of ensure strings.
 // Format: tool@version where:
-// - tool: lowercase letters, numbers, underscores, hyphens (starts with letter)
+// - tool: lowercase letters, numbers, underscores, hyphens, dots, colons, slashes
+//   (starts with letter). Colons/slashes support registry/plugin names such as
+//   "vfox:dealenx/vfox-plugin-lux" or "cargo:ripgrep".
 // - version: alphanumeric, dots, underscores, hyphens
-var ensureRegex = regexp.MustCompile(`^[a-z][a-z0-9_-]*@[a-zA-Z0-9._-]+$`)
+var ensureRegex = regexp.MustCompile(`^[a-z][a-z0-9._:/_-]*@[a-zA-Z0-9._-]+$`)
 
 // ParseEnsure parses all ensure strings into structured ParsedDependency objects.
 // Returns an error if any string has an invalid format.

@@ -42,6 +42,21 @@ func TestParseDependencyString(t *testing.T) {
 			want:  ParsedDependency{Tool: "my_tool", Version: "1.0", Raw: "my_tool@1.0"},
 		},
 		{
+			name:  "vfox plugin tool",
+			input: "vfox:dealenx/vfox-plugin-lux@latest",
+			want:  ParsedDependency{Tool: "vfox:dealenx/vfox-plugin-lux", Version: "latest", Raw: "vfox:dealenx/vfox-plugin-lux@latest"},
+		},
+		{
+			name:  "cargo registry tool",
+			input: "cargo:ripgrep@14.1.1",
+			want:  ParsedDependency{Tool: "cargo:ripgrep", Version: "14.1.1", Raw: "cargo:ripgrep@14.1.1"},
+		},
+		{
+			name:  "tool with dot",
+			input: "coreutils.gnu@9.4",
+			want:  ParsedDependency{Tool: "coreutils.gnu", Version: "9.4", Raw: "coreutils.gnu@9.4"},
+		},
+		{
 			name:    "empty string",
 			input:   "",
 			wantErr: true,
