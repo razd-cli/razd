@@ -2,6 +2,7 @@ package cli
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -320,6 +321,11 @@ func TestRunAddTask_OverwriteWithYes(t *testing.T) {
 }
 
 func TestRunAddTask_AddsTaskToolToMise(t *testing.T) {
+	// This test exercises the provisioner path, which requires the mise binary.
+	if _, err := exec.LookPath("mise"); err != nil {
+		t.Skip("mise not installed; skipping provisioner-dependent test")
+	}
+
 	dir := t.TempDir()
 	writeFreshInitRazdfile(t, dir)
 
