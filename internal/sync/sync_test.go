@@ -248,3 +248,51 @@ func TestSync_ExistingNativeFileStillPrompts(t *testing.T) {
 	assert.Contains(t, string(razd), "python@3.11")
 }
 
+func TestSync_NewPackageNoDirectionPrompt(t *testing.T) {
+	dir := t.TempDir()
+	// mise.toml has go@1.21 which is already in Razdfile; Razdfile adds python.
+	// With confirmSync=true, the direction prompt must be skipped because the
+	// only change is Razdfile->native (no native->Razdfile changes).
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "mise.toml"),
+		[]byte("[tools]\ngo = \"1.21\"\n"), 0644))
+	rf := writeRazdfile(t, dir, []string{"go@1.21", "python"})
+	prov := provisioner.NewMiseProvisioner(provisioner.Config{Dir: dir})
+
+	err := Sync(rf, prov, dir, noopLogger{}, false, true)
+	require.NoError(t, err)
+
+	// python written to native without a direction prompt.
+	mise, err := os.ReadFile(filepath.Join(dir, "mise.toml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(mise), "python")
+	// go (already in both) unchanged.
+	assert.Contains(t, string(mise), "go = '1.21'")
+	// No native->Razdfile changes were applied.
+	razd, err := os.ReadFile(filepath.Join(dir, "Razdfile.yml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(razd), "python")
+	assert.NotContains(t, string(razd), "node")
+}
+
+func TestSync_ConflictAppliesWithoutSecondPrompt(t *testing.T) {
+	dir := t.TempDir()
+	// Native has node@24, Razdfile has node@26 -> version conflict. With
+	// confirmSync=true and non-interactive stdin, the conflict resolves to
+	// skip (safe default) and no direction prompt fires.
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "mise.toml"),
+		[]byte("[tools]\nnode = \"24\"\n"), 0644))
+	rf := writeRazdfile(t, dir, []string{"node@26"})
+	prov := provisioner.NewMiseProvisioner(provisioner.Config{Dir: dir})
+
+	err := Sync(rf, prov, dir, noopLogger{}, false, true)
+	require.NoError(t, err)
+
+	// Conflict skipped (non-interactive): neither side changes.
+	mise, err := os.ReadFile(filepath.Join(dir, "mise.toml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(mise), "node = \"24\"")
+	razd, err := os.ReadFile(filepath.Join(dir, "Razdfile.yml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(razd), "node@26")
+}
+

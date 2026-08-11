@@ -253,6 +253,26 @@ func TestRunAdd_StillAddsDependency(t *testing.T) {
 	assert.NotContains(t, string(data), "tasks:")
 }
 
+func TestRunAdd_BareTaskAddsPackage(t *testing.T) {
+	dir := t.TempDir()
+	writeFreshInitRazdfile(t, dir)
+
+	// A bare "razd add task" (no name) must add the `task` package, not error.
+	ctx := &Context{
+		Args: []string{"task"},
+		Log:  output.NewLogger(os.Stderr, os.Stderr),
+		Dir:  dir,
+	}
+
+	err := runAdd(ctx)
+	require.NoError(t, err)
+
+	data, err := os.ReadFile(filepath.Join(dir, "Razdfile.yml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "task")
+	assert.NotContains(t, string(data), "tasks:")
+}
+
 func TestRunAddTask_OverwriteNonInteractiveSkips(t *testing.T) {
 	dir := t.TempDir()
 	// Task already exists.

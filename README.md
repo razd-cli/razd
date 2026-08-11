@@ -15,6 +15,7 @@ razd init             # Create Razdfile.yml in current directory
 razd init --using devbox   # Create with devbox provider
 razd add node@22      # Add a dependency to Razdfile
 razd add node         # Add a dependency without a version (defaults to "latest")
+razd add task         # Add the 'task' package (bare form)
 razd add task hello -- echo 'hi'   # Create a task with a command
 razd shell            # Start interactive shell with provisioned env
 razd trust            # Trust current project
@@ -43,6 +44,13 @@ versionless entries in `ensure` are written back to `devbox.json` as bare names.
 `razd add <tool>` accepts a bare package name without a version (the native
 manager defaults it to "latest"). If the Razdfile has no `dependencies.ensure`
 list yet (for example right after `razd init`), `razd add` creates it.
+
+A package added via `razd add` is written to the native config without a
+direction prompt when there is no version conflict — the direction is obvious
+(Razdfile → native). When a tool exists in both files with **different
+versions**, razd shows a single "Version conflict" prompt with **"Use Razdfile"**
+as the first (recommended) option; after you choose, the change is applied
+without a second prompt.
 
 ### Creating tasks
 

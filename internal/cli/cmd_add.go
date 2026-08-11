@@ -19,8 +19,10 @@ func runAdd(ctx *Context) error {
 		return fmt.Errorf("usage: razd add <tool@version> [tool@version...] | razd add task <name> -- <cmd>")
 	}
 
-	// "razd add task <name> -- <cmd>" creates a task.
-	if ctx.Args[0] == "task" {
+	// "razd add task <name> -- <cmd>" creates a task. A bare "razd add task"
+	// (no name) falls through to the dependency path and adds the `task` package.
+	if ctx.Args[0] == "task" && len(ctx.Args) > 1 {
+		ctx.Log.Debugf("add task: %d args, routing to task creation\n", len(ctx.Args))
 		return runAddTask(ctx, ctx.Args[1:])
 	}
 

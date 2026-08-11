@@ -89,7 +89,10 @@ func Sync(rf *ast.Razdfile, prov provisioner.Provisioner, dir string, log Logger
 	if !nativeExists {
 		log.Debugf("[SYNC] %s config missing, skipping sync prompts\n", prov.Name())
 		changes.ToRazdfile = nil
-	} else if confirmSync {
+	} else if len(changes.ToRazdfile) > 0 && confirmSync {
+		// The direction is only ambiguous when there are native->Razdfile
+		// changes. When the only direction is Razdfile->native (the natural
+		// result of `razd add`), apply it silently.
 		decision, err := PromptConfirmSync(prov.Name(), len(changes.ToRazdfile), len(changes.ToNative), log)
 		if err != nil {
 			return err
@@ -105,6 +108,8 @@ func Sync(rf *ast.Razdfile, prov provisioner.Provisioner, dir string, log Logger
 			// Only apply native -> Razdfile; ignore changes.ToNative.
 			changes.ToNative = nil
 		}
+	} else if len(changes.ToRazdfile) == 0 {
+		log.Debugf("[SYNC] only Razdfile->native changes, skipping direction prompt\n")
 	}
 
 	// Apply native -> Razdfile.
