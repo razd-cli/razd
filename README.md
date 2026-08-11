@@ -17,7 +17,8 @@ razd add node@22      # Add a dependency to Razdfile
 razd add node         # Add a dependency without a version (defaults to "latest")
 razd add task         # Add the 'task' package (bare form)
 razd add task hello -- echo 'hi'   # Create a task with a command
-razd shell            # Print the shell activation script (for eval/iex)
+razd shell            # Open interactive shell (provisioner activated)
+razd shell --print    # Print the activation script (for eval/iex)
 razd trust            # Trust current project
 razd trust --show     # Show trust status
 razd trust --untrust  # Remove trust
@@ -88,20 +89,30 @@ untouched.
 
 ### Shell activation
 
-`razd shell` prints the provisioner's shell activation script. Evaluate it to
-activate the **current** shell with the provisioner's environment:
+`razd shell` opens an interactive subshell with the provisioner already
+activated (mise/devbox tools and env vars are available). The activation is
+temporary — `exit` returns to your original shell unchanged:
+
+```bash
+razd shell
+# ... inside: node, python, etc. are available
+exit
+```
+
+To activate the **current** shell instead (persists for the session), print the
+activation script and evaluate it:
 
 ```bash
 # Unix (bash/zsh/fish)
-eval "$(razd shell)"
+eval "$(razd shell --print)"
 
 # PowerShell (Windows)
-iex "$(razd shell)"
+iex "$(razd shell --print)"
 ```
 
-`razd shell` detects the current shell from `$SHELL` and prints the
-provisioner's activation script (`mise activate <shell>` or
-`devbox shellenv --format <shell>`).
+`razd shell` detects the current shell from `$SHELL` and uses the provisioner's
+activation command (`mise activate <shell>` or `devbox shellenv --format
+<shell>`).
 
 ### Version conflicts
 

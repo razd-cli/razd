@@ -109,7 +109,7 @@ func (c *AddCommand) Run(ctx *Context) error {
 type ShellCommand struct{}
 
 func (c *ShellCommand) Name() string        { return "shell" }
-func (c *ShellCommand) Description() string { return "Print the shell activation script (eval \"$(razd shell)\")" }
+func (c *ShellCommand) Description() string { return "Open an interactive shell with the provisioner activated" }
 func (c *ShellCommand) Run(ctx *Context) error {
 	return runShell(ctx)
 }

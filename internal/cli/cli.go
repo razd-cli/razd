@@ -147,7 +147,7 @@ Commands:
   list        List available tasks
   init        Initialize a new Razdfile
   add         Add a dependency or task (razd add task <name> -- <cmd>)
-  shell       Print the shell activation script (eval "$(razd shell)")
+  shell       Open an interactive shell with the provisioner activated
   dev         Start development server (runs 'dev' task)
   build       Build the project (runs 'build' task)
 
@@ -175,7 +175,7 @@ Examples:
   razd add task hello -- echo 'hi'   Create a task
   razd trust            Trust the current project
   razd list             List all available tasks
-  razd shell            Print activation script (eval "$(razd shell)")
+  razd shell            Open interactive shell (provisioner activated)
 
 Documentation: https://github.com/razd-cli/razd`)
 }
