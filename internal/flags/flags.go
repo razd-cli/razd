@@ -66,9 +66,6 @@ var (
 	TaskDir         string
 	TaskSilent      bool
 	TaskInteractive bool
-
-	// Shell command flags
-	ShellPrint bool
 )
 // Init registers all flags with pflag.
 func Init() {
@@ -114,9 +111,6 @@ func Init() {
 	pflag.StringVar(&TaskDir, "task-dir", "", "Run the task in a specific directory")
 	pflag.BoolVar(&TaskSilent, "task-silent", false, "Do not print the command or its output")
 	pflag.BoolVar(&TaskInteractive, "interactive", false, "Mark the task as an interactive CLI application")
-
-	// Shell command flags
-	pflag.BoolVar(&ShellPrint, "print", false, "Print the shell activation script instead of launching a subshell")
 }
 
 // Validate checks for mutually exclusive flags.
