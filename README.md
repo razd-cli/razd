@@ -14,6 +14,7 @@ razd init             # Create Razdfile.yml in current directory
 
 razd init --using devbox   # Create with devbox provider
 razd add node@22      # Add a dependency to Razdfile
+razd add node         # Add a dependency without a version (defaults to "latest")
 razd shell            # Start interactive shell with provisioned env
 razd trust            # Trust current project
 razd trust --show     # Show trust status
@@ -37,6 +38,10 @@ non-destructive merge** between the two files on `razd up`, `razd add`, and
 Versionless devbox packages (e.g. `php84Extensions.*`, `php84Packages.composer`)
 are synced as bare entries in `dependencies.ensure` (no `@version` suffix), and
 versionless entries in `ensure` are written back to `devbox.json` as bare names.
+
+`razd add <tool>` accepts a bare package name without a version (the native
+manager defaults it to "latest"). If the Razdfile has no `dependencies.ensure`
+list yet (for example right after `razd init`), `razd add` creates it.
 
 ### Version conflicts
 

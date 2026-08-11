@@ -99,3 +99,47 @@ func countOccurrences(s, sub string) int {
 	}
 	return n
 }
+
+func writeFreshInitRazdfile(t *testing.T, dir string) {
+	t.Helper()
+	// Mirrors `razd init`: dependencies.using present, no ensure key.
+	content := "version: \"1\"\ndependencies:\n  using: mise\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "Razdfile.yml"), []byte(content), 0644))
+}
+
+func TestRunAdd_CreatesEnsureOnFreshInit(t *testing.T) {
+	dir := t.TempDir()
+	writeFreshInitRazdfile(t, dir)
+
+	ctx := &Context{
+		Args: []string{"node@22"},
+		Log:  output.NewLogger(os.Stderr, os.Stderr),
+		Dir:  dir,
+	}
+
+	err := runAdd(ctx)
+	require.NoError(t, err)
+
+	data, err := os.ReadFile(filepath.Join(dir, "Razdfile.yml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "node@22")
+}
+
+func TestRunAdd_BareNameCreatesEnsure(t *testing.T) {
+	dir := t.TempDir()
+	writeFreshInitRazdfile(t, dir)
+
+	ctx := &Context{
+		Args: []string{"node"},
+		Log:  output.NewLogger(os.Stderr, os.Stderr),
+		Dir:  dir,
+	}
+
+	err := runAdd(ctx)
+	require.NoError(t, err)
+
+	data, err := os.ReadFile(filepath.Join(dir, "Razdfile.yml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "- node")
+	assert.NotContains(t, string(data), "node@")
+}

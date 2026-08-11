@@ -60,9 +60,13 @@ func runAdd(ctx *Context) error {
 	}
 
 	targetPath := filepath.Join(dir, "Razdfile.yml")
-	_, err = razdfile.UpdateEnsureInFile(targetPath, rf.Dependencies.Ensure)
+	didWrite, err := razdfile.UpdateEnsureInFile(targetPath, rf.Dependencies.Ensure)
 	if err != nil {
 		return fmt.Errorf("failed to update Razdfile: %w", err)
+	}
+	if !didWrite {
+		ctx.Log.Debugf("ensure list unchanged after add, expected a write\n")
+		return fmt.Errorf("failed to update Razdfile: ensure list was not written")
 	}
 
 	ctx.Log.Successf("Added %d dependencies to %s\n", len(added), targetPath)

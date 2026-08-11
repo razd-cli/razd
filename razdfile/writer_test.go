@@ -125,3 +125,43 @@ tasks:
 	assert.Contains(t, string(result), "python@3.12")
 	assert.Contains(t, string(result), "echo hello")
 }
+
+func TestUpdateEnsureInFile_CreatesEnsureWhenAbsent(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "Razdfile.yml")
+
+	original := `version: "1"
+dependencies:
+  using: "mise"
+`
+	require.NoError(t, os.WriteFile(path, []byte(original), 0644))
+
+	changed, err := UpdateEnsureInFile(path, []string{"node@22"})
+	require.NoError(t, err)
+	assert.True(t, changed)
+
+	result, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Contains(t, string(result), "node@22")
+	assert.Contains(t, string(result), "using: \"mise\"")
+}
+
+func TestUpdateEnsureInFile_CreatesEnsureWhenAbsent_BareName(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "Razdfile.yml")
+
+	original := `version: "1"
+dependencies:
+  using: "mise"
+`
+	require.NoError(t, os.WriteFile(path, []byte(original), 0644))
+
+	changed, err := UpdateEnsureInFile(path, []string{"node"})
+	require.NoError(t, err)
+	assert.True(t, changed)
+
+	result, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Contains(t, string(result), "- node")
+	assert.NotContains(t, string(result), "node@")
+}

@@ -41,23 +41,34 @@ func UpdateEnsureInFile(filePath string, newEnsure []string) (bool, error) {
 			continue
 		}
 
+		ensureNode := (*yaml.Node)(nil)
 		for j := 0; j < len(depNode.Content); j += 2 {
 			depKey := depNode.Content[j]
 			if depKey.Value != "ensure" {
 				continue
 			}
-
-			ensureNode := depNode.Content[j+1]
-			if ensureNode.Kind != yaml.SequenceNode {
-				continue
-			}
-
-			currentValues := ensureListValues(ensureNode)
-			if !ensureListsEqual(currentValues, newEnsure) {
-				setEnsureList(ensureNode, newEnsure, currentValues)
-				changed = true
-			}
+			ensureNode = depNode.Content[j+1]
 			break
+		}
+
+		if ensureNode == nil {
+			// The dependencies mapping exists but has no "ensure" key.
+			// Append a new empty sequence so the ensure list is written.
+			ensureNode = &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+			depNode.Content = append(depNode.Content,
+				&yaml.Node{Kind: yaml.ScalarNode, Value: "ensure", Tag: "!!str"},
+				ensureNode,
+			)
+		}
+
+		if ensureNode.Kind != yaml.SequenceNode {
+			continue
+		}
+
+		currentValues := ensureListValues(ensureNode)
+		if !ensureListsEqual(currentValues, newEnsure) {
+			setEnsureList(ensureNode, newEnsure, currentValues)
+			changed = true
 		}
 		break
 	}
