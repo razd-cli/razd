@@ -170,10 +170,12 @@ Examples:
   razd                  Run the default task
   razd up               Install tools and run the default task
   razd up -r            Install tools and run the default task (same as above)
-  razd install test     Run 'install' and 'test' tasks
+  razd build test       Run 'build' and 'test' tasks
+  razd add node         Add a dependency to Razdfile
+  razd add task hello -- echo 'hi'   Create a task
   razd trust            Trust the current project
   razd list             List all available tasks
   razd shell            Start provisioned shell
 
-Documentation: https://github.com/dealenx/razd`)
+Documentation: https://github.com/razd-cli/razd`)
 }
