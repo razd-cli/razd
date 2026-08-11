@@ -298,3 +298,45 @@ func TestRunAddTask_OverwriteWithYes(t *testing.T) {
 	assert.Contains(t, string(data), "echo new")
 	assert.NotContains(t, string(data), "echo old")
 }
+
+func TestRunAddTask_AddsTaskToolToMise(t *testing.T) {
+	dir := t.TempDir()
+	writeFreshInitRazdfile(t, dir)
+
+	ctx := &Context{
+		Args: []string{"task", "hello", "echo", "hi"},
+		Log:  output.NewLogger(os.Stderr, os.Stderr),
+		Dir:  dir,
+	}
+
+	err := runAdd(ctx)
+	require.NoError(t, err)
+
+	// The 'task' tool must be added to mise.toml with 'latest' by default.
+	mise, err := os.ReadFile(filepath.Join(dir, "mise.toml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(mise), "task")
+	assert.Contains(t, string(mise), "latest")
+}
+
+func TestRunAddTask_PreservesPinnedTaskVersion(t *testing.T) {
+	dir := t.TempDir()
+	writeFreshInitRazdfile(t, dir)
+	// task already pinned in mise.toml.
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "mise.toml"),
+		[]byte("[tools]\ntask = \"1.9.0\"\n"), 0644))
+
+	ctx := &Context{
+		Args: []string{"task", "hello", "echo", "hi"},
+		Log:  output.NewLogger(os.Stderr, os.Stderr),
+		Dir:  dir,
+	}
+
+	err := runAdd(ctx)
+	require.NoError(t, err)
+
+	mise, err := os.ReadFile(filepath.Join(dir, "mise.toml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(mise), "1.9.0")
+	assert.NotContains(t, string(mise), "latest")
+}

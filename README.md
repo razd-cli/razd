@@ -73,6 +73,11 @@ Example:
 razd add task test --desc "Run tests" --dep build -- go test ./...
 ```
 
+When a provisioner (mise/devbox) is configured, `razd add task` also ensures
+the `task` tool is available in the native config (e.g. `mise use task`),
+defaulting to the `latest` version. An already-pinned version is left
+untouched.
+
 ### Version conflicts
 
 If a tool exists in both files with **different versions**, razd asks which one

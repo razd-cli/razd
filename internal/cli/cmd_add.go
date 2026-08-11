@@ -189,6 +189,27 @@ func runAddTask(ctx *Context, args []string) error {
 	}
 
 	ctx.Log.Successf("Added task %q to %s\n", name, targetPath)
+
+	// If a provisioner is configured, ensure the `task` tool is available in
+	// the native config (e.g. `mise use task`). Without an explicit version it
+	// defaults to "latest". An existing pinned version is left untouched.
+	if !flags.NoSync {
+		if prov, ok := tryGetProvisioner(rf, dir, ctx.Log); ok {
+			native, err := prov.ReadConfig()
+			if err != nil {
+				ctx.Log.Warnf("Failed to read %s config: %v\n", prov.Name(), err)
+			} else if _, exists := native["task"]; !exists {
+				if err := prov.WriteTools(map[string]string{"task": "latest"}); err != nil {
+					ctx.Log.Warnf("Failed to add 'task' to %s config: %v\n", prov.Name(), err)
+				} else {
+					ctx.Log.Infof("Added 'task' tool to %s config\n", prov.Name())
+				}
+			} else {
+				ctx.Log.Debugf("'task' tool already present in %s config\n", prov.Name())
+			}
+		}
+	}
+
 	return nil
 }
 
