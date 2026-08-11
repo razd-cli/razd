@@ -15,6 +15,7 @@ razd init             # Create Razdfile.yml in current directory
 razd init --using devbox   # Create with devbox provider
 razd add node@22      # Add a dependency to Razdfile
 razd add node         # Add a dependency without a version (defaults to "latest")
+razd add task hello -- echo 'hi'   # Create a task with a command
 razd shell            # Start interactive shell with provisioned env
 razd trust            # Trust current project
 razd trust --show     # Show trust status
@@ -42,6 +43,35 @@ versionless entries in `ensure` are written back to `devbox.json` as bare names.
 `razd add <tool>` accepts a bare package name without a version (the native
 manager defaults it to "latest"). If the Razdfile has no `dependencies.ensure`
 list yet (for example right after `razd init`), `razd add` creates it.
+
+### Creating tasks
+
+`razd add task <name> -- <cmd>` creates a task in the `tasks:` section of the
+Razdfile. Everything after `--` is the command verbatim:
+
+```bash
+razd add task hello -- echo 'hi'
+razd add task build -- go build ./...
+```
+
+A single command with no flags is written in the compact scalar form
+(`build: go build ./...`); multiple commands or any flags use the mapping form.
+
+Supported flags (before `--`):
+
+```
+--desc <text>        Description of the task
+--dep <name>         Task dependency (repeatable)
+--task-dir <path>    Run the task in a specific directory
+--task-silent        Do not print the command or its output
+--interactive        Mark the task as an interactive CLI application
+```
+
+Example:
+
+```bash
+razd add task test --desc "Run tests" --dep build -- go test ./...
+```
 
 ### Version conflicts
 

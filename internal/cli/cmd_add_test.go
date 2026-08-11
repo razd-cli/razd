@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/razd-cli/razd/internal/flags"
 	"github.com/razd-cli/razd/internal/output"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -142,4 +143,112 @@ func TestRunAdd_BareNameCreatesEnsure(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(data), "- node")
 	assert.NotContains(t, string(data), "node@")
+}
+
+func TestRunAddTask_CreatesTask(t *testing.T) {
+	dir := t.TempDir()
+	writeFreshInitRazdfile(t, dir)
+
+	ctx := &Context{
+		Args: []string{"task", "hello", "echo", "hi"},
+		Log:  output.NewLogger(os.Stderr, os.Stderr),
+		Dir:  dir,
+	}
+
+	err := runAdd(ctx)
+	require.NoError(t, err)
+
+	data, err := os.ReadFile(filepath.Join(dir, "Razdfile.yml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "tasks:")
+	assert.Contains(t, string(data), "hello:")
+	assert.Contains(t, string(data), "echo")
+	assert.Contains(t, string(data), "hi")
+}
+
+func TestRunAddTask_WithFlags(t *testing.T) {
+	dir := t.TempDir()
+	writeFreshInitRazdfile(t, dir)
+
+	// Set task flags directly (pflag is not exercised in unit tests).
+	flags.TaskDesc = "Run tests"
+	flags.TaskDeps = []string{"build"}
+	flags.TaskDir = "./src"
+	flags.TaskSilent = true
+	flags.TaskInteractive = true
+	t.Cleanup(func() {
+		flags.TaskDesc = ""
+		flags.TaskDeps = nil
+		flags.TaskDir = ""
+		flags.TaskSilent = false
+		flags.TaskInteractive = false
+	})
+
+	ctx := &Context{
+		Args: []string{"task", "test", "go", "test"},
+		Log:  output.NewLogger(os.Stderr, os.Stderr),
+		Dir:  dir,
+	}
+
+	err := runAdd(ctx)
+	require.NoError(t, err)
+
+	data, err := os.ReadFile(filepath.Join(dir, "Razdfile.yml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "test:")
+	assert.Contains(t, string(data), "desc: Run tests")
+	assert.Contains(t, string(data), "deps:")
+	assert.Contains(t, string(data), "- build")
+	assert.Contains(t, string(data), "dir: ./src")
+	assert.Contains(t, string(data), "silent: true")
+	assert.Contains(t, string(data), "interactive: true")
+}
+
+func TestRunAddTask_InvalidName(t *testing.T) {
+	dir := t.TempDir()
+	writeFreshInitRazdfile(t, dir)
+
+	ctx := &Context{
+		Args: []string{"task", "bad@name", "echo", "hi"},
+		Log:  output.NewLogger(os.Stderr, os.Stderr),
+		Dir:  dir,
+	}
+
+	err := runAdd(ctx)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid task name")
+}
+
+func TestRunAddTask_MissingCommand(t *testing.T) {
+	dir := t.TempDir()
+	writeFreshInitRazdfile(t, dir)
+
+	ctx := &Context{
+		Args: []string{"task", "hello"},
+		Log:  output.NewLogger(os.Stderr, os.Stderr),
+		Dir:  dir,
+	}
+
+	err := runAdd(ctx)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "requires at least one command")
+}
+
+func TestRunAdd_StillAddsDependency(t *testing.T) {
+	dir := t.TempDir()
+	writeFreshInitRazdfile(t, dir)
+
+	ctx := &Context{
+		Args: []string{"node@22"},
+		Log:  output.NewLogger(os.Stderr, os.Stderr),
+		Dir:  dir,
+	}
+
+	err := runAdd(ctx)
+	require.NoError(t, err)
+
+	data, err := os.ReadFile(filepath.Join(dir, "Razdfile.yml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "node@22")
+	assert.NotContains(t, string(data), "tasks:")
 }

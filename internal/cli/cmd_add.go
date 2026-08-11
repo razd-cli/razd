@@ -3,17 +3,25 @@ package cli
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
+	taskast "github.com/go-task/task/v3/taskfile/ast"
 	"github.com/razd-cli/razd/internal/flags"
 	"github.com/razd-cli/razd/razdfile"
 	"github.com/razd-cli/razd/razdfile/ast"
 )
 
 // runAdd implements the "razd add <tool@version>" command.
-// It adds dependencies to an existing Razdfile.yml.
+// It adds dependencies to an existing Razdfile.yml, or creates a task when
+// invoked as "razd add task <name> -- <cmd>".
 func runAdd(ctx *Context) error {
 	if len(ctx.Args) == 0 {
-		return fmt.Errorf("usage: razd add <tool@version> [tool@version...]")
+		return fmt.Errorf("usage: razd add <tool@version> [tool@version...] | razd add task <name> -- <cmd>")
+	}
+
+	// "razd add task <name> -- <cmd>" creates a task.
+	if ctx.Args[0] == "task" {
+		return runAddTask(ctx, ctx.Args[1:])
 	}
 
 	dir, err := resolveDir(ctx)
@@ -95,4 +103,89 @@ func containsDep(ensure []string, dep string) bool {
 		}
 	}
 	return false
+}
+
+// runAddTask implements "razd add task <name> -- <cmd>". It creates or updates
+// a task in the Razdfile's tasks: section. pflag has already consumed the "--"
+// terminator, so args are [name, cmd...].
+func runAddTask(ctx *Context, args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("usage: razd add task <name> -- <cmd>")
+	}
+
+	name := args[0]
+	if err := validateTaskName(name); err != nil {
+		return err
+	}
+
+	cmds := args[1:]
+	if len(cmds) == 0 {
+		return fmt.Errorf("task %q requires at least one command after '--'", name)
+	}
+
+	dir, err := resolveDir(ctx)
+	if err != nil {
+		return err
+	}
+
+	reader := razdfile.NewReader(
+		razdfile.WithDir(dir),
+		razdfile.WithDebugFunc(ctx.Log.Debugf),
+	)
+	if _, err := reader.Read(); err != nil {
+		return fmt.Errorf("failed to read Razdfile: %w", err)
+	}
+
+	task := &taskast.Task{
+		Desc:        flags.TaskDesc,
+		Dir:         flags.TaskDir,
+		Silent:      flags.TaskSilent,
+		Interactive: flags.TaskInteractive,
+	}
+	for _, c := range cmds {
+		task.Cmds = append(task.Cmds, &taskast.Cmd{Cmd: c})
+	}
+	for _, d := range flags.TaskDeps {
+		task.Deps = append(task.Deps, &taskast.Dep{Task: d})
+	}
+
+	ctx.Log.Debugf("Adding task %q with command(s) %q\n", name, cmds)
+	if task.Desc != "" {
+		ctx.Log.Infof("  desc: %s\n", task.Desc)
+	}
+	for _, d := range flags.TaskDeps {
+		ctx.Log.Infof("  dep: %s\n", d)
+	}
+	if task.Dir != "" {
+		ctx.Log.Infof("  dir: %s\n", task.Dir)
+	}
+	if task.Silent {
+		ctx.Log.Infof("  silent: true\n")
+	}
+	if task.Interactive {
+		ctx.Log.Infof("  interactive: true\n")
+	}
+
+	targetPath := filepath.Join(dir, "Razdfile.yml")
+	didWrite, err := razdfile.UpdateTasksInFile(targetPath, name, task)
+	if err != nil {
+		return fmt.Errorf("failed to update Razdfile: %w", err)
+	}
+	if !didWrite {
+		return fmt.Errorf("failed to update Razdfile: task was not written")
+	}
+
+	ctx.Log.Successf("Added task %q to %s\n", name, targetPath)
+	return nil
+}
+
+// validateTaskName checks that a task name is a simple, valid identifier.
+func validateTaskName(name string) error {
+	if name == "" {
+		return fmt.Errorf("task name cannot be empty")
+	}
+	if strings.ContainsAny(name, "@ \t\n:") {
+		return fmt.Errorf("invalid task name %q: must not contain '@', whitespace, or ':'", name)
+	}
+	return nil
 }

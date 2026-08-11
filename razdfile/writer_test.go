@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	taskast "github.com/go-task/task/v3/taskfile/ast"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -164,4 +165,103 @@ dependencies:
 	require.NoError(t, err)
 	assert.Contains(t, string(result), "- node")
 	assert.NotContains(t, string(result), "node@")
+}
+
+func TestUpdateTasksInFile_CreatesTasksSection(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "Razdfile.yml")
+
+	original := `version: "1"
+dependencies:
+  using: "mise"
+`
+	require.NoError(t, os.WriteFile(path, []byte(original), 0644))
+
+	task := &taskast.Task{Cmds: []*taskast.Cmd{{Cmd: "echo hi"}}}
+	changed, err := UpdateTasksInFile(path, "hello", task)
+	require.NoError(t, err)
+	assert.True(t, changed)
+
+	result, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Contains(t, string(result), "tasks:")
+	assert.Contains(t, string(result), "hello: echo hi")
+}
+
+func TestUpdateTasksInFile_ScalarForm(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "Razdfile.yml")
+
+	original := `version: "1"
+tasks:
+  existing: echo old
+`
+	require.NoError(t, os.WriteFile(path, []byte(original), 0644))
+
+	task := &taskast.Task{Cmds: []*taskast.Cmd{{Cmd: "go build ./..."}}}
+	changed, err := UpdateTasksInFile(path, "build", task)
+	require.NoError(t, err)
+	assert.True(t, changed)
+
+	result, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Contains(t, string(result), "build: go build ./...")
+	// Existing task preserved.
+	assert.Contains(t, string(result), "existing: echo old")
+}
+
+func TestUpdateTasksInFile_MappingForm(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "Razdfile.yml")
+
+	original := `version: "1"
+tasks:
+  existing: echo old
+`
+	require.NoError(t, os.WriteFile(path, []byte(original), 0644))
+
+	task := &taskast.Task{
+		Cmds: []*taskast.Cmd{{Cmd: "go test ./..."}},
+		Desc: "Run tests",
+		Deps: []*taskast.Dep{{Task: "build"}},
+		Dir:  "./src",
+	}
+	changed, err := UpdateTasksInFile(path, "test", task)
+	require.NoError(t, err)
+	assert.True(t, changed)
+
+	result, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Contains(t, string(result), "test:")
+	assert.Contains(t, string(result), "go test ./...")
+	assert.Contains(t, string(result), "desc: Run tests")
+	assert.Contains(t, string(result), "deps:")
+	assert.Contains(t, string(result), "- build")
+	assert.Contains(t, string(result), "dir: ./src")
+	// Existing task preserved.
+	assert.Contains(t, string(result), "existing: echo old")
+}
+
+func TestUpdateTasksInFile_PreservesComments(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "Razdfile.yml")
+
+	original := `# Project config
+version: "1"
+
+# Tasks
+tasks:
+  existing: echo old
+`
+	require.NoError(t, os.WriteFile(path, []byte(original), 0644))
+
+	task := &taskast.Task{Cmds: []*taskast.Cmd{{Cmd: "echo new"}}}
+	_, err := UpdateTasksInFile(path, "newtask", task)
+	require.NoError(t, err)
+
+	result, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Contains(t, string(result), "# Project config")
+	assert.Contains(t, string(result), "# Tasks")
+	assert.Contains(t, string(result), "newtask: echo new")
 }

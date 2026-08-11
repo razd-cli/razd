@@ -146,7 +146,7 @@ Commands:
   trust       Trust the current project
   list        List available tasks
   init        Initialize a new Razdfile
-  add         Add a new task
+  add         Add a dependency or task (razd add task <name> -- <cmd>)
   shell       Start an interactive shell with provisioned environment
   dev         Start development server (runs 'dev' task)
   build       Build the project (runs 'build' task)

@@ -59,8 +59,14 @@ var (
 
 	// Output format
 	JSON bool
-)
 
+	// Task creation flags (razd add task <name> -- <cmd>)
+	TaskDesc        string
+	TaskDeps        []string
+	TaskDir         string
+	TaskSilent      bool
+	TaskInteractive bool
+)
 // Init registers all flags with pflag.
 func Init() {
 	// Global flags
@@ -98,6 +104,13 @@ func Init() {
 
 	// Install control
 	pflag.BoolVar(&NoInstall, "no-install", false, "Skip automatic dependency installation before running tasks")
+
+	// Task creation flags (razd add task <name> -- <cmd>)
+	pflag.StringVar(&TaskDesc, "desc", "", "Description of the task")
+	pflag.StringSliceVar(&TaskDeps, "dep", nil, "Task dependencies (repeatable)")
+	pflag.StringVar(&TaskDir, "task-dir", "", "Run the task in a specific directory")
+	pflag.BoolVar(&TaskSilent, "task-silent", false, "Do not print the command or its output")
+	pflag.BoolVar(&TaskInteractive, "interactive", false, "Mark the task as an interactive CLI application")
 }
 
 // Validate checks for mutually exclusive flags.
