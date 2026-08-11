@@ -209,3 +209,42 @@ func TestSync_NoChangesNoConfirm(t *testing.T) {
 	assert.Contains(t, string(razd), "node@22")
 }
 
+func TestSync_NoNativeFileSkipsPromptAndWritesNative(t *testing.T) {
+	dir := t.TempDir()
+	// No mise.toml exists. With confirmSync=true, the direction prompt must be
+	// skipped because there is nothing to reconcile against: Razdfile is the
+	// only source, so the native file is written from it directly.
+	rf := writeRazdfile(t, dir, []string{"node@22"})
+	prov := provisioner.NewMiseProvisioner(provisioner.Config{Dir: dir})
+
+	err := Sync(rf, prov, dir, noopLogger{}, false, true)
+	require.NoError(t, err)
+
+	mise, err := os.ReadFile(filepath.Join(dir, "mise.toml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(mise), "node = '22'")
+}
+
+func TestSync_ExistingNativeFileStillPrompts(t *testing.T) {
+	dir := t.TempDir()
+	// A native config exists with a different tool. The native -> Razdfile
+	// direction remains possible, so the sync still reconciles (existing
+	// behavior unchanged, non-interactive stdin applies changes as before).
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "mise.toml"),
+		[]byte("[tools]\npython = \"3.11\"\n"), 0644))
+	rf := writeRazdfile(t, dir, []string{"node@22"})
+	prov := provisioner.NewMiseProvisioner(provisioner.Config{Dir: dir})
+
+	err := Sync(rf, prov, dir, noopLogger{}, false, true)
+	require.NoError(t, err)
+
+	// node pushed from Razdfile to native.
+	mise, err := os.ReadFile(filepath.Join(dir, "mise.toml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(mise), "node = '22'")
+	// python (pre-existing native) mirrored into Razdfile.ensure.
+	razd, err := os.ReadFile(filepath.Join(dir, "Razdfile.yml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(razd), "python@3.11")
+}
+

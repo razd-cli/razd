@@ -122,5 +122,33 @@ Open questions:
 - Confirmed regression reproduction before the fix: `add` reported success but left
   `Razdfile.yml` unchanged; after the fix the ensure list must be present.
 
+### Phase 4: Sync prompt refinement
+- [x] Task 6: Skip the sync direction/backup prompts when the native config file is missing
+      In `internal/sync/sync.go` `Sync`, detect whether the native config file exists via
+      `os.Stat(NativeConfig(prov.Name(), dir))`. When it does NOT exist (`os.IsNotExist`),
+      there is nothing to reconcile against — `ReadConfig()` returns empty, so only
+      Razdfile->native (`ToNative`) changes are possible. In that case skip BOTH the
+      `PromptConfirmSync` direction prompt and the `PromptBackup` backup prompt, and apply
+      the `ToNative` changes directly (writing the native file from the Razdfile). Keep the
+      prompts whenever the native file exists (genuine version conflicts remain possible).
+      LOGGING REQUIREMENTS:
+      - DEBUG: log when the native config is absent and prompts are skipped
+        (`log.Debugf("[SYNC] %s config missing, skipping sync prompts\n", prov.Name())`).
+      Files: `internal/sync/sync.go`.
+
+- [x] Task 7: Tests for the missing-native-config sync path
+      In `internal/sync/sync_test.go`, add two cases using the existing `writeRazdfile`
+      helper:
+      - `TestSync_NoNativeFileSkipsPromptAndWritesNative`: a Razdfile with `ensure: [node]`
+        and NO `mise.toml`; run `Sync(rf, prov, dir, noopLogger{}, false, true)` (confirmSync
+        = true). Assert no error and that `mise.toml` is created containing `node`.
+      - `TestSync_ExistingNativeFileStillPrompts`: a Razdfile with `ensure: [node]` and an
+        existing `mise.toml` containing a different tool; assert the sync still reconciles
+        (native file present → existing behavior unchanged).
+      LOGGING REQUIREMENTS:
+      - None (assert on observable file content).
+      Files: `internal/sync/sync_test.go`.
+
 ## Commit Plan
 - **Commit 1** (after tasks 1-5): "fix(add): persist dependencies.ensure when the Razdfile lacks an ensure key"
+- **Commit 2** (after tasks 6-7): "fix(sync): skip direction/backup prompt when native config is missing"

@@ -74,10 +74,22 @@ func Sync(rf *ast.Razdfile, prov provisioner.Provisioner, dir string, log Logger
 		return nil
 	}
 
-	// Confirm the direction before applying any changes when interactive
-	// confirmation is enabled. Non-interactive (CI) or --sync-auto applies both
-	// directions as before.
-	if confirmSync {
+	// When the native config file does not exist yet, there is nothing to
+	// reconcile against: ReadConfig() returned empty, so only Razdfile->native
+	// (ToNative) changes are possible. The direction and backup prompts are
+	// meaningless in that case, so skip them and write the native file from the
+	// Razdfile directly.
+	nativePath := NativeConfig(prov.Name(), dir)
+	nativeExists := false
+	if nativePath != "" {
+		if _, statErr := os.Stat(nativePath); statErr == nil {
+			nativeExists = true
+		}
+	}
+	if !nativeExists {
+		log.Debugf("[SYNC] %s config missing, skipping sync prompts\n", prov.Name())
+		changes.ToRazdfile = nil
+	} else if confirmSync {
 		decision, err := PromptConfirmSync(prov.Name(), len(changes.ToRazdfile), len(changes.ToNative), log)
 		if err != nil {
 			return err
@@ -104,10 +116,9 @@ func Sync(rf *ast.Razdfile, prov provisioner.Provisioner, dir string, log Logger
 
 	// Apply Razdfile -> native (with backup prompt).
 	if len(changes.ToNative) > 0 {
-		nativePath := NativeConfig(prov.Name(), dir)
 		if nativePath != "" {
 			shouldBackup := forceBackup
-			if !shouldBackup {
+			if !shouldBackup && nativeExists {
 				decision, pErr := PromptBackup(nativePath, log)
 				if pErr != nil {
 					log.Warnf("[SYNC] backup prompt failed: %v\n", pErr)
