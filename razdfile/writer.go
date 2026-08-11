@@ -218,31 +218,33 @@ func UpdateTasksInFile(filePath string, taskName string, task *taskast.Task) (bo
 	return true, os.WriteFile(filePath, buf.Bytes(), 0644)
 }
 
-// taskToYAMLNode serializes a task into a YAML node, using the compact scalar
-// form for a single command with no extra fields and the mapping form otherwise.
+// taskToYAMLNode serializes a task into a YAML node. A single command is
+// written as `cmd: <command>`; multiple commands use `cmds: [...]`. Extra
+// fields (desc, deps, dir, silent, interactive) are always written in the
+// mapping form.
 func taskToYAMLNode(task *taskast.Task) *yaml.Node {
-	hasExtra := task.Desc != "" || task.Dir != "" || task.Silent || task.Interactive || len(task.Deps) > 0
-
-	// Scalar form: exactly one command, no extra fields.
-	if len(task.Cmds) == 1 && task.Cmds[0] != nil && task.Cmds[0].Cmd != "" && !hasExtra {
-		return &yaml.Node{Kind: yaml.ScalarNode, Value: task.Cmds[0].Cmd, Tag: "!!str"}
-	}
-
 	// Mapping form.
 	mapping := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
 
-	// cmds: sequence of command strings.
-	cmds := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
-	for _, c := range task.Cmds {
-		if c != nil && c.Cmd != "" {
-			cmds.Content = append(cmds.Content, &yaml.Node{Kind: yaml.ScalarNode, Value: c.Cmd, Tag: "!!str"})
-		}
-	}
-	if len(cmds.Content) > 0 {
+	// Single command -> cmd: <command>; multiple -> cmds: [...]
+	if len(task.Cmds) == 1 && task.Cmds[0] != nil && task.Cmds[0].Cmd != "" {
 		mapping.Content = append(mapping.Content,
-			&yaml.Node{Kind: yaml.ScalarNode, Value: "cmds", Tag: "!!str"},
-			cmds,
+			&yaml.Node{Kind: yaml.ScalarNode, Value: "cmd", Tag: "!!str"},
+			&yaml.Node{Kind: yaml.ScalarNode, Value: task.Cmds[0].Cmd, Tag: "!!str"},
 		)
+	} else if len(task.Cmds) > 0 {
+		cmds := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+		for _, c := range task.Cmds {
+			if c != nil && c.Cmd != "" {
+				cmds.Content = append(cmds.Content, &yaml.Node{Kind: yaml.ScalarNode, Value: c.Cmd, Tag: "!!str"})
+			}
+		}
+		if len(cmds.Content) > 0 {
+			mapping.Content = append(mapping.Content,
+				&yaml.Node{Kind: yaml.ScalarNode, Value: "cmds", Tag: "!!str"},
+				cmds,
+			)
+		}
 	}
 
 	if task.Desc != "" {

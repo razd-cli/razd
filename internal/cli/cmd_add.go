@@ -132,8 +132,21 @@ func runAddTask(ctx *Context, args []string) error {
 		razdfile.WithDir(dir),
 		razdfile.WithDebugFunc(ctx.Log.Debugf),
 	)
-	if _, err := reader.Read(); err != nil {
+	rf, err := reader.Read()
+	if err != nil {
 		return fmt.Errorf("failed to read Razdfile: %w", err)
+	}
+
+	// If the task already exists, ask before overwriting it.
+	if rf.GetTask(name) != nil {
+		ok, err := confirmOverwrite(name, ctx.Log)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			ctx.Log.Infof("Task %q not overwritten\n", name)
+			return nil
+		}
 	}
 
 	task := &taskast.Task{
@@ -142,14 +155,14 @@ func runAddTask(ctx *Context, args []string) error {
 		Silent:      flags.TaskSilent,
 		Interactive: flags.TaskInteractive,
 	}
-	for _, c := range cmds {
-		task.Cmds = append(task.Cmds, &taskast.Cmd{Cmd: c})
-	}
+	// Join the command args into a single command string so that
+	// `razd add task hello -- echo 'hi'` writes `cmd: echo 'hi'`.
+	task.Cmds = append(task.Cmds, &taskast.Cmd{Cmd: strings.Join(cmds, " ")})
 	for _, d := range flags.TaskDeps {
 		task.Deps = append(task.Deps, &taskast.Dep{Task: d})
 	}
 
-	ctx.Log.Debugf("Adding task %q with command(s) %q\n", name, cmds)
+	ctx.Log.Debugf("Adding task %q with command %q\n", name, task.Cmds[0].Cmd)
 	if task.Desc != "" {
 		ctx.Log.Infof("  desc: %s\n", task.Desc)
 	}

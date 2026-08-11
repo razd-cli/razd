@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/charmbracelet/huh"
 	"github.com/razd-cli/razd/internal/errors"
 	"github.com/razd-cli/razd/internal/flags"
 	"github.com/razd-cli/razd/internal/output"
@@ -204,4 +205,40 @@ func ensureTrusted(dir string, prov provisioner.Provisioner, log *output.Logger)
 	}
 
 	return nil
+}
+
+// confirmOverwrite asks the user to confirm overwriting an existing task.
+// Returns true if the user confirms, or if --yes is set. In non-interactive
+// mode it returns false (do not overwrite) without blocking.
+func confirmOverwrite(taskName string, log *output.Logger) (bool, error) {
+	if flags.Yes {
+		log.Debugf("Overwriting task %q (--yes)\n", taskName)
+		return true, nil
+	}
+	if !trust.IsTerminal() {
+		log.Debugf("Overwrite prompt skipped (non-interactive)\n")
+		return false, nil
+	}
+
+	var confirm bool
+	prompt := huh.NewForm(
+		huh.NewGroup(
+			huh.NewConfirm().
+				Title(fmt.Sprintf("Task %q already exists. Overwrite?", taskName)).
+				Affirmative("Yes").
+				Negative("No").
+				Value(&confirm),
+		),
+	).WithTheme(huh.ThemeCatppuccin())
+
+	if err := prompt.Run(); err != nil {
+		if err == huh.ErrUserAborted {
+			log.Debugf("Overwrite prompt aborted\n")
+			return false, nil
+		}
+		return false, fmt.Errorf("overwrite prompt failed: %w", err)
+	}
+
+	log.Debugf("Overwrite confirmed: %v\n", confirm)
+	return confirm, nil
 }

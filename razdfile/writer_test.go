@@ -185,10 +185,11 @@ dependencies:
 	result, err := os.ReadFile(path)
 	require.NoError(t, err)
 	assert.Contains(t, string(result), "tasks:")
-	assert.Contains(t, string(result), "hello: echo hi")
+	assert.Contains(t, string(result), "hello:")
+	assert.Contains(t, string(result), "cmd: echo hi")
 }
 
-func TestUpdateTasksInFile_ScalarForm(t *testing.T) {
+func TestUpdateTasksInFile_SingleCommandUsesCmdKey(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "Razdfile.yml")
 
@@ -205,9 +206,35 @@ tasks:
 
 	result, err := os.ReadFile(path)
 	require.NoError(t, err)
-	assert.Contains(t, string(result), "build: go build ./...")
+	assert.Contains(t, string(result), "build:")
+	assert.Contains(t, string(result), "cmd: go build ./...")
 	// Existing task preserved.
 	assert.Contains(t, string(result), "existing: echo old")
+}
+
+func TestUpdateTasksInFile_MultipleCommandsUseCmdsKey(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "Razdfile.yml")
+
+	original := `version: "1"
+tasks:
+  existing: echo old
+`
+	require.NoError(t, os.WriteFile(path, []byte(original), 0644))
+
+	task := &taskast.Task{
+		Cmds: []*taskast.Cmd{{Cmd: "go test ./..."}, {Cmd: "go vet ./..."}},
+	}
+	changed, err := UpdateTasksInFile(path, "test", task)
+	require.NoError(t, err)
+	assert.True(t, changed)
+
+	result, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Contains(t, string(result), "test:")
+	assert.Contains(t, string(result), "cmds:")
+	assert.Contains(t, string(result), "- go test ./...")
+	assert.Contains(t, string(result), "- go vet ./...")
 }
 
 func TestUpdateTasksInFile_MappingForm(t *testing.T) {
@@ -233,7 +260,7 @@ tasks:
 	result, err := os.ReadFile(path)
 	require.NoError(t, err)
 	assert.Contains(t, string(result), "test:")
-	assert.Contains(t, string(result), "go test ./...")
+	assert.Contains(t, string(result), "cmd: go test ./...")
 	assert.Contains(t, string(result), "desc: Run tests")
 	assert.Contains(t, string(result), "deps:")
 	assert.Contains(t, string(result), "- build")
@@ -263,5 +290,6 @@ tasks:
 	require.NoError(t, err)
 	assert.Contains(t, string(result), "# Project config")
 	assert.Contains(t, string(result), "# Tasks")
-	assert.Contains(t, string(result), "newtask: echo new")
+	assert.Contains(t, string(result), "newtask:")
+	assert.Contains(t, string(result), "cmd: echo new")
 }

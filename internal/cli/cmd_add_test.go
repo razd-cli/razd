@@ -162,8 +162,7 @@ func TestRunAddTask_CreatesTask(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(data), "tasks:")
 	assert.Contains(t, string(data), "hello:")
-	assert.Contains(t, string(data), "echo")
-	assert.Contains(t, string(data), "hi")
+	assert.Contains(t, string(data), "cmd: echo hi")
 }
 
 func TestRunAddTask_WithFlags(t *testing.T) {
@@ -196,6 +195,7 @@ func TestRunAddTask_WithFlags(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(dir, "Razdfile.yml"))
 	require.NoError(t, err)
 	assert.Contains(t, string(data), "test:")
+	assert.Contains(t, string(data), "cmd: go test")
 	assert.Contains(t, string(data), "desc: Run tests")
 	assert.Contains(t, string(data), "deps:")
 	assert.Contains(t, string(data), "- build")
@@ -251,4 +251,50 @@ func TestRunAdd_StillAddsDependency(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(data), "node@22")
 	assert.NotContains(t, string(data), "tasks:")
+}
+
+func TestRunAddTask_OverwriteNonInteractiveSkips(t *testing.T) {
+	dir := t.TempDir()
+	// Task already exists.
+	content := "version: \"1\"\ntasks:\n  hello:\n    cmd: echo old\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "Razdfile.yml"), []byte(content), 0644))
+
+	ctx := &Context{
+		Args: []string{"task", "hello", "echo", "new"},
+		Log:  output.NewLogger(os.Stderr, os.Stderr),
+		Dir:  dir,
+	}
+
+	// Non-interactive stdin -> overwrite prompt returns false, task unchanged.
+	err := runAdd(ctx)
+	require.NoError(t, err)
+
+	data, err := os.ReadFile(filepath.Join(dir, "Razdfile.yml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "echo old")
+	assert.NotContains(t, string(data), "echo new")
+}
+
+func TestRunAddTask_OverwriteWithYes(t *testing.T) {
+	dir := t.TempDir()
+	content := "version: \"1\"\ntasks:\n  hello:\n    cmd: echo old\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "Razdfile.yml"), []byte(content), 0644))
+
+	// --yes forces overwrite without prompting.
+	flags.Yes = true
+	t.Cleanup(func() { flags.Yes = false })
+
+	ctx := &Context{
+		Args: []string{"task", "hello", "echo", "new"},
+		Log:  output.NewLogger(os.Stderr, os.Stderr),
+		Dir:  dir,
+	}
+
+	err := runAdd(ctx)
+	require.NoError(t, err)
+
+	data, err := os.ReadFile(filepath.Join(dir, "Razdfile.yml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "echo new")
+	assert.NotContains(t, string(data), "echo old")
 }
