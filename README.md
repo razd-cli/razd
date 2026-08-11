@@ -18,6 +18,7 @@ razd add node         # Add a dependency without a version (defaults to "latest"
 razd add task         # Add the 'task' package (bare form)
 razd add task hello -- echo 'hi'   # Create a task with a command
 razd shell            # Start interactive shell with provisioned env
+razd shell --print    # Print the shell activation script (for eval/iex)
 razd trust            # Trust current project
 razd trust --show     # Show trust status
 razd trust --untrust  # Remove trust
@@ -85,6 +86,24 @@ When a provisioner (mise/devbox) is configured, `razd add task` also ensures
 the `task` tool is available in the native config (e.g. `mise use task`),
 defaulting to the `latest` version. An already-pinned version is left
 untouched.
+
+### Shell activation
+
+`razd shell` launches an interactive subshell with the provisioner's
+environment. To activate the **current** shell instead, print the activation
+script and evaluate it:
+
+```bash
+# Unix (bash/zsh/fish)
+eval "$(razd shell --print)"
+
+# PowerShell (Windows)
+iex "$(razd shell --print)"
+```
+
+`razd shell --print` detects the current shell from `$SHELL` and prints the
+provisioner's activation script (`mise activate <shell>` or
+`devbox shellenv --format <shell>`).
 
 ### Version conflicts
 
