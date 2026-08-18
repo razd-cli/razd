@@ -2,6 +2,7 @@ package cli
 
 import (
 	"os"
+	"os/exec"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -68,6 +69,49 @@ func TestActivationStartup_Bash(t *testing.T) {
 	assert.Contains(t, launch, "--rcfile")
 	assert.Contains(t, launch, "-i")
 	assert.Nil(t, env)
+}
+
+// Regression: the activation script must be sourced verbatim, not wrapped in
+// `eval "..."`. Wrapping re-parses the whole multi-line script as one string,
+// so positional parameters ($1, $@) expand to empty in the outer eval context.
+// mise's activation script uses `[[ $1 != "x" ]]` guards, which then produce
+// `conditional binary operator expected` / `syntax error near "x"` and break
+// the activation hooks. PATH entries containing spaces (e.g. WSL
+// /mnt/c/Program Files/...) are likewise split into separate export arguments.
+func TestActivationStartup_Bash_PathWithSpaces(t *testing.T) {
+	// Mirrors the structure of `mise activate bash`: a PATH export with a
+	// space-containing entry and a function using a positional-parameter
+	// guard inside [[ ]].
+	activation := "export PATH=\"/mnt/c/Program Files/dotnet:$PATH\"\n" +
+		"_mise_hook_prompt_command() {\n" +
+		"\tif [[ $1 != \"_mise_hook_prompt_command\" && $1 != \"_mise_hook\" ]]; then\n" +
+		"\t\techo hook-ok\n" +
+		"\tfi\n" +
+		"}\n"
+	launch, env, cleanup, err := activationStartup("bash", activation)
+	require.NoError(t, err)
+	defer cleanup()
+
+	// Find the --rcfile argument.
+	rcfile := ""
+	for i, a := range launch {
+		if a == "--rcfile" && i+1 < len(launch) {
+			rcfile = launch[i+1]
+		}
+	}
+	require.NotEmpty(t, rcfile, "expected --rcfile argument")
+
+	// Run bash with the generated rcfile and confirm the PATH entry with
+	// spaces survives and the function is defined.
+	cmd := exec.Command("bash", "--rcfile", rcfile, "-i", "-c",
+		`printf '%s' "$PATH"; printf '\n'; type _mise_hook_prompt_command`)
+	if env != nil {
+		cmd.Env = env
+	}
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "bash rcfile failed: %s", out)
+	assert.Contains(t, string(out), "/mnt/c/Program Files/dotnet")
+	assert.Contains(t, string(out), "_mise_hook_prompt_command is a function")
 }
 
 func TestActivationStartup_Zsh(t *testing.T) {

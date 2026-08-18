@@ -120,7 +120,12 @@ func activationStartup(shell, activation string) ([]string, []string, func(), er
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("failed to create temp rcfile: %w", err)
 		}
-		if _, err := tmp.WriteString("eval \"" + strings.ReplaceAll(activation, "\"", "\\\"") + "\"\n"); err != nil {
+		// Write the activation verbatim; bash --rcfile sources it directly.
+		// Wrapping it in `eval "..."` would re-parse the whole script in the
+		// outer context, expanding $1/$@ to empty (breaking mise's
+		// `[[ $1 != "x" ]]` guards) and splitting PATH entries containing
+		// spaces into separate export arguments.
+		if _, err := tmp.WriteString(activation); err != nil {
 			tmp.Close()
 			os.Remove(tmp.Name())
 			return nil, nil, nil, fmt.Errorf("failed to write temp rcfile: %w", err)
@@ -134,7 +139,11 @@ func activationStartup(shell, activation string) ([]string, []string, func(), er
 			return nil, nil, nil, fmt.Errorf("failed to create temp zsh dir: %w", err)
 		}
 		rc := filepath.Join(dir, ".zshrc")
-		if err := os.WriteFile(rc, []byte("eval \""+strings.ReplaceAll(activation, "\"", "\\\"")+"\"\n"), 0644); err != nil {
+		// Write the activation verbatim; ZDOTDIR makes zsh source it as its
+		// startup file. Wrapping it in `eval "..."` re-parses the whole script
+		// in the outer context, breaking positional params and paths with
+		// spaces (see bash case).
+		if err := os.WriteFile(rc, []byte(activation), 0644); err != nil {
 			os.RemoveAll(dir)
 			return nil, nil, nil, fmt.Errorf("failed to write temp .zshrc: %w", err)
 		}
