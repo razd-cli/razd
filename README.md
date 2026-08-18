@@ -26,9 +26,11 @@ razd list             # List tasks
 razd list --json      # List tasks in JSON
 razd up               # Install dependencies and run the default task
 razd up --run         # Same as above (flag kept for compatibility)
-razd init             # Create Razdfile.yml in current directory
-
-razd init --using devbox   # Create with devbox provider
+razd init             # Create Razdfile.yml in current directory (interactive provider select)
+razd init --using mise      # Create with mise provider
+razd init --using devbox    # Create with devbox provider
+razd init --using none      # Create without a provisioner (tasks only)
+razd init --yes             # Skip prompt, default to no provisioner
 razd add node@22      # Add a dependency to Razdfile
 razd add node         # Add a dependency without a version (defaults to "latest")
 razd add task         # Add the 'task' package (bare form)
@@ -39,6 +41,28 @@ razd trust            # Trust current project
 razd trust --show     # Show trust status
 razd trust --untrust  # Remove trust
 ```
+
+### Initializing a project
+
+`razd init` creates a `Razdfile.yml` in the current directory. In an
+interactive terminal it asks which provisioner to use:
+
+```
+Which provisioner to use?
+  [mise]  [devbox]  [none (no provisioner)]
+```
+
+- **mise** — manage project tools with [mise](https://github.com/jdx/mise).
+- **devbox** — manage project tools with [devbox](https://www.jetify.com/devbox).
+  This option is **hidden on Windows**, where devbox is not available (devbox
+  is Unix-only).
+- **none** — create a tasks-only project without a provisioner. This is the
+  default choice.
+
+Pass `--using <mise|devbox|none>` to skip the prompt (useful for CI and
+automation), or `--yes` to accept the default (`none`). In non-interactive
+environments (pipes, CI) without `--using`, razd auto-detects from an existing
+`mise.toml` / `.tool-versions` / `devbox.json` and falls back to `none`.
 
 ## Config Synchronization
 
