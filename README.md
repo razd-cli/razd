@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://razd.dealenx.ru/docs/logo.png" alt="razd logo" width="200"/>
+<img src="https://razd.dealenx.ru/logo.png" alt="razd logo" width="200"/>
 
 # razd
 
