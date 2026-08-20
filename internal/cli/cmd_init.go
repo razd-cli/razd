@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 
 	"github.com/charmbracelet/huh"
 	"go.yaml.in/yaml/v4"
 	"github.com/razd-cli/razd/internal/flags"
 	"github.com/razd-cli/razd/internal/output"
-	"github.com/razd-cli/razd/internal/trust"
 	"github.com/razd-cli/razd/razdfile"
 	"github.com/razd-cli/razd/razdfile/ast"
 	taskast "github.com/go-task/task/v3/taskfile/ast"
@@ -37,6 +35,11 @@ func runInit(ctx *Context) error {
 	}
 
 	// Build Razdfile content
+	if using == "none" {
+		ctx.Log.Debugf("Building tasks-only Razdfile (no dependencies section)\n")
+	} else {
+		ctx.Log.Debugf("Building Razdfile with dependencies.using=%s\n", using)
+	}
 	rf := buildInitRazdfile(using)
 
 	data, err := marshalInitRazdfile(rf)
@@ -65,11 +68,13 @@ func runInit(ctx *Context) error {
 }
 
 // resolveInitProvider determines the provisioner to use for a new Razdfile.
+// It never prompts interactively — `razd init` is deliberately friction-free:
 // Priority:
 //  1. --using flag (mise | devbox | none)
-//  2. --yes flag → default "none" (skip the interactive prompt)
-//  3. interactive TTY → promptInitProvider (huh select)
-//  4. non-interactive → detectProvider (existing config files, fallback "none")
+//  2. --yes flag → default "none"
+//  3. detectProvider (existing mise.toml/.tool-versions/devbox.json, fallback "none")
+// The provisioner is clarified later, at the first `razd add` that needs a
+// dependencies section (see runAdd).
 func resolveInitProvider(dir string, log *output.Logger) (string, error) {
 	if flags.Using != "" {
 		switch flags.Using {
@@ -82,20 +87,8 @@ func resolveInitProvider(dir string, log *output.Logger) (string, error) {
 	}
 
 	if flags.Yes {
-		log.Debugf("--yes set, skipping provisioner prompt, defaulting to none\n")
+		log.Debugf("--yes set, defaulting to none\n")
 		return "none", nil
-	}
-
-	if trust.IsTerminal() {
-		using, err := promptInitProvider(log, runtime.GOOS)
-		if err != nil {
-			return "", err
-		}
-		if using != "" {
-			log.Debugf("Provisioner selected via prompt: %s\n", using)
-			return using, nil
-		}
-		log.Debugf("Prompt returned empty, falling back to auto-detection\n")
 	}
 
 	using := detectProvider(dir)

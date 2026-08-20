@@ -3,10 +3,13 @@ package cli
 import (
 	"fmt"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	taskast "github.com/go-task/task/v3/taskfile/ast"
 	"github.com/razd-cli/razd/internal/flags"
+	"github.com/razd-cli/razd/internal/output"
+	"github.com/razd-cli/razd/internal/trust"
 	"github.com/razd-cli/razd/razdfile"
 	"github.com/razd-cli/razd/razdfile/ast"
 )
@@ -41,8 +44,24 @@ func runAdd(ctx *Context) error {
 		return fmt.Errorf("failed to read Razdfile: %w", err)
 	}
 
+	// The Razdfile has no dependencies section (e.g. `razd init` with "none").
+	// Adding a package requires a provisioner, so ask for one interactively.
+	// This is the only place the provisioner is clarified — init is friction-free.
+	createdDeps := false
 	if !rf.HasDependencies() {
-		return fmt.Errorf("Razdfile does not have a 'dependencies' section. Use 'razd init' to create one")
+		using, err := resolveAddProvisioner(ctx.Log)
+		if err != nil {
+			return err
+		}
+		if using == "none" {
+			return fmt.Errorf("cannot add packages without a provisioner; choose 'mise' or 'devbox'")
+		}
+		rf.Dependencies = &ast.DependenciesConfig{
+			Using:  using,
+			Ensure: []string{},
+		}
+		createdDeps = true
+		ctx.Log.Debugf("Created dependencies section with using=%s\n", using)
 	}
 
 	// Parse and validate each dependency
@@ -70,7 +89,12 @@ func runAdd(ctx *Context) error {
 	}
 
 	targetPath := filepath.Join(dir, "Razdfile.yml")
-	didWrite, err := razdfile.UpdateEnsureInFile(targetPath, rf.Dependencies.Ensure)
+	var didWrite bool
+	if createdDeps {
+		didWrite, err = razdfile.CreateDependenciesInFile(targetPath, rf.Dependencies.Using, rf.Dependencies.Ensure)
+	} else {
+		didWrite, err = razdfile.UpdateEnsureInFile(targetPath, rf.Dependencies.Ensure)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to update Razdfile: %w", err)
 	}
@@ -95,6 +119,28 @@ func runAdd(ctx *Context) error {
 	}
 
 	return nil
+}
+
+// resolveAddProvisioner asks the user which provisioner to use when the
+// Razdfile has no dependencies section. It never auto-selects: the user must
+// explicitly choose. In non-interactive mode (--yes, pipes, CI) it returns an
+// error so the caller can fail without blocking.
+func resolveAddProvisioner(log *output.Logger) (string, error) {
+	if !trust.IsTerminal() {
+		log.Debugf("No dependencies section and non-interactive stdin, cannot prompt for provisioner\n")
+		return "", fmt.Errorf("Razdfile does not have a 'dependencies' section. Use 'razd init' to create one")
+	}
+
+	using, err := promptInitProvider(log, runtime.GOOS)
+	if err != nil {
+		return "", err
+	}
+	if using == "" {
+		log.Debugf("Provisioner prompt aborted\n")
+		return "", fmt.Errorf("provisioner selection aborted")
+	}
+	log.Debugf("Provisioner selected for add: %s\n", using)
+	return using, nil
 }
 
 // containsDep checks if a dependency already exists in the ensure list.

@@ -167,6 +167,69 @@ dependencies:
 	assert.NotContains(t, string(result), "node@")
 }
 
+func TestCreateDependenciesInFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "Razdfile.yml")
+
+	// tasks-only Razdfile (what `razd init` with none produces).
+	original := `version: "1"
+tasks:
+  default:
+    cmd: echo "razd project initialized"
+`
+	require.NoError(t, os.WriteFile(path, []byte(original), 0644))
+
+	changed, err := CreateDependenciesInFile(path, "mise", []string{"node@22"})
+	require.NoError(t, err)
+	assert.True(t, changed)
+
+	result, err := os.ReadFile(path)
+	require.NoError(t, err)
+	resultStr := string(result)
+	assert.Contains(t, resultStr, "using: mise")
+	assert.Contains(t, resultStr, "- node@22")
+	// The original tasks section must be preserved.
+	assert.Contains(t, resultStr, "razd project initialized")
+	assert.Contains(t, resultStr, "default:")
+}
+
+func TestCreateDependenciesInFile_RefusesExisting(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "Razdfile.yml")
+
+	original := `version: "1"
+dependencies:
+  using: "mise"
+`
+	require.NoError(t, os.WriteFile(path, []byte(original), 0644))
+
+	_, err := CreateDependenciesInFile(path, "devbox", []string{"node@22"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "already has a dependencies")
+}
+
+func TestCreateDependenciesInFile_EmptyEnsure(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "Razdfile.yml")
+
+	original := `version: "1"
+tasks:
+  default:
+    cmd: echo hi
+`
+	require.NoError(t, os.WriteFile(path, []byte(original), 0644))
+
+	changed, err := CreateDependenciesInFile(path, "devbox", nil)
+	require.NoError(t, err)
+	assert.True(t, changed)
+
+	result, err := os.ReadFile(path)
+	require.NoError(t, err)
+	resultStr := string(result)
+	assert.Contains(t, resultStr, "using: devbox")
+	assert.NotContains(t, resultStr, "ensure:")
+}
+
 func TestUpdateTasksInFile_CreatesTasksSection(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "Razdfile.yml")

@@ -89,6 +89,71 @@ func UpdateEnsureInFile(filePath string, newEnsure []string) (bool, error) {
 	return true, os.WriteFile(filePath, buf.Bytes(), 0644)
 }
 
+// CreateDependenciesInFile adds a `dependencies` section (with `using` and
+// `ensure`) to a Razdfile that currently has none — e.g. a tasks-only file
+// produced by `razd init` with "none". It preserves comments, key ordering,
+// quoting style, and all other content (tasks, version, etc.), inserting only
+// the new dependencies mapping. Returns true if a section was written.
+//
+// usedBy must be a non-empty provisioner name ("mise" or "devbox"); it is
+// written as the dependencies.using value.
+func CreateDependenciesInFile(filePath, usedBy string, ensure []string) (bool, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return false, fmt.Errorf("failed to read Razdfile: %w", err)
+	}
+
+	var doc yaml.Node
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return false, fmt.Errorf("failed to parse Razdfile: %w", err)
+	}
+
+	root := doc.Content[0]
+	if root.Kind != yaml.MappingNode {
+		return false, fmt.Errorf("unexpected Razdfile structure: expected mapping node")
+	}
+
+	// Refuse to overwrite an existing dependencies section; callers should use
+	// UpdateEnsureInFile for that case.
+	for i := 0; i < len(root.Content); i += 2 {
+		if root.Content[i].Value == "dependencies" {
+			return false, fmt.Errorf("Razdfile already has a dependencies section")
+		}
+	}
+
+	depNode := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+	depNode.Content = append(depNode.Content,
+		&yaml.Node{Kind: yaml.ScalarNode, Value: "using", Tag: "!!str"},
+		&yaml.Node{Kind: yaml.ScalarNode, Value: usedBy, Tag: "!!str"},
+	)
+	if len(ensure) > 0 {
+		ensureNode := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+		for _, val := range ensure {
+			ensureNode.Content = append(ensureNode.Content,
+				&yaml.Node{Kind: yaml.ScalarNode, Value: val, Tag: "!!str"},
+			)
+		}
+		depNode.Content = append(depNode.Content,
+			&yaml.Node{Kind: yaml.ScalarNode, Value: "ensure", Tag: "!!str"},
+			ensureNode,
+		)
+	}
+	root.Content = append(root.Content,
+		&yaml.Node{Kind: yaml.ScalarNode, Value: "dependencies", Tag: "!!str"},
+		depNode,
+	)
+
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+	if err := enc.Encode(&doc); err != nil {
+		return false, fmt.Errorf("failed to encode Razdfile: %w", err)
+	}
+	enc.Close()
+
+	return true, os.WriteFile(filePath, buf.Bytes(), 0644)
+}
+
 // ensureListValues extracts string values from a sequence node.
 func ensureListValues(seqNode *yaml.Node) []string {
 	vals := make([]string, 0, len(seqNode.Content))
