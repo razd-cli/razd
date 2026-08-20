@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/razd-cli/razd/internal/flags"
@@ -50,11 +51,16 @@ func runShell(ctx *Context) error {
 
 // detectShell returns the name of the current shell (bash, zsh, fish, pwsh).
 // It reads $SHELL and takes the basename. If $SHELL is unset, it falls back to
-// pwsh when available (Windows PowerShell), else bash.
+// pwsh on Windows (PowerShell), else bash. The GOOS parameter (runtime.GOOS in
+// production) makes the fallback deterministic and testable across platforms.
 func detectShell() string {
+	return detectShellFor(runtime.GOOS)
+}
+
+func detectShellFor(goos string) string {
 	shell := os.Getenv("SHELL")
 	if shell == "" {
-		if _, err := exec.LookPath("pwsh"); err == nil {
+		if goos == "windows" {
 			return "pwsh"
 		}
 		return "bash"

@@ -13,14 +13,21 @@ func TestDetectShell(t *testing.T) {
 	tests := []struct {
 		name     string
 		shellEnv string
+		goos     string
 		want     string
 	}{
-		{name: "bash", shellEnv: "/bin/bash", want: "bash"},
-		{name: "zsh", shellEnv: "/bin/zsh", want: "zsh"},
-		{name: "fish", shellEnv: "/usr/bin/fish", want: "fish"},
-		{name: "pwsh", shellEnv: "/usr/bin/pwsh", want: "pwsh"},
-		{name: "powershell maps to pwsh", shellEnv: "/mnt/c/Program Files/PowerShell/pwsh.exe", want: "pwsh"},
-		{name: "empty falls back to bash", shellEnv: "", want: "bash"},
+		{name: "bash", shellEnv: "/bin/bash", goos: "linux", want: "bash"},
+		{name: "zsh", shellEnv: "/bin/zsh", goos: "linux", want: "zsh"},
+		{name: "fish", shellEnv: "/usr/bin/fish", goos: "linux", want: "fish"},
+		{name: "pwsh", shellEnv: "/usr/bin/pwsh", goos: "linux", want: "pwsh"},
+		{name: "powershell maps to pwsh", shellEnv: "/mnt/c/Program Files/PowerShell/pwsh.exe", goos: "windows", want: "pwsh"},
+		// Empty $SHELL: fallback depends on the platform, not on which shells
+		// happen to be installed on the runner. Unix falls back to bash even
+		// when pwsh is present; Windows falls back to pwsh.
+		{name: "empty unix falls back to bash", shellEnv: "", goos: "linux", want: "bash"},
+		{name: "empty unix falls back to bash with pwsh present", shellEnv: "", goos: "darwin", want: "bash"},
+		{name: "empty windows falls back to pwsh", shellEnv: "", goos: "windows", want: "pwsh"},
+		{name: "unknown shell falls back to bash", shellEnv: "/bin/unknown", goos: "linux", want: "bash"},
 	}
 
 	for _, tt := range tests {
@@ -38,7 +45,7 @@ func TestDetectShell(t *testing.T) {
 					os.Unsetenv("SHELL")
 				}
 			}()
-			got := detectShell()
+			got := detectShellFor(tt.goos)
 			assert.Equal(t, tt.want, got)
 		})
 	}
