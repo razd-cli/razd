@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	toml "github.com/pelletier/go-toml/v2"
 	"github.com/razd-cli/razd/razdfile/ast"
@@ -157,6 +158,25 @@ func toStringAny(m map[string]string) map[string]any {
 
 func (m *MiseProvisioner) Install(ctx context.Context) error {
 	cmd := exec.CommandContext(ctx, "mise", "install")
+	cmd.Dir = m.Config.Dir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+	return cmd.Run()
+}
+
+// AddTools delegates to `mise use`, which writes the tools into mise.toml and
+// installs them. It is idempotent for already-present tools. Only called when
+// mise.toml already exists.
+func (m *MiseProvisioner) AddTools(ctx context.Context, tools map[string]string) error {
+	args := []string{"use"}
+	for name, version := range tools {
+		args = append(args, toolArg(name, version))
+	}
+	if m.Config.Verbose {
+		fmt.Fprintf(os.Stderr, "[FIX] mise %s\n", strings.Join(args, " "))
+	}
+	cmd := exec.CommandContext(ctx, "mise", args...)
 	cmd.Dir = m.Config.Dir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

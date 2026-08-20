@@ -30,6 +30,15 @@ type Provisioner interface {
 	// preserving all sections and tools not present in the input.
 	WriteTools(tools map[string]string) error
 
+	// AddTools delegates tool installation to the native package manager
+	// (e.g. "devbox add", "mise use"). It writes the packages into the native
+	// config and installs them, idempotently: calling it again with an already
+	// present package is a no-op, not an error. tools maps tool name to version
+	// (empty version means "latest"). Success means the tools are present in
+	// the native config after the call. It is only called when the native
+	// config file already exists.
+	AddTools(ctx context.Context, tools map[string]string) error
+
 	// Install runs the package installation command.
 	// This executes the native install command (e.g., "mise install", "devbox install")
 	Install(ctx context.Context) error
@@ -70,6 +79,16 @@ type BaseProvisioner struct {
 func checkBinary(name string) bool {
 	_, err := exec.LookPath(name)
 	return err == nil
+}
+
+// toolArg formats a tool name+version as a native package argument:
+// "name@version" when a version is present, otherwise the bare name (the
+// native manager resolves a bare name to "latest"). Never emits a trailing "@".
+func toolArg(name, version string) string {
+	if version == "" {
+		return name
+	}
+	return name + "@" + version
 }
 
 // ErrProvisionerNotFound is returned when a provisioner is not in the registry.

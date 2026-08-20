@@ -190,6 +190,7 @@ type fakeProvisioner struct {
 	name       string
 	installCtx *context.Context
 	trusted    bool
+	addedTools map[string]string
 }
 
 func (f *fakeProvisioner) Name() string                       { return f.name }
@@ -198,6 +199,10 @@ func (f *fakeProvisioner) GenerateConfig(_ []ast.ParsedDependency, _ map[string]
 }
 func (f *fakeProvisioner) ReadConfig() (map[string]string, error) { return nil, nil }
 func (f *fakeProvisioner) WriteTools(_ map[string]string) error   { return nil }
+func (f *fakeProvisioner) AddTools(_ context.Context, tools map[string]string) error {
+	f.addedTools = tools
+	return nil
+}
 func (f *fakeProvisioner) Install(ctx context.Context) error {
 	f.installCtx = &ctx
 	return nil

@@ -171,6 +171,30 @@ func (d *DevboxProvisioner) Install(ctx context.Context) error {
 	return cmd.Run()
 }
 
+// AddTools delegates to `devbox add`, which writes the packages into
+// devbox.json and installs them. It is idempotent: re-adding an existing
+// package is a no-op (devbox reports "already in devbox.json" and returns 0).
+// Only called when devbox.json already exists.
+func (d *DevboxProvisioner) AddTools(ctx context.Context, tools map[string]string) error {
+	args := []string{"add"}
+	for name, version := range tools {
+		args = append(args, toolArg(name, version))
+	}
+	return d.runAddCommand(ctx, args)
+}
+
+func (d *DevboxProvisioner) runAddCommand(ctx context.Context, args []string) error {
+	if d.Config.Verbose {
+		fmt.Fprintf(os.Stderr, "[FIX] devbox %s\n", strings.Join(args, " "))
+	}
+	cmd := exec.CommandContext(ctx, "devbox", args...)
+	cmd.Dir = d.Config.Dir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+	return cmd.Run()
+}
+
 func (d *DevboxProvisioner) RunCommand(cmdArgs []string) []string {
 	return append([]string{"devbox", "run", "--"}, cmdArgs...)
 }

@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -9,7 +11,9 @@ import (
 	taskast "github.com/go-task/task/v3/taskfile/ast"
 	"github.com/razd-cli/razd/internal/flags"
 	"github.com/razd-cli/razd/internal/output"
+	"github.com/razd-cli/razd/internal/sync"
 	"github.com/razd-cli/razd/internal/trust"
+	"github.com/razd-cli/razd/provisioner"
 	"github.com/razd-cli/razd/razdfile"
 	"github.com/razd-cli/razd/razdfile/ast"
 )
@@ -64,28 +68,27 @@ func runAdd(ctx *Context) error {
 		ctx.Log.Debugf("Created dependencies section with using=%s\n", using)
 	}
 
-	// Parse and validate each dependency
+	// Parse and validate each dependency, and collect the set of requested
+	// tools (by name) so sync can repair the native config even when nothing
+	// new is added to ensure.
 	var added []string
+	requested := make(map[string]string, len(ctx.Args))
 	for _, dep := range ctx.Args {
 		parsed, err := ast.ParseDependencyString(dep)
 		if err != nil {
 			return fmt.Errorf("invalid dependency format %q: %w", dep, err)
 		}
 
-		// Check for duplicates
-		if containsDep(rf.Dependencies.Ensure, parsed.Raw) {
+		// Check for duplicates by canonical tool name so `uv` and `uv@latest`
+		// are treated as the same package, not two distinct entries.
+		if containsDepName(rf.Dependencies.Ensure, parsed.Tool) {
 			ctx.Log.Debugf("Dependency %q already exists, skipping\n", parsed.Raw)
-			continue
+		} else {
+			rf.Dependencies.Ensure = append(rf.Dependencies.Ensure, parsed.Raw)
+			added = append(added, parsed.Raw)
+			ctx.Log.Debugf("Added dependency: %s\n", parsed.Raw)
 		}
-
-		rf.Dependencies.Ensure = append(rf.Dependencies.Ensure, parsed.Raw)
-		added = append(added, parsed.Raw)
-		ctx.Log.Debugf("Added dependency: %s\n", parsed.Raw)
-	}
-
-	if len(added) == 0 {
-		ctx.Log.Infof("No new dependencies to add\n")
-		return nil
+		requested[parsed.Tool] = parsed.Version
 	}
 
 	targetPath := filepath.Join(dir, "Razdfile.yml")
@@ -98,23 +101,77 @@ func runAdd(ctx *Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to update Razdfile: %w", err)
 	}
-	if !didWrite {
+	if !didWrite && len(added) > 0 {
+		// New dependencies were appended but the file did not change: this is
+		// unexpected and should not happen.
 		ctx.Log.Debugf("ensure list unchanged after add, expected a write\n")
 		return fmt.Errorf("failed to update Razdfile: ensure list was not written")
 	}
-
-	ctx.Log.Successf("Added %d dependencies to %s\n", len(added), targetPath)
-	for _, dep := range added {
-		ctx.Log.Infof("  + %s\n", dep)
+	if !didWrite {
+		// Nothing new was added (e.g. the tool already existed), so there is
+		// nothing to persist. The native-add repair path below still runs.
+		ctx.Log.Debugf("ensure list unchanged, nothing to write\n")
 	}
 
-	// Synchronize the native config (mise.toml / devbox.json) with the updated
-	// Razdfile, preserving any sections not managed by razd.
-	if !flags.NoSync {
-		if prov, ok := tryGetProvisioner(rf, dir, ctx.Log); ok {
-			if err := syncRazdfile(rf, prov, dir, ctx.Log); err != nil {
-				ctx.Log.Warnf("Failed to sync %s config: %v\n", prov.Name(), err)
-			}
+	if len(added) > 0 {
+		ctx.Log.Successf("Added %d dependencies to %s\n", len(added), targetPath)
+		for _, dep := range added {
+			ctx.Log.Infof("  + %s\n", dep)
+		}
+	}
+
+	if flags.NoSync {
+		if len(added) == 0 {
+			ctx.Log.Infof("No new dependencies to add\n")
+		}
+		return nil
+	}
+
+	prov, ok := tryGetProvisioner(rf, dir, ctx.Log)
+	if !ok {
+		if len(added) == 0 {
+			ctx.Log.Infof("No new dependencies to add\n")
+		}
+		return nil
+	}
+
+	// Delegate the install to the native package manager (e.g. `devbox add` /
+	// `mise use`) when its config exists, then reconcile both sides.
+	return addToNative(prov, rf, dir, requested, ctx)
+}
+
+// addToNative installs the requested tools via the native provisioner when its
+// config already exists, then reconciles the native config with the Razdfile.
+// When the native config does not exist yet, it falls back to syncRazdfile,
+// which creates the config from the Razdfile and installs. Delegation is
+// idempotent and repairs drift: tools already in Razdfile but missing from the
+// native config get installed even when nothing new was added to ensure.
+func addToNative(prov provisioner.Provisioner, rf *ast.Razdfile, dir string, requested map[string]string, ctx *Context) error {
+	nativePath := sync.NativeConfig(prov.Name(), dir)
+	nativeExists := false
+	if nativePath != "" {
+		if _, statErr := os.Stat(nativePath); statErr == nil {
+			nativeExists = true
+		}
+	}
+
+	if nativeExists && len(requested) > 0 {
+		ctx.Log.Debugf("Native %s config exists, delegating install to %s\n", prov.Name(), prov.Name())
+		if err := prov.AddTools(context.Background(), requested); err != nil {
+			ctx.Log.Warnf("Native %s add failed: %v\n", prov.Name(), err)
+		}
+	} else {
+		ctx.Log.Debugf("Native %s config missing, syncing config then installing\n", prov.Name())
+		if err := syncRazdfile(rf, prov, dir, ctx.Log); err != nil {
+			ctx.Log.Warnf("Failed to sync %s config: %v\n", prov.Name(), err)
+		}
+	}
+
+	// Reconcile the native config with the Razdfile after the native add, so
+	// any tools the native manager resolved differently are reflected back.
+	if nativeExists {
+		if err := syncRazdfile(rf, prov, dir, ctx.Log); err != nil {
+			ctx.Log.Warnf("Failed to sync %s config: %v\n", prov.Name(), err)
 		}
 	}
 
@@ -143,10 +200,16 @@ func resolveAddProvisioner(log *output.Logger) (string, error) {
 	return using, nil
 }
 
-// containsDep checks if a dependency already exists in the ensure list.
-func containsDep(ensure []string, dep string) bool {
+// containsDepName reports whether a tool name (without version) is already
+// present in the ensure list, so `uv` and `uv@latest` count as the same tool.
+// A bare entry is matched by itself; a "name@version" entry by its name.
+func containsDepName(ensure []string, name string) bool {
 	for _, d := range ensure {
-		if d == dep {
+		n := d
+		if idx := strings.LastIndex(d, "@"); idx > 0 && idx < len(d)-1 {
+			n = d[:idx]
+		}
+		if n == name {
 			return true
 		}
 	}

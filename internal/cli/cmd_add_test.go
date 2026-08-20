@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/razd-cli/razd/internal/flags"
 	"github.com/razd-cli/razd/internal/output"
+	"github.com/razd-cli/razd/razdfile/ast"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -127,8 +129,7 @@ func TestRunAdd_CreatesEnsureOnFreshInit(t *testing.T) {
 	assert.Contains(t, string(data), "node@22")
 }
 
-func TestRunAdd_BareNameCreatesEnsure(t *testing.T) {
-	dir := t.TempDir()
+func TestRunAdd_BareNameCreatesEnsure(t *testing.T) {	dir := t.TempDir()
 	writeFreshInitRazdfile(t, dir)
 
 	ctx := &Context{
@@ -365,4 +366,92 @@ func TestRunAddTask_PreservesPinnedTaskVersion(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(mise), "1.9.0")
 	assert.NotContains(t, string(mise), "latest")
+}
+
+// addToNativeFake records AddTools calls; a minimal provisioner for the
+// delegation path that avoids shelling out to a real devbox/mise binary.
+type addToNativeFake struct {
+	name     string
+	added    map[string]string
+	addCalls int
+}
+
+func (f *addToNativeFake) Name() string { return f.name }
+func (f *addToNativeFake) GenerateConfig(_ []ast.ParsedDependency, _ map[string]any) error {
+	return nil
+}
+func (f *addToNativeFake) ReadConfig() (map[string]string, error) { return nil, nil }
+func (f *addToNativeFake) WriteTools(_ map[string]string) error   { return nil }
+func (f *addToNativeFake) AddTools(_ context.Context, tools map[string]string) error {
+	f.addCalls++
+	f.added = tools
+	return nil
+}
+func (f *addToNativeFake) Install(_ context.Context) error         { return nil }
+func (f *addToNativeFake) RunCommand(cmd []string) []string        { return cmd }
+func (f *addToNativeFake) Shell(_ context.Context) error           { return nil }
+func (f *addToNativeFake) Trust(_ context.Context) error           { return nil }
+func (f *addToNativeFake) Untrust(_ context.Context) error         { return nil }
+func (f *addToNativeFake) IsAvailable() bool                       { return true }
+
+// TestAddToNative_DelegatesWhenConfigExists verifies the core fix: when the
+// native config exists and tools are requested, AddTools is called even for
+// packages already present in ensure (repair path), not skipped.
+func TestAddToNative_DelegatesWhenConfigExists(t *testing.T) {
+	dir := t.TempDir()
+	// devbox.json exists, but "uv" is missing from it while present in ensure.
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "devbox.json"),
+		[]byte(`{"packages": ["bun"]}`), 0644))
+
+	rf := &ast.Razdfile{
+		Version: "1",
+		Dependencies: &ast.DependenciesConfig{
+			Using:  "devbox",
+			Ensure: []string{"nodejs@22", "uv"},
+		},
+	}
+
+	fake := &addToNativeFake{name: "devbox"}
+	ctx := &Context{
+		Dir: dir,
+		Log: output.NewLogger(os.Stderr, os.Stderr),
+	}
+
+	err := addToNative(fake, rf, dir, map[string]string{"uv": ""}, ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, fake.addCalls, "AddTools should be invoked exactly once")
+	assert.Equal(t, map[string]string{"uv": ""}, fake.added)
+}
+
+// TestAddToNative_FallsBackWhenConfigMissing verifies that when the native
+// config does not exist, AddTools is not called and the sync path is used.
+func TestAddToNative_FallsBackWhenConfigMissing(t *testing.T) {
+	dir := t.TempDir() // no devbox.json present
+
+	rf := &ast.Razdfile{
+		Version: "1",
+		Dependencies: &ast.DependenciesConfig{
+			Using:  "devbox",
+			Ensure: []string{"nodejs@22", "uv"},
+		},
+	}
+
+	fake := &addToNativeFake{name: "devbox"}
+	ctx := &Context{
+		Dir: dir,
+		Log: output.NewLogger(os.Stderr, os.Stderr),
+	}
+
+	err := addToNative(fake, rf, dir, map[string]string{"uv": ""}, ctx)
+	require.NoError(t, err)
+	assert.Zero(t, fake.addCalls, "AddTools must not be called when native config is missing")
+}
+
+// TestContainsDepName confirms uv and uv@latest are treated as the same tool.
+func TestContainsDepName(t *testing.T) {
+	ensure := []string{"nodejs@22", "uv@latest", "bun"}
+	assert.True(t, containsDepName(ensure, "uv"))
+	assert.True(t, containsDepName(ensure, "nodejs"))
+	assert.True(t, containsDepName(ensure, "bun"))
+	assert.False(t, containsDepName(ensure, "pnpm"))
 }

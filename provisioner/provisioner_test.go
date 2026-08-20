@@ -11,6 +11,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestToolArg(t *testing.T) {
+	tests := []struct {
+		name    string
+		version string
+		want    string
+	}{
+		{name: "uv", version: "", want: "uv"},
+		{name: "nodejs", version: "22", want: "nodejs@22"},
+		{name: "go", version: "1.21", want: "go@1.21"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name+"_"+tt.version, func(t *testing.T) {
+			assert.Equal(t, tt.want, toolArg(tt.name, tt.version))
+		})
+	}
+}
+
 func TestRegistry_Get(t *testing.T) {
 	tests := []struct {
 		name       string
