@@ -161,6 +161,14 @@ func activationStartup(shell, activation string) ([]string, []string, func(), er
 			os.Remove(tmp.Name())
 			return nil, nil, nil, fmt.Errorf("failed to write temp rcfile: %w", err)
 		}
+		// Prepend a "(Razd)" marker to the prompt so the user can see the
+		// project environment is active. Opt out with RAZD_NO_PROMPT (mirrors
+		// devbox's DEVBOX_NO_PROMPT).
+		if _, err := tmp.WriteString(razdBashPrompt()); err != nil {
+			tmp.Close()
+			os.Remove(tmp.Name())
+			return nil, nil, nil, fmt.Errorf("failed to write razd prompt: %w", err)
+		}
 		tmp.Close()
 		return []string{"bash", "--rcfile", tmp.Name(), "-i"}, nil, func() { os.Remove(tmp.Name()) }, nil
 
@@ -178,19 +186,48 @@ func activationStartup(shell, activation string) ([]string, []string, func(), er
 			os.RemoveAll(dir)
 			return nil, nil, nil, fmt.Errorf("failed to write temp .zshrc: %w", err)
 		}
+		// Append the "(Razd)" prompt marker; opt out with RAZD_NO_PROMPT.
+		f, err := os.OpenFile(rc, os.O_APPEND|os.O_WRONLY, 0644)
+		if err != nil {
+			os.RemoveAll(dir)
+			return nil, nil, nil, fmt.Errorf("failed to append razd prompt: %w", err)
+		}
+		if _, err := f.WriteString(razdZshPrompt()); err != nil {
+			f.Close()
+			os.RemoveAll(dir)
+			return nil, nil, nil, fmt.Errorf("failed to append razd prompt: %w", err)
+		}
+		f.Close()
 		env := append(os.Environ(), "ZDOTDIR="+dir)
 		return []string{"zsh", "-i"}, env, func() { os.RemoveAll(dir) }, nil
 
 	case "fish":
 		// fish uses `source` syntax; the activation output is already fish-compatible.
-		return []string{"fish", "-C", "eval " + activation}, nil, nil, nil
+		// Mirror devbox's fish prompt: copy the original fish_prompt then wrap it.
+		prompt := "\nif not set -q RAZD_NO_PROMPT\n    functions -c fish_prompt __razd_orig_fish_prompt\n    function fish_prompt\n        echo -n '(Razd) '\n        __razd_orig_fish_prompt\n    end\nend\n"
+		return []string{"fish", "-C", "eval " + activation + prompt}, nil, nil, nil
 
 	case "pwsh":
-		return []string{"pwsh", "-NoExit", "-Command", "Invoke-Expression '" + strings.ReplaceAll(activation, "'", "''") + "'"}, nil, nil, nil
+		prompt := "if ($env:RAZD_NO_PROMPT -ne '1') { function global:prompt { '(Razd) ' + (Get-Location) + '> ' } }"
+		return []string{"pwsh", "-NoExit", "-Command", "Invoke-Expression '" + strings.ReplaceAll(activation, "'", "''") + "'; " + prompt}, nil, nil, nil
 
 	default:
 		return nil, nil, nil, fmt.Errorf("unsupported shell %q for activation", shell)
 	}
+}
+
+// razdBashPrompt returns a snippet that prepends "(Razd)" to the PS1 prompt,
+// unless the user opted out with RAZD_NO_PROMPT. Mirrors devbox's
+// DEVBOX_NO_PROMPT behavior.
+func razdBashPrompt() string {
+	return "\nif [ -z \"$RAZD_NO_PROMPT\" ]; then\n  export PS1=\"(Razd) $PS1\"\nfi\n"
+}
+
+// razdZshPrompt returns a snippet that prepends "(Razd)" to the zsh prompt at
+// startup (the temp .zshrc replaces the user's own), unless RAZD_NO_PROMPT is
+// set. One-time assignment is enough because ZDOTDIR bypasses the user config.
+func razdZshPrompt() string {
+	return "\nif [ -z \"$RAZD_NO_PROMPT\" ]; then\n  export PS1=\"(Razd) $PS1\"\nfi\n"
 }
 
 // printShellActivation runs the provisioner's activation command for the given
