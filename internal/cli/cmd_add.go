@@ -141,11 +141,13 @@ func runAdd(ctx *Context) error {
 }
 
 // addToNative installs the requested tools via the native provisioner when its
-// config already exists, then reconciles the native config with the Razdfile.
-// When the native config does not exist yet, it falls back to syncRazdfile,
-// which creates the config from the Razdfile and installs. Delegation is
-// idempotent and repairs drift: tools already in Razdfile but missing from the
-// native config get installed even when nothing new was added to ensure.
+// config already exists, then stops: add already updated both the Razdfile and
+// the native config directly, so a bidirectional reconcile is not run (it would
+// re-ask the direction prompt and defeat the Razdfile->native intent). When the
+// native config does not exist yet, it falls back to syncRazdfile, which
+// creates the config from the Razdfile and installs. Delegation is idempotent
+// and repairs drift: tools already in Razdfile but missing from the native
+// config get installed even when nothing new was added to ensure.
 func addToNative(prov provisioner.Provisioner, rf *ast.Razdfile, dir string, requested map[string]string, ctx *Context) error {
 	nativePath := sync.NativeConfig(prov.Name(), dir)
 	nativeExists := false
@@ -160,16 +162,14 @@ func addToNative(prov provisioner.Provisioner, rf *ast.Razdfile, dir string, req
 		if err := prov.AddTools(context.Background(), requested); err != nil {
 			ctx.Log.Warnf("Native %s add failed: %v\n", prov.Name(), err)
 		}
+		// No reconcile step here: add already updated both the Razdfile (ensure
+		// was appended) and the native config (via AddTools) directly. A
+		// bidirectional sync would re-ask the direction prompt on pre-existing
+		// version/package differences (e.g. bun@1.4.0 vs bun) and defeat the
+		// intended Razdfile->native direction. Direction resolution belongs to
+		// up/run/shell.
 	} else {
 		ctx.Log.Debugf("Native %s config missing, syncing config then installing\n", prov.Name())
-		if err := syncRazdfile(rf, prov, dir, ctx.Log); err != nil {
-			ctx.Log.Warnf("Failed to sync %s config: %v\n", prov.Name(), err)
-		}
-	}
-
-	// Reconcile the native config with the Razdfile after the native add, so
-	// any tools the native manager resolved differently are reflected back.
-	if nativeExists {
 		if err := syncRazdfile(rf, prov, dir, ctx.Log); err != nil {
 			ctx.Log.Warnf("Failed to sync %s config: %v\n", prov.Name(), err)
 		}
