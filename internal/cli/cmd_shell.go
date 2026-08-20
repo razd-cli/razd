@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -43,6 +44,22 @@ func runShell(ctx *Context) error {
 	if flags.ShellPrint {
 		ctx.Log.Debugf("Printing activation for shell=%s via %s\n", shell, prov.Name())
 		return printShellActivation(ctx, prov, dir, shell)
+	}
+
+	// devbox: delegate to `devbox shell` so the environment is fully isolated
+	// (nix-built binaries + the "(devbox)" prompt prefix), matching how the
+	// user expects a project shell to behave. mise has no isolation and keeps
+	// the activation-script path.
+	if prov.Name() == "devbox" {
+		// Sync the native config with the Razdfile first so tools added/edited
+		// in Razdfile are available inside the shell (honor --no-sync).
+		if !flags.NoSync {
+			if err := syncRazdfile(rf, prov, dir, ctx.Log); err != nil {
+				ctx.Log.Warnf("Failed to sync %s config: %v\n", prov.Name(), err)
+			}
+		}
+		ctx.Log.Debugf("Opening devbox shell via 'devbox shell'\n")
+		return prov.Shell(context.Background())
 	}
 
 	ctx.Log.Debugf("Opening %s shell with activation via %s\n", shell, prov.Name())
@@ -89,8 +106,16 @@ func openActivatedShell(ctx *Context, prov provisioner.Provisioner, dir, shell s
 	}
 	actCmd := exec.CommandContext(context.Background(), args[0], args[1:]...)
 	actCmd.Dir = dir
+	var actStderr bytes.Buffer
+	actCmd.Stderr = &actStderr
 	activation, err := actCmd.Output()
 	if err != nil {
+		// Surface the provisioner's own diagnostics (e.g. devbox failing to
+		// install a package) so the user can see why activation failed,
+		// instead of a bare "exit status 1".
+		if stderrMsg := actStderr.String(); stderrMsg != "" {
+			ctx.Log.Errf("%s activation error:\n%s", prov.Name(), strings.TrimRight(stderrMsg, "\n"))
+		}
 		return fmt.Errorf("failed to get activation script from %s: %w", prov.Name(), err)
 	}
 
