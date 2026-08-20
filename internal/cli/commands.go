@@ -31,6 +31,7 @@ func (c *CLI) registerCommands() {
 		&TrustCommand{},
 		&InitCommand{},
 		&AddCommand{},
+		&RemoveCommand{},
 		&ShellCommand{},
 		&DevCommand{},
 		&BuildCommand{},
@@ -103,6 +104,15 @@ func (c *AddCommand) Name() string        { return "add" }
 func (c *AddCommand) Description() string { return "Add a dependency to Razdfile" }
 func (c *AddCommand) Run(ctx *Context) error {
 	return runAdd(ctx)
+}
+
+// RemoveCommand removes a dependency from Razdfile.
+type RemoveCommand struct{}
+
+func (c *RemoveCommand) Name() string        { return "rm" }
+func (c *RemoveCommand) Description() string { return "Remove a dependency from Razdfile" }
+func (c *RemoveCommand) Run(ctx *Context) error {
+	return runRemove(ctx)
 }
 
 // ShellCommand starts an interactive shell.

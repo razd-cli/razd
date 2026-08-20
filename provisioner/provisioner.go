@@ -39,6 +39,14 @@ type Provisioner interface {
 	// config file already exists.
 	AddTools(ctx context.Context, tools map[string]string) error
 
+	// RemoveTools delegates tool removal to the native package manager
+	// (e.g. "devbox rm", "mise unuse"). It removes the packages from the native
+	// config, idempotently: removing a package that is not present is a no-op,
+	// not an error. tools maps tool name to version (empty version means any).
+	// Success means the tools are absent from the native config after the call.
+	// It is only called when the native config file already exists.
+	RemoveTools(ctx context.Context, tools map[string]string) error
+
 	// Install runs the package installation command.
 	// This executes the native install command (e.g., "mise install", "devbox install")
 	Install(ctx context.Context) error

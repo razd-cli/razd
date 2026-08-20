@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"strings"
 
 	taskast "github.com/go-task/task/v3/taskfile/ast"
 	"go.yaml.in/yaml/v4"
@@ -206,6 +207,88 @@ func setEnsureList(seqNode *yaml.Node, newEnsure []string, oldValues []string) {
 		})
 	}
 	seqNode.Content = newContent
+}
+
+// RemoveFromEnsureInFile removes the given tool names from the
+// dependencies.ensure list in a Razdfile, preserving comments, key ordering,
+// quoting style, and all other content. A tool is removed by its bare name, so
+// both `uv` and `uv@latest` are removed by `uv`. Returns true if any entries
+// were removed.
+func RemoveFromEnsureInFile(filePath string, removeNames map[string]bool) (bool, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return false, fmt.Errorf("failed to read Razdfile: %w", err)
+	}
+
+	var doc yaml.Node
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return false, fmt.Errorf("failed to parse Razdfile: %w", err)
+	}
+
+	root := doc.Content[0]
+	if root.Kind != yaml.MappingNode {
+		return false, fmt.Errorf("unexpected Razdfile structure: expected mapping node")
+	}
+
+	changed := false
+
+	for i := 0; i < len(root.Content); i += 2 {
+		key := root.Content[i]
+		if key.Value != "dependencies" {
+			continue
+		}
+
+		depNode := root.Content[i+1]
+		if depNode.Kind != yaml.MappingNode {
+			continue
+		}
+
+		ensureNode := (*yaml.Node)(nil)
+		for j := 0; j < len(depNode.Content); j += 2 {
+			depKey := depNode.Content[j]
+			if depKey.Value != "ensure" {
+				continue
+			}
+			ensureNode = depNode.Content[j+1]
+			break
+		}
+		if ensureNode == nil || ensureNode.Kind != yaml.SequenceNode {
+			continue
+		}
+
+		kept := make([]*yaml.Node, 0, len(ensureNode.Content))
+		for _, item := range ensureNode.Content {
+			if item.Kind != yaml.ScalarNode {
+				kept = append(kept, item)
+				continue
+			}
+			name := item.Value
+			if idx := strings.LastIndex(name, "@"); idx > 0 && idx < len(name)-1 {
+				name = name[:idx]
+			}
+			if removeNames[name] {
+				changed = true
+				continue
+			}
+			kept = append(kept, item)
+		}
+		ensureNode.Content = kept
+		break
+	}
+
+	if !changed {
+		return false, nil
+	}
+
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+	if err := enc.Encode(&doc); err != nil {
+		return false, fmt.Errorf("failed to encode Razdfile: %w", err)
+	}
+	enc.Close()
+
+	return true, os.WriteFile(filePath, buf.Bytes(), 0644)
 }
 
 // UpdateTasksInFile adds or updates a task in the tasks: section of a Razdfile

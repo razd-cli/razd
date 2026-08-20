@@ -203,6 +203,10 @@ func (f *fakeProvisioner) AddTools(_ context.Context, tools map[string]string) e
 	f.addedTools = tools
 	return nil
 }
+func (f *fakeProvisioner) RemoveTools(_ context.Context, tools map[string]string) error {
+	f.addedTools = tools
+	return nil
+}
 func (f *fakeProvisioner) Install(ctx context.Context) error {
 	f.installCtx = &ctx
 	return nil

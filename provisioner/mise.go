@@ -184,6 +184,25 @@ func (m *MiseProvisioner) AddTools(ctx context.Context, tools map[string]string)
 	return cmd.Run()
 }
 
+// RemoveTools delegates to `mise unuse`, which removes the tools from
+// mise.toml. It is idempotent: removing an absent tool is a no-op. Only called
+// when mise.toml already exists.
+func (m *MiseProvisioner) RemoveTools(ctx context.Context, tools map[string]string) error {
+	args := []string{"unuse"}
+	for name := range tools {
+		args = append(args, name)
+	}
+	if m.Config.Verbose {
+		fmt.Fprintf(os.Stderr, "[FIX] mise %s\n", strings.Join(args, " "))
+	}
+	cmd := exec.CommandContext(ctx, "mise", args...)
+	cmd.Dir = m.Config.Dir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+	return cmd.Run()
+}
+
 func (m *MiseProvisioner) RunCommand(cmdArgs []string) []string {
 	return append([]string{"mise", "exec", "--"}, cmdArgs...)
 }

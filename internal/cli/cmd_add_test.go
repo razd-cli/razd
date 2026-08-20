@@ -387,6 +387,11 @@ func (f *addToNativeFake) AddTools(_ context.Context, tools map[string]string) e
 	f.added = tools
 	return nil
 }
+func (f *addToNativeFake) RemoveTools(_ context.Context, tools map[string]string) error {
+	f.addCalls++
+	f.added = tools
+	return nil
+}
 func (f *addToNativeFake) Install(_ context.Context) error         { return nil }
 func (f *addToNativeFake) RunCommand(cmd []string) []string        { return cmd }
 func (f *addToNativeFake) Shell(_ context.Context) error           { return nil }

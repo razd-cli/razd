@@ -195,6 +195,26 @@ func (d *DevboxProvisioner) runAddCommand(ctx context.Context, args []string) er
 	return cmd.Run()
 }
 
+// RemoveTools delegates to `devbox rm`, which removes the packages from
+// devbox.json. It is idempotent: removing an absent package is a no-op (devbox
+// reports "the following packages were not found" and returns 0). Only called
+// when devbox.json already exists.
+func (d *DevboxProvisioner) RemoveTools(ctx context.Context, tools map[string]string) error {
+	args := []string{"rm"}
+	for name := range tools {
+		args = append(args, name)
+	}
+	if d.Config.Verbose {
+		fmt.Fprintf(os.Stderr, "[FIX] devbox %s\n", strings.Join(args, " "))
+	}
+	cmd := exec.CommandContext(ctx, "devbox", args...)
+	cmd.Dir = d.Config.Dir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+	return cmd.Run()
+}
+
 func (d *DevboxProvisioner) RunCommand(cmdArgs []string) []string {
 	return append([]string{"devbox", "run", "--"}, cmdArgs...)
 }
