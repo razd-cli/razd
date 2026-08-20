@@ -15,7 +15,7 @@
 # Go workspace file
 go.work
 go.work.sum
-
+.cursor
 # Node.js
 node_modules/
 .apm_modules
