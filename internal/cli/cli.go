@@ -147,6 +147,7 @@ Commands:
   list        List available tasks
   init        Initialize a new Razdfile
   add         Add a dependency or task (razd add task <name> -- <cmd>)
+  rm          Remove a dependency
   shell       Open an interactive shell with the provisioner activated
   dev         Start development server (runs 'dev' task)
   build       Build the project (runs 'build' task)
@@ -172,6 +173,7 @@ Examples:
   razd up -r            Install tools and run the default task (same as above)
   razd build test       Run 'build' and 'test' tasks
   razd add node         Add a dependency to Razdfile
+  razd rm node          Remove a dependency from Razdfile
   razd add task hello -- echo 'hi'   Create a task
   razd trust            Trust the current project
   razd list             List all available tasks
