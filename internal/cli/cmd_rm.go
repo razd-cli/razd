@@ -128,10 +128,10 @@ func runRemove(ctx *Context) error {
 		if err := prov.RemoveTools(context.Background(), requested); err != nil {
 			ctx.Log.Warnf("Native %s remove failed: %v\n", prov.Name(), err)
 		}
-		// Reconcile the native config with the Razdfile after the removal.
-		if err := syncRazdfile(rf, prov, dir, ctx.Log); err != nil {
-			ctx.Log.Warnf("Failed to sync %s config: %v\n", prov.Name(), err)
-		}
+		// No reconcile step here: rm already updated both the Razdfile (via
+		// RemoveFromEnsureInFile) and the native config (via RemoveTools)
+		// directly. A bidirectional sync would re-ask the direction prompt and
+		// pull native-only packages back into ensure, defeating the removal.
 	}
 
 	return nil
