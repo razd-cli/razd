@@ -1,6 +1,7 @@
 package provisioner
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -410,3 +411,69 @@ func TestDevboxProvisioner_WriteTools_CollapsesPreExistingDuplicates(t *testing.
 	assert.Contains(t, string(content), "php@8.4.15")
 }
 
+
+// TestDevboxProvisioner_RemoveTools edits devbox.json directly, so it works
+// even when a sibling package is broken (devbox rm would fail resolving the
+// whole flake). Removes by bare name (uv removes uv@latest too).
+func TestDevboxProvisioner_RemoveTools(t *testing.T) {
+	dir := t.TempDir()
+	p := NewDevboxProvisioner(Config{Dir: dir})
+
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "devbox.json"),
+		[]byte(`{"packages": ["bun@1.4.0", "nodejs@22", "uv@latest", "pnpm"]}`), 0644))
+
+	err := p.RemoveTools(context.Background(), map[string]string{"uv": ""})
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(filepath.Join(dir, "devbox.json"))
+	require.NoError(t, err)
+	assert.NotContains(t, string(content), "uv")
+	assert.Contains(t, string(content), "bun@1.4.0")
+	assert.Contains(t, string(content), "nodejs@22")
+	assert.Contains(t, string(content), "pnpm")
+}
+
+// TestDevboxProvisioner_RemoveTools_PreservesUnknownKeys verifies unknown keys
+// survive removal.
+func TestDevboxProvisioner_RemoveTools_PreservesUnknownKeys(t *testing.T) {
+	dir := t.TempDir()
+	p := NewDevboxProvisioner(Config{Dir: dir})
+
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "devbox.json"),
+		[]byte(`{"packages": ["nodejs@22", "uv@latest"], "env": {"NODE_ENV": "production"}}`), 0644))
+
+	err := p.RemoveTools(context.Background(), map[string]string{"uv": ""})
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(filepath.Join(dir, "devbox.json"))
+	require.NoError(t, err)
+	assert.NotContains(t, string(content), "uv")
+	assert.Contains(t, string(content), "NODE_ENV")
+}
+
+// TestDevboxProvisioner_RemoveTools_AbsentIsNoop verifies removing an absent
+// package changes nothing and does not error.
+func TestDevboxProvisioner_RemoveTools_AbsentIsNoop(t *testing.T) {
+	dir := t.TempDir()
+	p := NewDevboxProvisioner(Config{Dir: dir})
+
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "devbox.json"),
+		[]byte(`{"packages": ["nodejs@22"]}`), 0644))
+
+	err := p.RemoveTools(context.Background(), map[string]string{"uv": ""})
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(filepath.Join(dir, "devbox.json"))
+	require.NoError(t, err)
+	assert.Contains(t, string(content), "nodejs@22")
+}
+
+// TestDevboxProvisioner_RemoveTools_NoConfigErrors verifies removal on a
+// missing devbox.json is an error (config must exist to remove from it).
+func TestDevboxProvisioner_RemoveTools_NoConfigErrors(t *testing.T) {
+	dir := t.TempDir()
+	p := NewDevboxProvisioner(Config{Dir: dir})
+
+	err := p.RemoveTools(context.Background(), map[string]string{"uv": ""})
+	require.Error(t, err)
+}

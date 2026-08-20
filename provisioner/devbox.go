@@ -195,24 +195,70 @@ func (d *DevboxProvisioner) runAddCommand(ctx context.Context, args []string) er
 	return cmd.Run()
 }
 
-// RemoveTools delegates to `devbox rm`, which removes the packages from
-// devbox.json. It is idempotent: removing an absent package is a no-op (devbox
-// reports "the following packages were not found" and returns 0). Only called
-// when devbox.json already exists.
+// RemoveTools removes the named packages directly from devbox.json, preserving
+// all other keys and packages. It edits the file rather than shelling out to
+// `devbox rm`, because the latter evaluates the whole nix flake and fails if
+// any sibling package is broken (e.g. a bad pinned version), leaving the
+// target package installed. Removing an absent package is a no-op.
 func (d *DevboxProvisioner) RemoveTools(ctx context.Context, tools map[string]string) error {
-	args := []string{"rm"}
+	devboxPath := filepath.Join(d.Config.Dir, "devbox.json")
+
+	data, err := os.ReadFile(devboxPath)
+	if err != nil {
+		return fmt.Errorf("failed to read devbox.json: %w", err)
+	}
+
+	existing := make(map[string]any)
+	if err := json.Unmarshal(data, &existing); err != nil {
+		return fmt.Errorf("failed to parse devbox.json: %w", err)
+	}
+
+	existingPackages, _ := existing["packages"].([]any)
+	if existingPackages == nil {
+		// Nothing to remove if there is no packages array.
+		return nil
+	}
+
+	remove := make(map[string]bool, len(tools))
 	for name := range tools {
-		args = append(args, name)
+		remove[name] = true
 	}
+
+	kept := make([]any, 0, len(existingPackages))
+	for _, p := range existingPackages {
+		str, ok := p.(string)
+		if !ok {
+			kept = append(kept, p)
+			continue
+		}
+		name := str
+		if idx := strings.LastIndex(str, "@"); idx > 0 && idx < len(str)-1 {
+			name = str[:idx]
+		}
+		if remove[name] {
+			// Dropped: this tool is being removed.
+			continue
+		}
+		kept = append(kept, str)
+	}
+	existing["packages"] = kept
+
+	content, err := json.MarshalIndent(existing, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal devbox.json: %w", err)
+	}
+	contentStr := string(content) + "\n"
+
+	if string(data) == contentStr {
+		// No packages removed.
+		return nil
+	}
+
 	if d.Config.Verbose {
-		fmt.Fprintf(os.Stderr, "[FIX] devbox %s\n", strings.Join(args, " "))
+		fmt.Fprintf(os.Stderr, "[FIX] Writing devbox.json to %s\n", devboxPath)
 	}
-	cmd := exec.CommandContext(ctx, "devbox", args...)
-	cmd.Dir = d.Config.Dir
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-	return cmd.Run()
+
+	return os.WriteFile(devboxPath, []byte(contentStr), 0644)
 }
 
 func (d *DevboxProvisioner) RunCommand(cmdArgs []string) []string {
