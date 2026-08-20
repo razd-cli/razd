@@ -8,16 +8,17 @@
 
 # Test binary
 *.test
-
+.ai-factory
 # Output of go build
 /bin/
-
+.agents
 # Go workspace file
 go.work
 go.work.sum
 
 # Node.js
 node_modules/
+.apm_modules
 package-lock.json
 
 # IDE
@@ -32,3 +33,7 @@ Thumbs.db
 
 # Devbox
 .devbox/
+
+
+# APM dependencies
+apm_modules/

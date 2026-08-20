@@ -5,6 +5,10 @@
       "last_modified": "2026-01-02T14:39:32Z",
       "resolved": "github:NixOS/nixpkgs/16c7794d0a28b5a37904d55bcca36003b9109aaa?lastModified=1767364772&narHash=sha256-fFUnEYMla8b7UKjijLnMe%2BoVFOz6HjijGGNS1l7dYaQ%3D"
     },
+    "github:dealenx/nix-apm": {
+      "last_modified": "2026-08-20T17:29:53Z",
+      "resolved": "github:dealenx/nix-apm/e9caa94577c2dd3b8c2ac9372d507e6db32d405a?lastModified=1787246993&narHash=sha256-vCWK1tYE8IFvIybQVTUEPk0tNwYSXHCnev2wlLi27yM%3D"
+    },
     "go@latest": {
       "last_modified": "2025-12-31T03:27:36Z",
       "resolved": "github:NixOS/nixpkgs/f665af0cdb70ed27e1bd8f9fdfecaf451260fc55#go",
@@ -136,6 +140,45 @@
             }
           ],
           "store_path": "/nix/store/36m8yr1p5jgijxd9hs4s838azdl8pb8v-mise-2025.12.12"
+        }
+      }
+    },
+    "nodejs@26": {
+      "last_modified": "2026-08-14T06:48:10Z",
+      "plugin_version": "0.0.4",
+      "resolved": "github:NixOS/nixpkgs/f2b17eb1b90f6a359082035b4538d4c63017aec3#nodejs_26",
+      "source": "devbox-search",
+      "version": "26.7.0",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/iyhz8slnbv3m4gmi81gszbm7bybf4ycp-nodejs-26.7.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/iyhz8slnbv3m4gmi81gszbm7bybf4ycp-nodejs-26.7.0"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/lz52yimavl1lhjwlyfdyr9vlymdmp95q-nodejs-26.7.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/lz52yimavl1lhjwlyfdyr9vlymdmp95q-nodejs-26.7.0"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/33911477n31np6m43lgp8ckpbn7nc85g-nodejs-26.7.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/33911477n31np6m43lgp8ckpbn7nc85g-nodejs-26.7.0"
         }
       }
     }

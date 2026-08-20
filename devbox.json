@@ -3,7 +3,9 @@
   "packages": [
     "go@latest",
     "mise@latest",
-    "goreleaser@latest"
+    "goreleaser@latest",
+    "nodejs@26",
+    "github:dealenx/nix-apm"
   ],
   "shell": {
     "init_hook": [],
