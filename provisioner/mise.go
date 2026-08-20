@@ -67,6 +67,13 @@ func (m *MiseProvisioner) writeConfig(tools map[string]any, extra map[string]any
 			toolsTable = make(map[string]any)
 		}
 		for k, v := range tools {
+			// mise rejects an empty version (uv = ''); a bare/versionless tool
+			// means "latest" (same as devbox). Write "latest" so the package
+			// is actually installable.
+			if s, ok := v.(string); ok && s == "" {
+				toolsTable[k] = "latest"
+				continue
+			}
 			toolsTable[k] = v
 		}
 		existing["tools"] = toolsTable

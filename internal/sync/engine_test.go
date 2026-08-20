@@ -44,6 +44,16 @@ func TestReconcile_SameVersionNoChange(t *testing.T) {
 	assert.Empty(t, changes.ToRazdfile)
 }
 
+func TestReconcile_EmptyVersionEqualsLatest(t *testing.T) {
+	// A bare/versionless tool in Razdfile (Version "") is equivalent to an
+	// explicit "latest" in the native config — no spurious conflict.
+	razd := []Tool{{Name: "uv", Version: ""}}
+	native := []Tool{{Name: "uv", Version: "latest"}}
+	changes, err := Reconcile(razd, native, alwaysUseRazdfile)
+	require.NoError(t, err)
+	assert.False(t, changes.HasChanges())
+}
+
 func TestReconcile_Conflict_UseRazdfile(t *testing.T) {
 	razd := []Tool{{Name: "node", Version: "22"}}
 	native := []Tool{{Name: "node", Version: "23"}}

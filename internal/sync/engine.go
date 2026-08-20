@@ -69,7 +69,7 @@ func Reconcile(razdTools, nativeTools []Tool, resolve Resolver) (Changes, error)
 			changes.ToNative = append(changes.ToNative, razd)
 			continue
 		}
-		if native.Version == razd.Version {
+		if sameVersion(native.Version, razd.Version) {
 			// Rule 3: identical, nothing to do.
 			continue
 		}
@@ -96,6 +96,23 @@ func Reconcile(razdTools, nativeTools []Tool, resolve Resolver) (Changes, error)
 	}
 
 	return changes, nil
+}
+
+// sameVersion reports whether two tool versions are equivalent. An empty
+// version (bare tool in Razdfile, meaning "latest") is equivalent to the
+// explicit "latest" string, so a versionless tool does not spuriously conflict
+// with a native config that already resolves to "latest".
+func sameVersion(a, b string) bool {
+	if a == b {
+		return true
+	}
+	norm := func(s string) string {
+		if s == "" {
+			return "latest"
+		}
+		return s
+	}
+	return norm(a) == norm(b)
 }
 
 // index builds a name->tool map, keeping the first occurrence on duplicates.

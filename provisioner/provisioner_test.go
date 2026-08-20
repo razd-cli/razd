@@ -284,6 +284,21 @@ func TestMiseProvisioner_WriteTools_ComplexToolsPreserved(t *testing.T) {
 	assert.Equal(t, "1.21", tools["go"])
 }
 
+func TestMiseProvisioner_WriteTools_EmptyVersionBecomesLatest(t *testing.T) {
+	dir := t.TempDir()
+	p := NewMiseProvisioner(Config{Dir: dir})
+
+	// A versionless (bare) tool means "latest". mise rejects an empty string
+	// (uv = ''), so it must be written as "latest" to be installable.
+	err := p.WriteTools(map[string]string{"uv": ""})
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(filepath.Join(dir, "mise.toml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(content), "uv = 'latest'")
+	assert.NotContains(t, string(content), "uv = ''")
+}
+
 func TestDevboxProvisioner_WriteTools_PreservesUnknownKeys(t *testing.T) {
 	dir := t.TempDir()
 	p := NewDevboxProvisioner(Config{Dir: dir})
