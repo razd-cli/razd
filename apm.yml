@@ -10,6 +10,6 @@ targets:
 dependencies:
   mcp: []
   apm:
-    - dealenx/ai-factory#apm-support
+    - lee-to/ai-factory
 includes: auto
 scripts: {}
